@@ -1,0 +1,25 @@
+<RCC>
+    <qresource prefix="/">
+        <file>piece icons/black-Camel.svg</file>
+        <file>piece icons/black-Cat.svg</file>
+        <file>piece icons/black-Dog.svg</file>
+        <file>piece icons/black-Elephant.svg</file>
+        <file>piece icons/black-Horse.svg</file>
+        <file>piece icons/black-Rabbit.svg</file>
+        <file>piece icons/white-Camel.svg</file>
+        <file>piece icons/white-Cat.svg</file>
+        <file>piece icons/white-Dog.svg</file>
+        <file>piece icons/white-Elephant.svg</file>
+        <file>piece icons/white-Horse.svg</file>
+        <file>piece icons/white-Rabbit.svg</file>
+        <file alias="illegal-move.wav">sounds/catStep.wav</file>
+        <file alias="dropped-piece.wav">sounds/dogStep.wav</file>
+        <file alias="game-win.wav">sounds/Drop2.wav</file>
+        <file alias="game-loss.wav">sounds/elephantStep.wav</file>
+        <file alias="finished-setup.wav">sounds/horseStep.wav</file>
+        <file alias="clock-tick.wav">sounds/Metal2_3.wav</file>
+        <file alias="loud-step.wav">sounds/place.wav</file>
+        <file alias="soft-step.wav">sounds/slide2.wav</file>
+        <file alias="captured-piece.wav">sounds/trapped.wav</file>
+    </qresource>
+</RCC>
