@@ -25,7 +25,6 @@ GameList::GameList(Server* const server,const QString& labelText) :
   tableWidget.setFocusPolicy(Qt::NoFocus);
   tableWidget.setSelectionMode(QAbstractItemView::NoSelection);
   const int height=tableWidget.horizontalHeader()->height()+2;
-  tableWidget.setMinimumHeight(height);
   tableWidget.setMaximumHeight(height);
   tableWidget.setCursor(Qt::PointingHandCursor);
   addWidget(&tableWidget,1,0,3,0,Qt::AlignTop);
@@ -124,7 +123,6 @@ void GameList::receiveGames(std::vector<ASIP::GameInfo> games_)
   int height=tableWidget.horizontalHeader()->height()+2;
   for (int i=0;i<tableWidget.rowCount();++i)
      height+=tableWidget.rowHeight(i);
-  tableWidget.setMinimumHeight(height);
   tableWidget.setMaximumHeight(height);
   lastUpdated.setText(tr("Last updated: ")+QDateTime::currentDateTime().toString("HH:mm:ss"));
 }
