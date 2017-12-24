@@ -21,6 +21,7 @@ private:
   void setDockWidgets(const bool southIsUp);
   void synchronize();
   void updateTimes();
+  qint64 updateCornerMessage();
   void soundTicker(const Side sideToMove,const qint64 timeLeft);
   bool processMoves(const std::pair<GameTreeNode,unsigned int>& treeAndNumber,const Side role,const Result& result);
   void announceResult(const Result& result);

@@ -66,13 +66,7 @@ Game::Game(MainWindow& mainWindow_,const Side viewpoint,const std::shared_ptr<AS
   controlsMenu->addAction(&stepMode);
 
   menuBar()->setCornerWidget(&cornerMessage);
-  connect(&board,&Board::boardChanged,[=]{
-    if (board.playable() && !board.setupPhase())
-      cornerMessage.setText(tr("Steps left: ")+QString::number(board.gameState().stepsAvailable));
-    else
-      cornerMessage.setText("");
-    menuBar()->setCornerWidget(&cornerMessage);
-  });
+  connect(&board,&Board::boardChanged,this,&Game::updateCornerMessage);
 
   if (session!=nullptr) {
     connect(&board,&Board::gameStarted,this,[=]{session->start();});
@@ -193,18 +187,37 @@ void Game::synchronize()
 
 void Game::updateTimes()
 {
+  auto nextChange=updateCornerMessage();
   const auto times=session->getTimes();
   for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side))
     playerBars[side].setTimes(times[side]);
   if (session->getStatus()==ASIP::LIVE) {
     const Side sideToMove=session->sideToMove();
-    timer.start(playerBars[sideToMove].nextChange());
+    nextChange=std::min(nextChange,playerBars[sideToMove].nextChange());
     soundTicker(sideToMove,std::get<0>(times[sideToMove]));
   }
-  else {
-    timer.stop();
+  else
     ticker.stop();
+  if (nextChange==std::numeric_limits<qint64>::max())
+    timer.stop();
+  else
+    timer.start(nextChange);
+}
+
+qint64 Game::updateCornerMessage()
+{
+  auto nextChange=std::numeric_limits<qint64>::max();
+  if (board.playable() && !board.setupPhase())
+    cornerMessage.setText(tr("Steps left: ")+QString::number(board.gameState().stepsAvailable));
+  else if (session!=nullptr && session->getStatus()!=ASIP::FINISHED) {
+    const auto timeSinceLastReply=session->timeSinceLastReply();
+    cornerMessage.setText(tr("Last server response: ")+PlayerBar::timeDisplay(timeSinceLastReply));
+    nextChange=1000-timeSinceLastReply%1000;
   }
+  else
+    cornerMessage.setText("");
+  menuBar()->setCornerWidget(&cornerMessage);
+  return nextChange;
 }
 
 void Game::soundTicker(const Side sideToMove,const qint64 timeLeft)

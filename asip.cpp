@@ -18,13 +18,13 @@ ASIP::~ASIP()
 
 ASIP::Data ASIP::processReply(QNetworkReply& networkReply)
 {
-  const auto replyTime=QDateTime::currentDateTimeUtc();
+  lastReplyTime=QDateTime::currentDateTimeUtc();
   networkReply.deleteLater();
   runtime_assert(networkReply.error()==QNetworkReply::NoError,networkReply.errorString());
   const auto rawData=networkReply.readAll();
   const auto replyData=getReplyData(rawData);
   updateCache(replyData);
-  timeEstimator.add(networkReply.property("post_time").toDateTime(),replyTime,instantResponse(networkReply),replyData.value("timeonserver"));
+  timeEstimator.add(networkReply.property("post_time").toDateTime(),lastReplyTime,instantResponse(networkReply),replyData.value("timeonserver"));
   const auto error=replyData.find("error");
   if (error!=replyData.end())
     throw std::runtime_error(error.value().toString().toStdString());
@@ -34,6 +34,11 @@ ASIP::Data ASIP::processReply(QNetworkReply& networkReply)
 QUrl ASIP::serverURL() const
 {
   return server.url();
+}
+
+qint64 ASIP::timeSinceLastReply() const
+{
+  return lastReplyTime.msecsTo(QDateTime::currentDateTimeUtc());
 }
 
 QString ASIP::username() const

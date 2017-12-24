@@ -10,9 +10,9 @@ public:
   explicit PlayerBar();
   void setTimes(const std::array<qint64,3>& times);
   void setActive(const bool active);
-  int nextChange() const {return nextChange_;}
-private:
+  qint64 nextChange() const {return nextChange_;}
   static QString timeDisplay(const qint64 milliseconds);
+private:
   QSize sizeHint() const override;
 
   qint64 nextChange_;

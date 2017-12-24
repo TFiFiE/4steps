@@ -40,6 +40,7 @@ public:
   virtual ~ASIP();
   Data processReply(QNetworkReply& networkReply);
   QUrl serverURL() const;
+  qint64 timeSinceLastReply() const;
 
   // Game room
   QString username() const;
@@ -98,6 +99,7 @@ private:
   Data mostRecentData;
   mutable QReadWriteLock mostRecentData_mutex;
   TimeEstimator timeEstimator;
+  QDateTime lastReplyTime;
 };
 
 #endif // ASIP_HPP
