@@ -37,21 +37,21 @@ void PlayerBar::setActive(const bool active)
 QString PlayerBar::timeDisplay(const qint64 milliseconds)
 {
   const auto seconds=std::max(qint64(0),milliseconds)/1000;
-  QString result=QString::number(seconds%60).rightJustified(2,'0');
   if (seconds<60)
-    return result;
+    return QString::number(seconds);
+  QString result=':'+QString::number(seconds%60).rightJustified(2,'0');
 
   const auto minutes=seconds/60;
-  result.prepend(QString::number(minutes%60).rightJustified(2,'0')+':');
   if (minutes<60)
-    return result;
+    return QString::number(minutes)+result;
+  result.prepend(':'+QString::number(minutes%60).rightJustified(2,'0'));
 
   const auto hours=minutes/60;
-  result.prepend(QString::number(hours%24).rightJustified(2,'0')+':');
+  result.prepend(QString::number(hours%24));
   if (hours<24)
     return result;
 
-  return result.prepend(QString::number(hours/24)+"d ");
+  return QString::number(hours/24)+"d "+result;
 }
 
 QSize PlayerBar::sizeHint() const
