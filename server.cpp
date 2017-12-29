@@ -37,11 +37,8 @@ Server::Server(ASIP& session_,MainWindow& mainWindow_) :
 Server::~Server()
 {
   QNetworkReply* const networkReply=session.logout(nullptr);
-  if (networkReply!=nullptr) {
-    connect(networkReply,&QNetworkReply::finished,[=]{
-      networkReply->deleteLater();
-    });
-  }
+  if (networkReply!=nullptr)
+    connect(networkReply,&QNetworkReply::finished,networkReply,&QNetworkReply::deleteLater);
 }
 
 void Server::refreshPage() const

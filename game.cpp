@@ -69,7 +69,7 @@ Game::Game(MainWindow& mainWindow_,const Side viewpoint,const std::shared_ptr<AS
   connect(&board,&Board::boardChanged,this,&Game::updateCornerMessage);
 
   if (session!=nullptr) {
-    connect(&board,&Board::gameStarted,this,[=]{session->start();});
+    connect(&board,&Board::gameStarted,session.get(),&ASIP::start);
     for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side)) {
       auto& dockWidget=dockWidgets[side];
       dockWidget.setWindowTitle(side==FIRST_SIDE ? tr("Gold") : tr("Silver"));
