@@ -38,6 +38,6 @@ int main(int argc,char* argv[])
   mainWindow.setGeometry(QStyle::alignedRect(Qt::LeftToRight,Qt::AlignCenter,mainWindow.size(),qApp->desktop()->availableGeometry()));
   mainWindow.show();
 
-  srand(time(0));
+  srand(time(nullptr));
   return a.exec();
 }
