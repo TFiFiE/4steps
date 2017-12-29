@@ -8,7 +8,7 @@ MainWindow::MainWindow(QSvgRenderer pieceIcons_[NUM_PIECE_SIDE_COMBINATIONS],QNe
   QMainWindow(parent),
   pieceIcons(pieceIcons_),
   networkAccessManager(networkAccessManager_),
-  emptyGame(tr("&Edit new game")),
+  emptyGame(tr("Edit &new game")),
   logIn(tr("&Log in")),
   quit(tr("&Quit")),
   buildTime(tr("Built: ")+__DATE__+QString(" ")+__TIME__)
@@ -16,7 +16,7 @@ MainWindow::MainWindow(QSvgRenderer pieceIcons_[NUM_PIECE_SIDE_COMBINATIONS],QNe
   setWindowTitle(tr("4steps - Arimaa client"));
   const auto menu=menuBar()->addMenu(tr("&Game"));
 
-  emptyGame.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_E));
+  emptyGame.setShortcut(QKeySequence::New);
   connect(&emptyGame,&QAction::triggered,this,[=]{new Game(*this,FIRST_SIDE);});
   menu->addAction(&emptyGame);
 

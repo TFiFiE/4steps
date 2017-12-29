@@ -23,7 +23,8 @@ Game::Game(MainWindow& mainWindow_,const Side viewpoint,const std::shared_ptr<AS
   const auto gameMenu=menuBar()->addMenu(tr("&Game"));
 
   const auto controllableSides=getControllableSides(session);
-  resign.setEnabled(session!=nullptr && (controllableSides[FIRST_SIDE] || controllableSides[SECOND_SIDE]));
+  const bool controllable=(controllableSides[FIRST_SIDE] || controllableSides[SECOND_SIDE]);
+  resign.setEnabled(session!=nullptr && controllable);
   resign.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_R));
   connect(&resign,&QAction::triggered,[=]{
     const QMessageBox::StandardButton result=QMessageBox::question(this,tr("Confirm resignation"),tr("Are you sure you want to resign?"),QMessageBox::Yes|QMessageBox::No,QMessageBox::No);
@@ -48,7 +49,7 @@ Game::Game(MainWindow& mainWindow_,const Side viewpoint,const std::shared_ptr<AS
   boardMenu->addAction(&rotate);
 
   autoRotate.setCheckable(true);
-  autoRotate.setShortcut(QKeySequence(Qt::Key_A));
+  autoRotate.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_A));
   connect(&autoRotate,&QAction::toggled,&board,&Board::setAutoRotate);
   boardMenu->addAction(&autoRotate);
 
@@ -60,8 +61,9 @@ Game::Game(MainWindow& mainWindow_,const Side viewpoint,const std::shared_ptr<AS
 
   const auto controlsMenu=menuBar()->addMenu(tr("&Controls"));
 
+  stepMode.setEnabled(controllable);
   stepMode.setCheckable(true);
-  stepMode.setShortcut(QKeySequence(Qt::Key_S));
+  stepMode.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_S));
   connect(&stepMode,&QAction::toggled,&board,&Board::setStepMode);
   controlsMenu->addAction(&stepMode);
 
