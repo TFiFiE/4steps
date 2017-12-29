@@ -8,7 +8,8 @@ ASIP::ASIP(QNetworkAccessManager& networkAccessManager_,const QString& serverURL
   QObject(parent),
   networkAccessManager(networkAccessManager_),
   server(getNetworkRequest(serverURL)),
-  mostRecentData(std::move(startingData))
+  mostRecentData(std::move(startingData)),
+  gameStateReply(nullptr)
 {
 }
 
@@ -304,12 +305,25 @@ void ASIP::sit()
   QNetworkReply* sitReply=post(this,{{"action","sit"},dataPair("tid"),dataPair("grid")});
   connect(sitReply,&QNetworkReply::finished,this,[=]() {
     processReply(*sitReply);
-    const auto gameStateReply=post(this,{{"action","gamestate"},dataPair("sid")});
+    gameStateReply=post(this,{{"action","gamestate"},dataPair("sid")});
     connect(gameStateReply,&QNetworkReply::finished,this,[=]() {
       processReply(*gameStateReply);
-      update();
+      update(false);
     });
   });
+}
+
+void ASIP::forceUpdate()
+{
+  if (gameStateReply!=nullptr) {
+    disconnect(gameStateReply,&QNetworkReply::finished,nullptr,nullptr);
+    gameStateReply->deleteLater();
+    gameStateReply=post(this,{{"action","gamestate"},dataPair("sid"),{"wait","0"},{"maxwait","0"}});
+    connect(gameStateReply,&QNetworkReply::finished,this,[=]() {
+      processReply(*gameStateReply);
+      update(true);
+    });
+  }
 }
 
 void ASIP::start()
@@ -348,17 +362,17 @@ void ASIP::leave()
     authDependingAction("leave");
 }
 
-void ASIP::update()
+void ASIP::update(const bool hardSynchronization)
 {
-  updated();
+  updated(hardSynchronization);
   QReadLocker readLocker(&mostRecentData_mutex);
   const auto oldMoves=mostRecentData.value("moves").toString();
   const auto oldChat=mostRecentData.value("chat").toString();
   readLocker.unlock();
-  QNetworkReply* updateReply=post(this,{{"action","updategamestate"},dataPair("sid"),{"wait","1"},dataPair("lastchange"),dataPair("moveslength"),dataPair("chatlength")});
-  connect(updateReply,&QNetworkReply::finished,this,[=]() {
+  gameStateReply=post(this,{{"action","updategamestate"},dataPair("sid"),{"wait","1"},dataPair("lastchange"),dataPair("moveslength"),dataPair("chatlength")});
+  connect(gameStateReply,&QNetworkReply::finished,this,[=]() {
     try {
-      processReply(*updateReply);
+      processReply(*gameStateReply);
     }
     catch (const std::exception& exception) {
       if (exception.what()==std::string("Gameserver: No Game Data"))
@@ -374,7 +388,7 @@ void ASIP::update()
     newMoves=oldMoves+newMoves.toString();
     newChat=oldChat+newChat.toString();
     writeLocker.unlock();
-    update();
+    update(false);
   });
 }
 

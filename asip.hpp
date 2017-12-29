@@ -70,6 +70,7 @@ public:
   Result getResult() const;
   std::array<std::array<qint64,3>,NUM_SIDES> getTimes() const;
   void sit();
+  void forceUpdate();
   void start();
   void sendMove(const QString& move);
   void resign();
@@ -78,10 +79,10 @@ public:
   void sendChat(const QString& chat);
   void leave();
 private:
-  void update();
+  void update(const bool hardSynchronization);
   void authDependingAction(const QString& action,const std::initializer_list<std::pair<QString,QString> >& extraItems={});
 signals:
-  void updated();
+  void updated(const bool hardSynchronization);
 protected:
   std::pair<QString,QString> dataPair(const QString& key) const;
   QNetworkReply* post(QObject* const requester,const std::vector<std::pair<QString,QString> >& items);
@@ -100,6 +101,7 @@ private:
   mutable QReadWriteLock mostRecentData_mutex;
   TimeEstimator timeEstimator;
   QDateTime lastReplyTime;
+  QNetworkReply* gameStateReply;
 };
 
 #endif // ASIP_HPP

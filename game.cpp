@@ -12,6 +12,7 @@ Game::Game(MainWindow& mainWindow_,const Side viewpoint,const std::shared_ptr<AS
   processedMoves(0),
   nextTickTime(-1),
   finished(false),
+  forceUpdate("Force server &update"),
   resign(tr("&Resign")),
   fullScreen(tr("&Full screen")),
   rotate(tr("&Rotate")),
@@ -21,6 +22,12 @@ Game::Game(MainWindow& mainWindow_,const Side viewpoint,const std::shared_ptr<AS
 {
   setCentralWidget(&board);
   const auto gameMenu=menuBar()->addMenu(tr("&Game"));
+
+  forceUpdate.setEnabled(session!=nullptr);
+  forceUpdate.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_U));
+  if (session!=nullptr)
+    connect(&forceUpdate,&QAction::triggered,session.get(),&ASIP::forceUpdate);
+  gameMenu->addAction(&forceUpdate);
 
   const auto controllableSides=getControllableSides(session);
   const bool controllable=(controllableSides[FIRST_SIDE] || controllableSides[SECOND_SIDE]);
@@ -93,7 +100,7 @@ Game::Game(MainWindow& mainWindow_,const Side viewpoint,const std::shared_ptr<AS
       nextTickTime=-1;
     });
     if (session->gameStateAvailable())
-      synchronize();
+      synchronize(false);
     connect(session.get(),&ASIP::updated,this,&Game::synchronize);
     connect(&timer,&QTimer::timeout,this,&Game::updateTimes);
     if (session->role()!=NO_SIDE) {
@@ -148,7 +155,7 @@ void Game::setDockWidgets(const bool southIsUp)
   }
 }
 
-void Game::synchronize()
+void Game::synchronize(const bool hard)
 {
   const auto status=session->getStatus();
   const auto role=session->role();
@@ -164,7 +171,7 @@ void Game::synchronize()
   }
   const auto moves=session->getMoves();
   auto result=session->getResult();
-  if (processMoves(moves,role,result))
+  if (processMoves(moves,role,result,hard))
     nextTickTime=-1;
   updateTimes();
 
@@ -244,7 +251,7 @@ void Game::soundTicker(const Side sideToMove,const qint64 timeLeft)
     ticker.stop();
 }
 
-bool Game::processMoves(const std::pair<GameTreeNode,unsigned int>& treeAndNumber,const Side role,const Result& result)
+bool Game::processMoves(const std::pair<GameTreeNode,unsigned int>& treeAndNumber,const Side role,const Result& result,const bool hardSynchronization)
 {
   const auto& receivedTree=treeAndNumber.first;
   const unsigned int sessionMoves=treeAndNumber.second;
@@ -255,7 +262,7 @@ bool Game::processMoves(const std::pair<GameTreeNode,unsigned int>& treeAndNumbe
     const unsigned int movesAhead=localHistory.size()-receivedHistory.size();
     if (movesAhead==0)
       return false;
-    else if (sessionMoves+movesAhead==processedMoves) {
+    else if (!hardSynchronization && sessionMoves+movesAhead==processedMoves) {
       if (result.endCondition!=NO_END)
         sound=false;
       else
