@@ -47,6 +47,7 @@ HEADERS += \
     game.hpp \
     gamelist.hpp \
     gamestate.hpp \
+    globals.hpp \
     io.hpp \
     login.hpp \
     mainwindow.hpp \

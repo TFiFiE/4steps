@@ -1,13 +1,14 @@
 #include <QNetworkReply>
 #include <QHeaderView>
 #include "server.hpp"
+#include "globals.hpp"
 #include "gamelist.hpp"
 #include "creategame.hpp"
 
-Server::Server(ASIP& session_,MainWindow& mainWindow_) :
+Server::Server(Globals& globals_,ASIP& session_,MainWindow& mainWindow_) :
   session(session_),
   mainWindow(mainWindow_),
-
+  globals(globals_),
   vBoxLayout(this),
   newGame(tr("&New game")),
   refresh(tr("&Refresh page"))
@@ -48,7 +49,7 @@ void Server::refreshPage() const
 
 void Server::createGame()
 {
-  const auto createGame=new CreateGame(session,*this);
+  const auto createGame=new CreateGame(globals,session,*this);
   createGame->setAttribute(Qt::WA_DeleteOnClose);
   createGame->show();
 }

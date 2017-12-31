@@ -1,15 +1,16 @@
 #include <QNetworkReply>
 #include <QMessageBox>
 #include "login.hpp"
+#include "globals.hpp"
 #include "mainwindow.hpp"
 #include "server.hpp"
 #include "asip1.hpp"
 #include "asip2.hpp"
 
 using namespace std;
-Login::Login(QNetworkAccessManager& networkAccessManager_,MainWindow& mainWindow_) :
+Login::Login(Globals& globals_,MainWindow& mainWindow_) :
   QDialog(&mainWindow_),
-  networkAccessManager(networkAccessManager_),
+  globals(globals_),
   mainWindow(mainWindow_),
   vBoxLayout(this),
   asip(tr("Arimaa Server Interface Protocol")),
@@ -33,14 +34,20 @@ Login::Login(QNetworkAccessManager& networkAccessManager_,MainWindow& mainWindow
   gameroom.textChanged(QString());
   formLayout.addRow(tr("Game room:"),&gameroom);
 
+  globals.settings.beginGroup("Login");
+  username.setText(globals.settings.value("username").toString());
+  globals.settings.endGroup();
   formLayout.addRow(tr("Username:"),&username);
 
   password.setEchoMode(QLineEdit::Password);
   formLayout.addRow(tr("Password:"),&password);
 
   vBoxLayout.addLayout(&formLayout);
-  username.setFocus();
-  connect(&dialogButtonBox,&QDialogButtonBox::accepted,[=]{
+  if (username.text().isEmpty())
+    username.setFocus();
+  else
+    password.setFocus();
+  connect(&dialogButtonBox,&QDialogButtonBox::accepted,[&]{
     const auto gameroomURL=gameroom.text();
     const auto usernameString=username.text();
     for (const auto server:mainWindow.servers) {
@@ -54,10 +61,10 @@ Login::Login(QNetworkAccessManager& networkAccessManager_,MainWindow& mainWindow
     setEnabled(false);
     ASIP* asip;
     if (protocolButtons[0]->isChecked())
-      asip=new ASIP1(networkAccessManager,gameroomURL,this);
+      asip=new ASIP1(globals.networkAccessManager,gameroomURL,this);
     else {
       assert(protocolButtons[1]->isChecked());
-      asip=new ASIP2(networkAccessManager,gameroomURL,this);
+      asip=new ASIP2(globals.networkAccessManager,gameroomURL,this);
     }
     const auto networkReply=asip->login(this,usernameString,password.text());
     connect(networkReply,&QNetworkReply::finished,this,[=]{loginAttempt(*networkReply,*asip);});
@@ -72,6 +79,10 @@ void Login::loginAttempt(QNetworkReply& networkReply,ASIP& asip)
     asip.processReply(networkReply);
     mainWindow.addServer(asip);
     close();
+
+    globals.settings.beginGroup("Login");
+    globals.settings.setValue("username",username.text());
+    globals.settings.endGroup();
   }
   catch (const std::exception& exception) {
     asip.deleteLater();

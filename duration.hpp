@@ -4,16 +4,19 @@
 #include <QHBoxLayout>
 #include <QSpinBox>
 class QCheckBox;
+class QSettings;
 
 class Duration : public QHBoxLayout {
   Q_OBJECT
 public:
-  explicit Duration(const unsigned int minimum_=0,const QString& extraOption="",QWidget* const parent=nullptr);
-  unsigned int totalSeconds() const;
+  explicit Duration(const int minimum_=0,const QString& extraOption="",QWidget* const parent=nullptr);
+  int totalSeconds() const;
   void normalize();
   QString toString() const;
+  void readSetting(QSettings& settings,const QString& key);
+  void writeSetting(QSettings& settings,const QString& key) const;
 
-  unsigned int minimum;
+  int minimum;
 
   QSpinBox days,hours,minutes,seconds;
   QCheckBox* checkBox;

@@ -1,12 +1,14 @@
 #include <QNetworkReply>
 #include <QMessageBox>
 #include "creategame.hpp"
+#include "globals.hpp"
 #include "server.hpp"
 #include "mainwindow.hpp"
 
 using namespace std;
-CreateGame::CreateGame(ASIP& session_,Server& server_) :
+CreateGame::CreateGame(Globals& globals_,ASIP& session_,Server& server_) :
   QDialog(&server_),
+  globals(globals_),
   server(server_),
   session(session_),
   vBoxLayout(this),
@@ -54,6 +56,7 @@ CreateGame::CreateGame(ASIP& session_,Server& server_) :
   });
   connect(&dialogButtonBox,&QDialogButtonBox::rejected,this,&CreateGame::close);
   vBoxLayout.addWidget(&dialogButtonBox);
+  timeControl.readSettings(globals.settings);
   timeControl.moveTime.seconds.setFocus();
 }
 
@@ -63,6 +66,7 @@ void CreateGame::creationAttempt(QNetworkReply& networkReply)
     server.mainWindow.addGame(session.getGame(networkReply),session.role(),true);
     server.refreshPage();
     close();
+    timeControl.writeSettings(globals.settings);
   }
   catch (const std::exception& exception) {
     QMessageBox::critical(this,tr("Error creating game"),exception.what());

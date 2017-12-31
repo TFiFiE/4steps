@@ -5,10 +5,10 @@
 #include "messagebox.hpp"
 #include "io.hpp"
 
-Game::Game(MainWindow& mainWindow_,const Side viewpoint,const std::shared_ptr<ASIP> session_) :
-  QMainWindow(&mainWindow_),
+Game::Game(Globals& globals,const Side viewpoint,QWidget* const parent,const std::shared_ptr<ASIP> session_) :
+  QMainWindow(parent),
   session(session_),
-  board(mainWindow_.pieceIcons,viewpoint,{session==nullptr,session==nullptr}),
+  board(globals,viewpoint,{session==nullptr,session==nullptr}),
   processedMoves(0),
   nextTickTime(-1),
   finished(false),
@@ -70,6 +70,7 @@ Game::Game(MainWindow& mainWindow_,const Side viewpoint,const std::shared_ptr<AS
 
   stepMode.setEnabled(controllable);
   stepMode.setCheckable(true);
+  stepMode.setChecked(board.stepMode());
   stepMode.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_S));
   connect(&stepMode,&QAction::toggled,&board,&Board::setStepMode);
   controlsMenu->addAction(&stepMode);

@@ -7,6 +7,7 @@
 #include <QLabel>
 #include <QDialogButtonBox>
 class QNetworkReply;
+struct Globals;
 class ASIP;
 class Server;
 #include "timecontrol.hpp"
@@ -14,9 +15,10 @@ class Server;
 class CreateGame : public QDialog {
   Q_OBJECT
 public:
-  explicit CreateGame(ASIP& session_,Server& server_);
+  explicit CreateGame(Globals& globals_,ASIP& session_,Server& server_);
   void creationAttempt(QNetworkReply& networkReply);
 private:
+  Globals& globals;
   const Server& server;
   ASIP& session;
 

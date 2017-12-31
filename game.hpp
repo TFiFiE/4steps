@@ -6,7 +6,6 @@
 #include <QDockWidget>
 #include <QTimer>
 #include <QAction>
-class MainWindow;
 class ASIP;
 #include "board.hpp"
 #include "playerbar.hpp"
@@ -14,7 +13,7 @@ class ASIP;
 class Game : public QMainWindow {
   Q_OBJECT
 public:
-  explicit Game(MainWindow& mainWindow_,const Side viewpoint,const std::shared_ptr<ASIP> session_=std::shared_ptr<ASIP>());
+  explicit Game(Globals& globals,const Side viewpoint,QWidget* const parent=nullptr,const std::shared_ptr<ASIP> session_=std::shared_ptr<ASIP>());
 private:
   static std::array<bool,NUM_SIDES> getControllableSides(const std::shared_ptr<ASIP> session);
   static std::vector<qint64> getTickTimes();

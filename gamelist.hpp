@@ -4,7 +4,7 @@
 #include <QGridLayout>
 #include <QLabel>
 #include <QTableWidget>
-struct Server;
+class Server;
 #include "asip.hpp"
 
 class GameList : public QGridLayout {

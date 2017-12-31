@@ -1,8 +1,7 @@
 #include <QApplication>
-#include <QSvgRenderer>
-#include <QNetworkAccessManager>
 #include <QStyle>
 #include <QDesktopWidget>
+#include "globals.hpp"
 #include "mainwindow.hpp"
 
 static void loadPieceIcons(QSvgRenderer pieceIcons[NUM_PIECE_SIDE_COMBINATIONS])
@@ -31,10 +30,9 @@ int main(int argc,char* argv[])
 {
   const QApplication a(argc,argv);
 
-  QNetworkAccessManager networkAccessManager;
-  QSvgRenderer pieceIcons[NUM_PIECE_SIDE_COMBINATIONS];
-  loadPieceIcons(pieceIcons);
-  MainWindow mainWindow(pieceIcons,networkAccessManager);
+  Globals globals("4steps.ini",QSettings::IniFormat);
+  loadPieceIcons(globals.pieceIcons);
+  MainWindow mainWindow(globals);
   mainWindow.setGeometry(QStyle::alignedRect(Qt::LeftToRight,Qt::AlignCenter,mainWindow.size(),qApp->desktop()->availableGeometry()));
   mainWindow.show();
 

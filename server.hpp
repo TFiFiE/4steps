@@ -5,13 +5,14 @@
 #include <QVBoxLayout>
 #include <QPushButton>
 #include "asip.hpp"
+struct Globals;
 class MainWindow;
-struct GameList;
+class GameList;
 
 class Server : public QWidget {
   Q_OBJECT
 public:
-  explicit Server(ASIP& session_,MainWindow& mainWindow_);
+  explicit Server(Globals& globals_,ASIP& session_,MainWindow& mainWindow_);
   ~Server();
   void refreshPage() const;
 
@@ -20,6 +21,8 @@ public:
 private:
   void createGame();
   void resizeEvent(QResizeEvent* event) override;
+
+  Globals& globals;
 
   QVBoxLayout vBoxLayout;
     QHBoxLayout hBoxLayout;

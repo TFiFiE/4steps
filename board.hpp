@@ -4,13 +4,14 @@
 #include <QWidget>
 #include <QMediaPlayer>
 #include <QMediaPlaylist>
-class QSvgRenderer;
+struct Globals;
 #include "tree.hpp"
 
 class Board : public QWidget {
   Q_OBJECT
 public:
-  explicit Board(QSvgRenderer pieceIcons_[NUM_PIECE_SIDE_COMBINATIONS],const Side viewpoint,const std::array<bool,NUM_SIDES>& controllableSides_={true,true},QWidget* const parent=nullptr,const Qt::WindowFlags f=Qt::WindowFlags());
+  explicit Board(Globals& globals_,const Side viewpoint,const std::array<bool,NUM_SIDES>& controllableSides_={true,true},QWidget* const parent=nullptr,const Qt::WindowFlags f=Qt::WindowFlags());
+  ~Board();
   bool setupPhase() const;
   Side sideToMove() const;
   MoveTree& currentMoveNode() const;
@@ -30,6 +31,7 @@ public:
   void setControllable(const std::array<bool,NUM_SIDES>& sides);
   std::array<bool,NUM_SIDES> controllableSides() const {return controllableSides_;}
   bool southIsUp() const {return southIsUp_;}
+  bool stepMode() const {return stepMode_;}
 private:
   int squareWidth() const;
   int squareHeight() const;
@@ -67,7 +69,7 @@ private:
 
   void playStepSounds(const ExtendedSteps& steps,const bool emphasize);
 
-  QSvgRenderer* const pieceIcons;
+  Globals& globals;
   QMediaPlayer qMediaPlayer;
   QMediaPlaylist qMediaPlaylist;
   QSize sizeHint_;
@@ -82,7 +84,7 @@ private:
   bool southIsUp_,autoRotate,soundOn;
   std::array<SquareIndex,2> drag;
   ExtendedSteps dragSteps;
-  bool stepMode;
+  bool stepMode_;
   std::array<SquareIndex,2> highlighted;
 signals:
   void gameStarted();

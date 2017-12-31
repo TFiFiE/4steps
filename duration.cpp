@@ -1,7 +1,8 @@
 #include <QCheckBox>
+#include <QSettings>
 #include "duration.hpp"
 
-Duration::Duration(const unsigned int minimum_,const QString& extraOption,QWidget* const parent) :
+Duration::Duration(const int minimum_,const QString& extraOption,QWidget* const parent) :
   QHBoxLayout(parent),
   minimum(minimum_)
 {
@@ -32,9 +33,9 @@ Duration::Duration(const unsigned int minimum_,const QString& extraOption,QWidge
   connect(&seconds,&QSpinBox::editingFinished,this,&Duration::normalize);
 }
 
-unsigned int Duration::totalSeconds() const
+int Duration::totalSeconds() const
 {
-  unsigned int result=days.value()*24+hours.value();
+  int result=days.value()*24+hours.value();
   result=result*60+minutes.value();
   return result*60+seconds.value();
 }
@@ -43,7 +44,7 @@ void Duration::normalize()
 {
   if (days.hasFocus() || hours.hasFocus() || minutes.hasFocus() || seconds.hasFocus())
     return;
-  unsigned int total=std::max(minimum,totalSeconds());
+  int total=std::max(minimum,totalSeconds());
   seconds.setValue(total%60);
   total/=60;
   minutes.setValue(total%60);
@@ -74,4 +75,27 @@ QString Duration::toString() const
     if (unit->value()>0)
       result.append(unit->text());
   return result.remove(' ');
+}
+
+void Duration::readSetting(QSettings& settings,const QString& key)
+{
+  const auto variant=settings.value(key);
+  if (variant.canConvert<int>()) {
+    const auto value=variant.toInt();
+    const bool valid=(value>=minimum);
+    if (checkBox!=nullptr)
+      checkBox->setChecked(!valid);
+    if (valid) {
+      seconds.setValue(value);
+      normalize();
+    }
+  }
+}
+
+void Duration::writeSetting(QSettings& settings,const QString& key) const
+{
+  if (checkBox!=nullptr && checkBox->isChecked())
+    settings.setValue(key,minimum-1);
+  else
+    settings.setValue(key,totalSeconds());
 }

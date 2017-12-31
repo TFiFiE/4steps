@@ -8,19 +8,19 @@
 #include <QRadioButton>
 #include <QLineEdit>
 #include <QDialogButtonBox>
-class QNetworkAccessManager;
 class QNetworkReply;
+struct Globals;
 class MainWindow;
 class ASIP;
 
 class Login : public QDialog {
   Q_OBJECT
 public:
-  explicit Login(QNetworkAccessManager& networkAccessManager_,MainWindow& mainWindow_);
+  explicit Login(Globals& globals_,MainWindow& mainWindow_);
 private:
   void loginAttempt(QNetworkReply& networkReply,ASIP& asip);
 
-  QNetworkAccessManager& networkAccessManager;
+  Globals& globals;
   MainWindow& mainWindow;
 
   QVBoxLayout vBoxLayout;

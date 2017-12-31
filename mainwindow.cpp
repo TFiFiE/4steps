@@ -1,13 +1,13 @@
 #include <QMenuBar>
 #include "mainwindow.hpp"
+#include "globals.hpp"
 #include "game.hpp"
 #include "login.hpp"
 #include "server.hpp"
 
-MainWindow::MainWindow(QSvgRenderer pieceIcons_[NUM_PIECE_SIDE_COMBINATIONS],QNetworkAccessManager& networkAccessManager_,QWidget* const parent) :
+MainWindow::MainWindow(Globals& globals_,QWidget* const parent) :
   QMainWindow(parent),
-  pieceIcons(pieceIcons_),
-  networkAccessManager(networkAccessManager_),
+  globals(globals_),
   emptyGame(tr("Edit &new game")),
   logIn(tr("&Log in")),
   quit(tr("&Quit")),
@@ -17,7 +17,7 @@ MainWindow::MainWindow(QSvgRenderer pieceIcons_[NUM_PIECE_SIDE_COMBINATIONS],QNe
   const auto menu=menuBar()->addMenu(tr("&Game"));
 
   emptyGame.setShortcut(QKeySequence::New);
-  connect(&emptyGame,&QAction::triggered,this,[=]{new Game(*this,FIRST_SIDE);});
+  connect(&emptyGame,&QAction::triggered,this,[=]{new Game(globals,FIRST_SIDE,this);});
   menu->addAction(&emptyGame);
 
   logIn.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_L));
@@ -36,14 +36,14 @@ MainWindow::MainWindow(QSvgRenderer pieceIcons_[NUM_PIECE_SIDE_COMBINATIONS],QNe
 
 void MainWindow::login()
 {
-  const auto login=new Login(networkAccessManager,*this);
+  const auto login=new Login(globals,*this);
   login->setAttribute(Qt::WA_DeleteOnClose);
   login->show();
 }
 
 void MainWindow::addServer(ASIP& asip)
 {
-  const auto serverPage=new Server(asip,*this);
+  const auto serverPage=new Server(globals,asip,*this);
   tabWidget.setCurrentIndex(tabWidget.addTab(serverPage,asip.serverURL().host()));
   servers.emplace_back(serverPage);
 }
@@ -70,7 +70,7 @@ void MainWindow::addGame(std::unique_ptr<ASIP> newGame,const Side viewpoint,cons
     for (const auto existingGame:games)
       if (auto existingGame_=existingGame.lock())
         if (existingGame_->isEqualGame(newGame_)) {
-          new Game(*this,viewpoint,existingGame_);
+          new Game(globals,viewpoint,this,existingGame_);
           return;
         }
   newGame_.sit();
@@ -79,5 +79,5 @@ void MainWindow::addGame(std::unique_ptr<ASIP> newGame,const Side viewpoint,cons
     session->deleteLater();
   });
   games.push_back(addedGame);
-  new Game(*this,viewpoint,addedGame);
+  new Game(globals,viewpoint,this,addedGame);
 }

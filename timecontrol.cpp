@@ -1,6 +1,6 @@
 #include <QCheckBox>
 #include "timecontrol.hpp"
-#include "def.hpp"
+#include "globals.hpp"
 
 using namespace std;
 TimeControl::TimeControl(const QString& title,QWidget* const parent) :
@@ -83,4 +83,41 @@ QString TimeControl::toString(const bool timed) const
     result.prepend("/100");
 
   return moveTime.toString()+"/"+startingReserve.toString()+result;
+}
+
+void TimeControl::readSettings(QSettings& settings)
+{
+  settings.beginGroup("TimeControl");
+  moveTime.readSetting(settings,"move_time");
+  startingReserve.readSetting(settings,"starting_reserve");
+  absoluteMoveTime.readSetting(settings,"absolute_move_time");
+  maxReserve.readSetting(settings,"max_reserve");
+  carryover.setValue(settings.value("carry_over",carryover.value()).toUInt());
+
+  const auto globalIndex=settings.value("total_game_duration_type").toInt();
+  if (globalIndex>=0 && globalIndex<=3) {
+    globalButtons[globalIndex]->click();
+    if (globalIndex==1)
+      totalGameTime.readSetting(settings,"total_game_duration");
+    else if (globalIndex==2)
+      totalGameMoves.setValue(settings.value("total_game_duration",totalGameMoves.value()).toUInt());
+  }
+  settings.endGroup();
+}
+
+void TimeControl::writeSettings(QSettings& settings) const
+{
+  settings.beginGroup("TimeControl");
+  moveTime.writeSetting(settings,"move_time");
+  startingReserve.writeSetting(settings,"starting_reserve");
+  absoluteMoveTime.writeSetting(settings,"absolute_move_time");
+  maxReserve.writeSetting(settings,"max_reserve");
+  settings.setValue("carry_over",carryover.value());
+
+  settings.setValue("total_game_duration_type",buttonGroup.checkedId());
+  switch (buttonGroup.checkedId()) {
+    case 1: totalGameTime.writeSetting(settings,"total_game_duration"); break;
+    case 2: settings.setValue("total_game_duration",totalGameMoves.value()); break;
+  }
+  settings.endGroup();
 }

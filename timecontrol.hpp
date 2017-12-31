@@ -7,6 +7,7 @@
 #include <QRadioButton>
 #include <QStackedLayout>
 #include <QButtonGroup>
+class QSettings;
 #include "duration.hpp"
 
 class TimeControl : public QGroupBox {
@@ -14,6 +15,8 @@ class TimeControl : public QGroupBox {
 public:
   explicit TimeControl(const QString& title,QWidget* const parent=nullptr);
   QString toString(const bool timed) const;
+  void readSettings(QSettings& settings);
+  void writeSettings(QSettings& settings) const;
 private:
   QFormLayout formLayout;
     Duration moveTime,startingReserve,absoluteMoveTime,maxReserve;
