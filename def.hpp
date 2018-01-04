@@ -7,6 +7,7 @@
 #include <list>
 #include <cassert>
 #include <QString>
+#include <QDialog>
 
 enum Side {
   FIRST_SIDE=0,
@@ -274,6 +275,12 @@ template<class Widget>
 inline int textWidth(const Widget& widget)
 {
   return widget.fontMetrics().boundingRect(widget.text()).width()+10;
+}
+
+inline void openDialog(QDialog* const dialog)
+{
+  dialog->setAttribute(Qt::WA_DeleteOnClose);
+  dialog->show();
 }
 
 template<class String>

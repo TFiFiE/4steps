@@ -19,14 +19,13 @@ public:
   ASIP& session;
   MainWindow& mainWindow;
 private:
-  void createGame();
   void resizeEvent(QResizeEvent* event) override;
 
   Globals& globals;
 
   QVBoxLayout vBoxLayout;
     QHBoxLayout hBoxLayout;
-      QPushButton newGame,refresh;
+      QPushButton newGame,openGame,refresh;
 
   std::map<ASIP::GameListCategory,std::unique_ptr<GameList> > gameLists;
 };

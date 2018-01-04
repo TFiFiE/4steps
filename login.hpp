@@ -2,13 +2,13 @@
 #define LOGIN_HPP
 
 #include <memory>
+class QNetworkReply;
 #include <QDialog>
 #include <QFormLayout>
 #include <QLabel>
 #include <QRadioButton>
 #include <QLineEdit>
 #include <QDialogButtonBox>
-class QNetworkReply;
 struct Globals;
 class MainWindow;
 class ASIP;

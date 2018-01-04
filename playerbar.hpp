@@ -6,6 +6,7 @@
 #include <QLCDNumber>
 
 class PlayerBar : public QWidget {
+  Q_OBJECT
 public:
   explicit PlayerBar();
   void setTimes(const std::array<qint64,3>& times);

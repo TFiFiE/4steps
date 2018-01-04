@@ -21,7 +21,7 @@ MainWindow::MainWindow(Globals& globals_,QWidget* const parent) :
   menu->addAction(&emptyGame);
 
   logIn.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_L));
-  connect(&logIn,&QAction::triggered,this,&MainWindow::login);
+  connect(&logIn,&QAction::triggered,this,[&]{openDialog(new Login(globals,*this));});
   menu->addAction(&logIn);
 
   quit.setShortcuts(QKeySequence::Quit);
@@ -32,13 +32,6 @@ MainWindow::MainWindow(Globals& globals_,QWidget* const parent) :
   tabWidget.setTabsClosable(true);
   connect(&tabWidget,&QTabWidget::tabCloseRequested,this,&MainWindow::closeTab);
   menuBar()->setCornerWidget(&buildTime);
-}
-
-void MainWindow::login()
-{
-  const auto login=new Login(globals,*this);
-  login->setAttribute(Qt::WA_DeleteOnClose);
-  login->show();
 }
 
 void MainWindow::addServer(ASIP& asip)

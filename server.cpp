@@ -4,6 +4,7 @@
 #include "globals.hpp"
 #include "gamelist.hpp"
 #include "creategame.hpp"
+#include "opengame.hpp"
 
 Server::Server(Globals& globals_,ASIP& session_,MainWindow& mainWindow_) :
   session(session_),
@@ -11,6 +12,7 @@ Server::Server(Globals& globals_,ASIP& session_,MainWindow& mainWindow_) :
   globals(globals_),
   vBoxLayout(this),
   newGame(tr("&New game")),
+  openGame(tr("&Open game")),
   refresh(tr("&Refresh page"))
 {
   session.setParent(this);
@@ -20,9 +22,11 @@ Server::Server(Globals& globals_,ASIP& session_,MainWindow& mainWindow_) :
     using namespace std;
     gameLists.insert(make_pair(gameListCategory,make_unique<GameList>(this,gameListCategoryTitles[gameListCategory])));
   }
-  connect(&newGame,&QPushButton::clicked,this,&Server::createGame);
+  connect(&newGame,&QPushButton::clicked,this,[&]{openDialog(new CreateGame(globals,session,*this));});
+  connect(&openGame,&QPushButton::clicked,this,[&]{openDialog(new OpenGame(*this));});
   connect(&refresh,&QPushButton::clicked,this,&Server::refreshPage);
   hBoxLayout.addWidget(&newGame);
+  hBoxLayout.addWidget(&openGame);
   hBoxLayout.addWidget(&refresh);
   vBoxLayout.addLayout(&hBoxLayout);
   connect(&session,&ASIP::sendGameList,this,[&](const ASIP::GameListCategory gameListCategory,const std::vector<ASIP::GameInfo>& games) {
@@ -45,13 +49,6 @@ Server::~Server()
 void Server::refreshPage() const
 {
   session.state();
-}
-
-void Server::createGame()
-{
-  const auto createGame=new CreateGame(globals,session,*this);
-  createGame->setAttribute(Qt::WA_DeleteOnClose);
-  createGame->show();
 }
 
 void Server::resizeEvent(QResizeEvent*)

@@ -2,10 +2,10 @@
 #define ASIP_HPP
 
 #include <memory>
-#include <QNetworkRequest>
-#include <QReadWriteLock>
 class QNetworkAccessManager;
 class QNetworkReply;
+#include <QNetworkRequest>
+#include <QReadWriteLock>
 #include "tree.hpp"
 #include "timeestimator.hpp"
 

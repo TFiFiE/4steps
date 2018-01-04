@@ -2,15 +2,16 @@
 #define CREATEGAME_HPP
 
 #include <memory>
+class QNetworkReply;
 #include <QDialog>
 #include <QCheckBox>
 #include <QLabel>
 #include <QDialogButtonBox>
-class QNetworkReply;
 struct Globals;
 class ASIP;
 class Server;
 #include "timecontrol.hpp"
+#include "def.hpp"
 
 class CreateGame : public QDialog {
   Q_OBJECT
@@ -26,7 +27,7 @@ private:
     QHBoxLayout hBoxLayout;
       QCheckBox timed,rated;
       QLabel yourSide;
-      std::unique_ptr<QRadioButton> sideButtons[3];
+      std::unique_ptr<QRadioButton> sideButtons[NUM_SIDES+1];
       TimeControl timeControl;
     QDialogButtonBox dialogButtonBox;
 };

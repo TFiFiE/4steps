@@ -31,6 +31,7 @@ SOURCES += \
     main.cpp \
     mainwindow.cpp \
     movetree.cpp \
+    opengame.cpp \
     playerbar.cpp \
     server.cpp \
     timecontrol.cpp \
@@ -53,6 +54,7 @@ HEADERS += \
     mainwindow.hpp \
     messagebox.hpp \
     movetree.hpp \
+    opengame.hpp \
     playerbar.hpp \
     server.hpp \
     timecontrol.hpp \

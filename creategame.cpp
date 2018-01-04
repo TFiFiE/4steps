@@ -40,7 +40,7 @@ CreateGame::CreateGame(Globals& globals_,ASIP& session_,Server& server_) :
 
   vBoxLayout.addWidget(&timeControl);
 
-  connect(&dialogButtonBox,&QDialogButtonBox::accepted,[=]{
+  connect(&dialogButtonBox,&QDialogButtonBox::accepted,[&]{
     setEnabled(false);
     Side side;
     if (sideButtons[0]->isChecked())

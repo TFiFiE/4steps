@@ -27,8 +27,8 @@ private:
 
   const std::shared_ptr<ASIP> session;
   Board board;
-  QDockWidget dockWidgets[2];
-  PlayerBar playerBars[2];
+  QDockWidget dockWidgets[NUM_SIDES];
+  PlayerBar playerBars[NUM_SIDES];
   QTimer timer,ticker;
   unsigned int processedMoves;
   int nextTickTime;

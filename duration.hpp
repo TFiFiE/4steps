@@ -1,10 +1,10 @@
 #ifndef DURATION_HPP
 #define DURATION_HPP
 
+class QSettings;
+class QCheckBox;
 #include <QHBoxLayout>
 #include <QSpinBox>
-class QCheckBox;
-class QSettings;
 
 class Duration : public QHBoxLayout {
   Q_OBJECT

@@ -2,12 +2,12 @@
 #define TIMECONTROL_HPP
 
 #include <memory>
+class QSettings;
 #include <QGroupBox>
 #include <QFormLayout>
 #include <QRadioButton>
 #include <QStackedLayout>
 #include <QButtonGroup>
-class QSettings;
 #include "duration.hpp"
 
 class TimeControl : public QGroupBox {
