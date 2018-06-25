@@ -19,7 +19,6 @@ Board::Board(Globals& globals_,const Side viewpoint,const std::array<bool,NUM_SI
   initSetup();
 
   globals.settings.beginGroup("Board");
-  sizeHint_=globals.settings.value("size_hint",QSize(640,480)).toSize();
   setStepMode(globals.settings.value("step_mode").toBool());
   globals.settings.endGroup();
 }
@@ -27,7 +26,6 @@ Board::Board(Globals& globals_,const Side viewpoint,const std::array<bool,NUM_SI
 Board::~Board()
 {
   globals.settings.beginGroup("Board");
-  globals.settings.setValue("size_hint",size());
   globals.settings.setValue("step_mode",stepMode_);
   globals.settings.endGroup();
 }
@@ -142,11 +140,6 @@ void Board::setStepMode(const bool newStepMode)
   setMouseTracking(stepMode_);
   if (refreshHighlights(true))
     update();
-}
-
-void Board::setSizeHint(const QSize newSizeHint)
-{
-  sizeHint_=newSizeHint;
 }
 
 void Board::playSound(const QString& soundFile)
@@ -685,11 +678,6 @@ void Board::paintEvent(QPaintEvent*)
   if (drag[ORIGIN]!=NO_SQUARE)
     globals.pieceIcons[gameState().currentPieces[drag[ORIGIN]]].render(&qPainter,QRect(mousePosition.x()-squareWidth()/2,mousePosition.y()-squareHeight()/2,squareWidth(),squareHeight()));
   qPainter.end();
-}
-
-QSize Board::sizeHint() const
-{
-  return sizeHint_;
 }
 
 void Board::playStepSounds(const ExtendedSteps& steps,const bool emphasize)

@@ -26,7 +26,6 @@ public:
   void setAutoRotate(const bool on);
   void toggleSound(const bool soundOn_);
   void setStepMode(const bool newStepMode);
-  void setSizeHint(const QSize newSizeHint);
   void playSound(const QString& soundFile);
   void setControllable(const std::array<bool,NUM_SIDES>& sides);
   std::array<bool,NUM_SIDES> controllableSides() const {return controllableSides_;}
@@ -65,14 +64,12 @@ private:
   void keyPressEvent(QKeyEvent* event) override;
   void focusOutEvent(QFocusEvent*) override;
   void paintEvent(QPaintEvent*) override;
-  QSize sizeHint() const override;
 
   void playStepSounds(const ExtendedSteps& steps,const bool emphasize);
 
   Globals& globals;
   QMediaPlayer qMediaPlayer;
   QMediaPlaylist qMediaPlaylist;
-  QSize sizeHint_;
 
   GameTreeNode currentNode;
   GameState potentialSetup;

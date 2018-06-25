@@ -13,7 +13,8 @@ class ASIP;
 class Game : public QMainWindow {
   Q_OBJECT
 public:
-  explicit Game(Globals& globals,const Side viewpoint,QWidget* const parent=nullptr,const std::shared_ptr<ASIP> session_=std::shared_ptr<ASIP>());
+  explicit Game(Globals& globals_,const Side viewpoint,QWidget* const parent=nullptr,const std::shared_ptr<ASIP> session_=std::shared_ptr<ASIP>());
+  void closeEvent(QCloseEvent*) override;
 private:
   static std::array<bool,NUM_SIDES> getControllableSides(const std::shared_ptr<ASIP> session);
   static std::vector<qint64> getTickTimes();
@@ -25,6 +26,7 @@ private:
   bool processMoves(const std::pair<GameTreeNode,unsigned int>& treeAndNumber,const Side role,const Result& result,const bool hardSynchronization);
   void announceResult(const Result& result);
 
+  Globals& globals;
   const std::shared_ptr<ASIP> session;
   Board board;
   QDockWidget dockWidgets[NUM_SIDES];

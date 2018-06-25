@@ -1,12 +1,16 @@
 #include <QMenuBar>
+#include <QApplication>
+#include <QDesktopWidget>
 #include "game.hpp"
+#include "globals.hpp"
 #include "mainwindow.hpp"
 #include "asip.hpp"
 #include "messagebox.hpp"
 #include "io.hpp"
 
-Game::Game(Globals& globals,const Side viewpoint,QWidget* const parent,const std::shared_ptr<ASIP> session_) :
+Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const std::shared_ptr<ASIP> session_) :
   QMainWindow(parent),
+  globals(globals_),
   session(session_),
   board(globals,viewpoint,{session==nullptr,session==nullptr}),
   processedMoves(0),
@@ -115,6 +119,19 @@ Game::Game(Globals& globals,const Side viewpoint,QWidget* const parent,const std
   }
   setAttribute(Qt::WA_DeleteOnClose);
   show();
+
+  globals.settings.beginGroup("Game");
+  resize(globals.settings.value("size",qApp->desktop()->availableGeometry().size()/2).toSize());
+  restoreState(globals.settings.value("state").toByteArray());
+  globals.settings.endGroup();
+}
+
+void Game::closeEvent(QCloseEvent*)
+{
+  globals.settings.beginGroup("Game");
+  globals.settings.setValue("size",normalGeometry().size());
+  globals.settings.setValue("state",saveState());
+  globals.settings.endGroup();
 }
 
 std::array<bool,NUM_SIDES> Game::getControllableSides(const std::shared_ptr<ASIP> session)
