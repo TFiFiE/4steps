@@ -282,7 +282,8 @@ std::array<std::array<qint64,3>,NUM_SIDES> ASIP::getTimes() const
       moveTime_=get<qint64>("tcmoveorig");
     else
       moveTime_=moveTime;
-    potential=(moveTime_+get<qint64>(QString("tc")+sideLetter+"reserve2"))*1000;
+    const auto reserveString=QString("tc")+sideLetter+"reserve";
+    potential=(moveTime_+mostRecentData.value(mostRecentData.contains(reserveString+'2') ? reserveString+'2' : reserveString).toLongLong())*1000;
     hard=std::min(maxTurnTime,potential);
     used=mostRecentData.value(sideLetter+QString("used")).toLongLong()*1000;
     if (side==sideToMove_) {
