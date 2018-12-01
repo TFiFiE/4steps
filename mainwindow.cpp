@@ -49,7 +49,7 @@ void MainWindow::closeTab(const int& index)
   servers.erase(servers.begin()+index);
 }
 
-void MainWindow::addGame(std::unique_ptr<ASIP> newGame,const Side viewpoint,const bool guaranteedUnique)
+ASIP* MainWindow::addGame(std::unique_ptr<ASIP> newGame,const Side viewpoint,const bool guaranteedUnique)
 {
   for (auto game=games.begin();game!=games.end();) {
     if (game->expired())
@@ -58,19 +58,19 @@ void MainWindow::addGame(std::unique_ptr<ASIP> newGame,const Side viewpoint,cons
       ++game;
   }
 
-  ASIP& newGame_=*newGame.get();
   if (!guaranteedUnique)
     for (const auto existingGame:games)
       if (auto existingGame_=existingGame.lock())
-        if (existingGame_->isEqualGame(newGame_)) {
+        if (existingGame_->isEqualGame(*newGame)) {
           new Game(globals,viewpoint,this,existingGame_);
-          return;
+          return nullptr;
         }
-  newGame_.sit();
-  const auto addedGame=std::shared_ptr<ASIP>(newGame.release(),[this](ASIP* const session) {
+  newGame->sit();
+  const auto addedGame=std::shared_ptr<ASIP>(newGame.release(),[](ASIP* const session) {
     session->leave();
     session->deleteLater();
   });
   games.push_back(addedGame);
   new Game(globals,viewpoint,this,addedGame);
+  return addedGame.get();
 }

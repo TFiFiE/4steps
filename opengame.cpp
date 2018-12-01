@@ -39,7 +39,7 @@ OpenGame::OpenGame(Server& server) :
     const auto networkReply=server.session.enterGame(this,id.text(),role);
     connect(networkReply,&QNetworkReply::finished,[&,networkReply] {
       try {
-        server.mainWindow.addGame(server.session.getGame(*networkReply),role==NO_SIDE ? FIRST_SIDE : role);
+        server.addGame(*networkReply,role==NO_SIDE ? FIRST_SIDE : role);
         close();
       }
       catch (const std::exception& exception) {

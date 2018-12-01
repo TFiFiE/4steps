@@ -5,6 +5,7 @@
 #include "gamelist.hpp"
 #include "creategame.hpp"
 #include "opengame.hpp"
+#include "mainwindow.hpp"
 
 Server::Server(Globals& globals_,ASIP& session_,MainWindow& mainWindow_) :
   session(session_),
@@ -49,6 +50,17 @@ Server::~Server()
 void Server::refreshPage() const
 {
   session.state();
+}
+
+void Server::addGame(QNetworkReply& networkReply,const Side viewpoint,const bool guaranteedUnique) const
+{
+  const auto game=mainWindow.addGame(session.getGame(networkReply),viewpoint,guaranteedUnique);
+  if (game!=nullptr) // game not already added
+    connect(game,&ASIP::statusChanged,this,[this](const ASIP::Status oldStatus,const ASIP::Status newStatus) {
+      if (oldStatus==ASIP::UNSTARTED && newStatus==ASIP::LIVE)
+        return;
+      refreshPage();
+    });
 }
 
 void Server::resizeEvent(QResizeEvent*)

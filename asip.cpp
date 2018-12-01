@@ -22,6 +22,7 @@ ASIP::Data ASIP::processReply(QNetworkReply& networkReply)
   lastReplyTime=QDateTime::currentDateTimeUtc();
   networkReply.deleteLater();
   runtime_assert(networkReply.error()==QNetworkReply::NoError,networkReply.errorString());
+  const Status oldStatus=getStatus();
   const auto rawData=networkReply.readAll();
   const auto replyData=getReplyData(rawData);
   updateCache(replyData);
@@ -29,6 +30,9 @@ ASIP::Data ASIP::processReply(QNetworkReply& networkReply)
   const auto error=replyData.find("error");
   if (error!=replyData.end())
     throw std::runtime_error(error.value().toString().toStdString());
+  const Status newStatus=getStatus();
+  if (oldStatus!=newStatus)
+    statusChanged(oldStatus,newStatus);
   return replyData;
 }
 

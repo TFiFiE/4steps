@@ -15,6 +15,7 @@ public:
   explicit Server(Globals& globals_,ASIP& session_,MainWindow& mainWindow_);
   ~Server();
   void refreshPage() const;
+  void addGame(QNetworkReply& networkReply,const Side viewpoint,const bool guaranteedUnique=false) const;
 
   ASIP& session;
   MainWindow& mainWindow;

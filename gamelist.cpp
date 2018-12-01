@@ -4,7 +4,6 @@
 #include <QMenu>
 #include "gamelist.hpp"
 #include "server.hpp"
-#include "mainwindow.hpp"
 
 GameList::GameList(Server* const server,const QString& labelText) :
   description(labelText)
@@ -47,7 +46,7 @@ GameList::GameList(Server* const server,const QString& labelText) :
     const auto networkReply=server->session.enterGame(this,game.id,role);
     connect(networkReply,&QNetworkReply::finished,this,[=] {
       try {
-        server->mainWindow.addGame(server->session.getGame(*networkReply),viewpoint);
+        server->addGame(*networkReply,viewpoint);
         if (role!=NO_SIDE && game.players[role].isEmpty())
           server->refreshPage();
       }

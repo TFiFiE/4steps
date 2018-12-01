@@ -3,7 +3,6 @@
 #include "creategame.hpp"
 #include "globals.hpp"
 #include "server.hpp"
-#include "mainwindow.hpp"
 
 using namespace std;
 CreateGame::CreateGame(Globals& globals_,ASIP& session_,Server& server_) :
@@ -63,7 +62,7 @@ CreateGame::CreateGame(Globals& globals_,ASIP& session_,Server& server_) :
 void CreateGame::creationAttempt(QNetworkReply& networkReply)
 {
   try {
-    server.mainWindow.addGame(session.getGame(networkReply),session.role(),true);
+    server.addGame(networkReply,session.role(),true);
     server.refreshPage();
     close();
     timeControl.writeSettings(globals.settings);

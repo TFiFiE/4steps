@@ -16,7 +16,7 @@ public:
   explicit MainWindow(Globals& globals_,QWidget* const parent=nullptr);
   void addServer(ASIP& asip);
   void closeTab(const int& index);
-  void addGame(std::unique_ptr<ASIP> game,const Side viewpoint,const bool guaranteedUnique=false);
+  ASIP* addGame(std::unique_ptr<ASIP> game,const Side viewpoint,const bool guaranteedUnique=false);
 
   QTabWidget tabWidget;
   std::vector<Server*> servers;

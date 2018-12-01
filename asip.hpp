@@ -83,6 +83,7 @@ private:
   void authDependingAction(const QString& action,const std::initializer_list<std::pair<QString,QString> >& extraItems={});
 signals:
   void updated(const bool hardSynchronization);
+  void statusChanged(const Status oldStatus,const Status newStatus);
 protected:
   std::pair<QString,QString> dataPair(const QString& key) const;
   QNetworkReply* post(QObject* const requester,const std::vector<std::pair<QString,QString> >& items);
