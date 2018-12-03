@@ -7,6 +7,9 @@
 #include "asip1.hpp"
 #include "asip2.hpp"
 
+const char* Login::defaultGamerooms[]={"http://arimaa.com/arimaa/gameroom/client1gr.cgi",
+                                       "http://arimaa.com/arimaa/gameroom/client2gr.cgi"};
+
 using namespace std;
 Login::Login(Globals& globals_,MainWindow& mainWindow_) :
   QDialog(&mainWindow_),
@@ -16,15 +19,24 @@ Login::Login(Globals& globals_,MainWindow& mainWindow_) :
   asip(tr("Arimaa Server Interface Protocol")),
   protocolButtons{make_unique<QRadioButton>(tr("1.0")),
                   make_unique<QRadioButton>(tr("2.0"))},
-  gameroom("http://arimaa.com/arimaa/gameroom/client2gr.cgi"),
+  selectedProtocolButton(-1),
   dialogButtonBox(QDialogButtonBox::Ok|QDialogButtonBox::Cancel)
 {
   setWindowTitle(tr("Log in"));
 
   protocol.addWidget(&asip,0,0,1,2);
-  protocol.addWidget(protocolButtons[0].get());
-  protocol.addWidget(protocolButtons[1].get());
-  protocolButtons[1]->setChecked(true);
+
+  for (unsigned int protocolButtonIndex=0;protocolButtonIndex<protocolButtons.size();++protocolButtonIndex) {
+    const auto protocolButton=protocolButtons[protocolButtonIndex].get();
+    protocol.addWidget(protocolButton);
+    connect(protocolButton,&QRadioButton::clicked,[this,protocolButtonIndex](){
+      if (gameroom.text().isEmpty() || (selectedProtocolButton>=0 && gameroom.text()==defaultGamerooms[selectedProtocolButton]))
+        gameroom.setText(defaultGamerooms[protocolButtonIndex]);
+      selectedProtocolButton=protocolButtonIndex;
+    });
+  }
+  protocolButtons[1]->click();
+
   formLayout.addRow(tr("Protocol:"),&protocol);
 
   connect(&gameroom,&QLineEdit::textChanged,[=]{

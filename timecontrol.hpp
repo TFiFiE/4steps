@@ -23,12 +23,12 @@ private:
     QSpinBox carryover;
     QHBoxLayout totalGameDuration;
       std::unique_ptr<QRadioButton> globalButtons[3];
+      QButtonGroup globalButtonGroup;
       QStackedLayout stackedLayout;
         QWidget emptyWidget;
         QWidget totalGameTimeWidget;
           Duration totalGameTime;
         QSpinBox totalGameMoves;
-  QButtonGroup buttonGroup;
   friend class CreateGame;
 };
 

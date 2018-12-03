@@ -23,10 +23,9 @@ TimeControl::TimeControl(const QString& title,QWidget* const parent) :
   carryover.setSuffix(" %");
   formLayout.addRow(tr("Unused time added to reserve:"),&carryover);
 
-  buttonGroup.setExclusive(true);
-  unsigned int buttonIndex=0;
+  globalButtonGroup.setExclusive(true);
   for (const auto& globalButton:globalButtons) {
-    buttonGroup.addButton(globalButton.get(),buttonIndex++);
+    globalButtonGroup.addButton(globalButton.get(),globalButtonGroup.buttons().size());
     totalGameDuration.addWidget(globalButton.get());
   }
   stackedLayout.addWidget(&emptyWidget);
@@ -38,7 +37,7 @@ TimeControl::TimeControl(const QString& title,QWidget* const parent) :
   totalGameDuration.addLayout(&stackedLayout);
 
   globalButtons[0]->setChecked(true);
-  connect(&buttonGroup,static_cast<void(QButtonGroup::*)(int)>(&QButtonGroup::buttonClicked),&stackedLayout,[=](const int id){
+  connect(&globalButtonGroup,static_cast<void(QButtonGroup::*)(int)>(&QButtonGroup::buttonClicked),&stackedLayout,[=](const int id){
     stackedLayout.setCurrentIndex(id);
     QSpinBox* const spinBox=std::array<QSpinBox*,3>{nullptr,&totalGameTime.seconds,&totalGameMoves}[id];
     if (spinBox!=nullptr) {
@@ -60,8 +59,8 @@ QString TimeControl::toString(const bool timed) const
     truncatable=false;
   }
 
-  if (buttonGroup.checkedId()>0) {
-    if (buttonGroup.checkedId()==1)
+  if (globalButtonGroup.checkedId()>0) {
+    if (globalButtonGroup.checkedId()==1)
       result.prepend("/"+totalGameTime.toString());
     else
       result.prepend("/"+totalGameMoves.text()+"t");
@@ -114,8 +113,8 @@ void TimeControl::writeSettings(QSettings& settings) const
   maxReserve.writeSetting(settings,"max_reserve");
   settings.setValue("carry_over",carryover.value());
 
-  settings.setValue("total_game_duration_type",buttonGroup.checkedId());
-  switch (buttonGroup.checkedId()) {
+  settings.setValue("total_game_duration_type",globalButtonGroup.checkedId());
+  switch (globalButtonGroup.checkedId()) {
     case 1: totalGameTime.writeSetting(settings,"total_game_duration"); break;
     case 2: settings.setValue("total_game_duration",totalGameMoves.value()); break;
   }

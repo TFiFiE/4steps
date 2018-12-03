@@ -20,6 +20,8 @@ public:
 private:
   void loginAttempt(QNetworkReply& networkReply,ASIP& asip);
 
+  static const char* defaultGamerooms[2];
+
   Globals& globals;
   MainWindow& mainWindow;
 
@@ -27,7 +29,8 @@ private:
     QFormLayout formLayout;
       QGridLayout protocol;
         QLabel asip;
-        std::unique_ptr<QRadioButton> protocolButtons[2];
+        std::array<std::unique_ptr<QRadioButton>,2> protocolButtons;
+        int selectedProtocolButton;
       QLineEdit gameroom,username,password;
     QDialogButtonBox dialogButtonBox;
 };
