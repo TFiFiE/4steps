@@ -107,6 +107,10 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
     if (session->gameStateAvailable())
       synchronize(false);
     connect(session.get(),&ASIP::updated,this,&Game::synchronize);
+    connect(session.get(),&ASIP::statusChanged,this,[this](const ASIP::Status oldStatus,const ASIP::Status newStatus) {
+      if (oldStatus==ASIP::UNSTARTED && newStatus==ASIP::LIVE && !isActiveWindow())
+        board.playSound("qrc:/game-start.wav");
+    });
     connect(&timer,&QTimer::timeout,this,&Game::updateTimes);
     if (session->role()!=NO_SIDE) {
       ticker.setSingleShot(true);

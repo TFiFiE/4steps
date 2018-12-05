@@ -21,5 +21,6 @@
         <file alias="loud-step.wav">sounds/place.wav</file>
         <file alias="soft-step.wav">sounds/slide2.wav</file>
         <file alias="captured-piece.wav">sounds/trapped.wav</file>
+        <file alias="game-start.wav">sounds/win.wav</file>
     </qresource>
 </RCC>
