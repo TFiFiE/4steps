@@ -52,6 +52,7 @@ GameList::GameList(Server* const server,const QString& labelText) :
       }
       catch (const std::exception& exception) {
         QMessageBox::critical(server,tr("Error opening game"),exception.what());
+        server->refreshPage();
       }
     });
   });

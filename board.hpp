@@ -11,7 +11,7 @@ struct Globals;
 class Board : public QWidget {
   Q_OBJECT
 public:
-  explicit Board(Globals& globals_,const Side viewpoint,const std::array<bool,NUM_SIDES>& controllableSides_={true,true},QWidget* const parent=nullptr,const Qt::WindowFlags f=Qt::WindowFlags());
+  explicit Board(Globals& globals_,const Side viewpoint,const bool soundOn,const std::array<bool,NUM_SIDES>& controllableSides_={true,true},QWidget* const parent=nullptr,const Qt::WindowFlags f=Qt::WindowFlags());
   bool setupPhase() const;
   Side sideToMove() const;
   MoveTree& currentMoveNode() const;
@@ -29,7 +29,7 @@ public:
   void playSound(const QString& soundFile);
   void setControllable(const std::array<bool,NUM_SIDES>& controllableSides_);
 
-  readonly<Board,bool> southIsUp,stepMode;
+  readonly<Board,bool> southIsUp,stepMode,soundOn;
 private:
   int squareWidth() const;
   int squareHeight() const;
@@ -77,7 +77,7 @@ private:
   std::array<unsigned int,NUM_PIECE_TYPES-1> numSetupPieces;
   int currentSetupPiece;
   std::array<bool,NUM_SIDES> controllableSides;
-  bool autoRotate,soundOn;
+  bool autoRotate;
   std::array<SquareIndex,2> drag;
   ExtendedSteps dragSteps;
   std::array<SquareIndex,2> highlighted;

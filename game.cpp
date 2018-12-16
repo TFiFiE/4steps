@@ -12,7 +12,7 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   QMainWindow(parent),
   globals(globals_),
   session(session_),
-  board(globals,viewpoint,{session==nullptr,session==nullptr}),
+  board(globals,viewpoint,session!=nullptr,{session==nullptr,session==nullptr}),
   dockWidgetResized(false),
   processedMoves(0),
   nextTickTime(-1),
@@ -66,7 +66,7 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   boardMenu->addAction(&autoRotate);
 
   sound.setCheckable(true);
-  sound.setChecked(true);
+  sound.setChecked(board.soundOn);
   sound.setShortcut(QKeySequence(Qt::Key_S));
   connect(&sound,&QAction::toggled,&board,&Board::toggleSound);
   boardMenu->addAction(&sound);
@@ -126,6 +126,7 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
       synchronize(false);
     connect(session.get(),&ASIP::updated,this,&Game::synchronize);
     connect(session.get(),&ASIP::statusChanged,this,[this](const ASIP::Status oldStatus,const ASIP::Status newStatus) {
+      QApplication::alert(this);
       if (oldStatus==ASIP::UNSTARTED && newStatus==ASIP::LIVE && !isActiveWindow())
         board.playSound("qrc:/game-start.wav");
     });

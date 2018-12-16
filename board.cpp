@@ -5,17 +5,17 @@
 #include "messagebox.hpp"
 #include "io.hpp"
 
-Board::Board(Globals& globals_,const Side viewpoint,const std::array<bool,NUM_SIDES>& controllableSides_,QWidget* const parent,const Qt::WindowFlags f) :
+Board::Board(Globals& globals_,const Side viewpoint,const bool soundOn,const std::array<bool,NUM_SIDES>& controllableSides_,QWidget* const parent,const Qt::WindowFlags f) :
   QWidget(parent,f),
   southIsUp(viewpoint==SECOND_SIDE),
   globals(globals_),
   afterCurrentStep(potentialMove.end()),
   controllableSides(controllableSides_),
   autoRotate(false),
-  soundOn(true),
   drag{NO_SQUARE,NO_SQUARE}
 {
   qMediaPlayer.setPlaylist(&qMediaPlaylist);
+  toggleSound(soundOn);
   initSetup();
 
   globals.settings.beginGroup("Board");
