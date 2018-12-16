@@ -19,15 +19,9 @@ Board::Board(Globals& globals_,const Side viewpoint,const std::array<bool,NUM_SI
   initSetup();
 
   globals.settings.beginGroup("Board");
-  setStepMode(globals.settings.value("step_mode").toBool());
+  const auto stepMode=globals.settings.value("step_mode").toBool();
   globals.settings.endGroup();
-}
-
-Board::~Board()
-{
-  globals.settings.beginGroup("Board");
-  globals.settings.setValue("step_mode",stepMode_);
-  globals.settings.endGroup();
+  setStepMode(stepMode);
 }
 
 bool Board::setupPhase() const
@@ -140,6 +134,10 @@ void Board::setStepMode(const bool newStepMode)
   setMouseTracking(stepMode_);
   if (refreshHighlights(true))
     update();
+
+  globals.settings.beginGroup("Board");
+  globals.settings.setValue("step_mode",stepMode_);
+  globals.settings.endGroup();
 }
 
 void Board::playSound(const QString& soundFile)

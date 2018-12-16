@@ -1,6 +1,6 @@
 #include <QMenuBar>
 #include <QApplication>
-#include <QDesktopWidget>
+#include <QScreen>
 #include "game.hpp"
 #include "globals.hpp"
 #include "mainwindow.hpp"
@@ -13,6 +13,7 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   globals(globals_),
   session(session_),
   board(globals,viewpoint,{session==nullptr,session==nullptr}),
+  dockWidgetResized(false),
   processedMoves(0),
   nextTickTime(-1),
   finished(false),
@@ -82,6 +83,21 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   menuBar()->setCornerWidget(&cornerMessage);
   connect(&board,&Board::boardChanged,this,&Game::updateCornerMessage);
 
+  globals.settings.beginGroup("Game");
+  const auto size=globals.settings.value("size").toSize();
+  const auto state=globals.settings.value("state");
+  globals.settings.endGroup();
+  if (size.isValid())
+    resize(size);
+  else {
+    const auto fullScreen=qApp->primaryScreen()->availableGeometry().size();
+    resize(fullScreen.width()/3,fullScreen.height()/2);
+  }
+  if (state.isValid())
+    restoreState(state.toByteArray());
+  else
+    restoreState(saveState()); // QT BUG: https://bugreports.qt.io/browse/QTBUG-65592
+
   if (session!=nullptr) {
     connect(&board,&Board::gameStarted,session.get(),&ASIP::start);
     for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side)) {
@@ -89,6 +105,8 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
       dockWidget.setWindowTitle(side==FIRST_SIDE ? tr("Gold") : tr("Silver"));
       dockWidget.setFeatures(QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetVerticalTitleBar);
       dockWidget.setWidget(&playerBars[side]);
+      dockWidget.installEventFilter(this);
+      dockWidget.setObjectName(dockWidget.windowTitle());
     }
     setDockWidgets(board.southIsUp());
     connect(&board,&Board::boardRotated,this,&Game::setDockWidgets);
@@ -123,19 +141,36 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   }
   setAttribute(Qt::WA_DeleteOnClose);
   show();
-
-  globals.settings.beginGroup("Game");
-  resize(globals.settings.value("size",qApp->desktop()->availableGeometry().size()/2).toSize());
-  restoreState(globals.settings.value("state").toByteArray());
-  globals.settings.endGroup();
 }
 
-void Game::closeEvent(QCloseEvent*)
+bool Game::event(QEvent* event)
 {
-  globals.settings.beginGroup("Game");
-  globals.settings.setValue("size",normalGeometry().size());
-  globals.settings.setValue("state",saveState());
-  globals.settings.endGroup();
+  switch (event->type()) {
+    case QEvent::WindowActivate:
+      globals.settings.beginGroup("Game");
+      globals.settings.setValue("size",normalGeometry().size());
+      globals.settings.endGroup();
+    break;
+    case QEvent::MouseButtonRelease:
+      if (dockWidgetResized) {
+        globals.settings.beginGroup("Game");
+        globals.settings.setValue("state",saveState());
+        globals.settings.endGroup();
+        dockWidgetResized=false;
+      }
+    break;
+    default: break;
+  }
+  return QMainWindow::event(event);
+}
+
+bool Game::eventFilter(QObject* watched,QEvent* event)
+{
+  if (event->type()==QEvent::Resize)
+    for (const auto& dockWidget:dockWidgets)
+      if (watched==&dockWidget)
+        dockWidgetResized=true;
+  return QMainWindow::eventFilter(watched,event);
 }
 
 std::array<bool,NUM_SIDES> Game::getControllableSides(const std::shared_ptr<ASIP> session)

@@ -1,6 +1,6 @@
 #include <QApplication>
 #include <QStyle>
-#include <QDesktopWidget>
+#include <QScreen>
 #include "globals.hpp"
 #include "mainwindow.hpp"
 
@@ -33,7 +33,7 @@ int main(int argc,char* argv[])
   Globals globals("4steps.ini",QSettings::IniFormat);
   loadPieceIcons(globals.pieceIcons);
   MainWindow mainWindow(globals);
-  mainWindow.setGeometry(QStyle::alignedRect(Qt::LeftToRight,Qt::AlignCenter,mainWindow.size(),qApp->desktop()->availableGeometry()));
+  mainWindow.setGeometry(QStyle::alignedRect(Qt::LeftToRight,Qt::AlignCenter,mainWindow.size(),qApp->primaryScreen()->availableGeometry()));
   mainWindow.show();
 
   srand(time(nullptr));

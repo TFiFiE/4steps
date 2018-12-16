@@ -53,8 +53,3 @@ QString PlayerBar::timeDisplay(const qint64 milliseconds)
 
   return QString::number(hours/24)+"d "+result;
 }
-
-QSize PlayerBar::sizeHint() const
-{
-  return QWidget::sizeHint()+QSize(0,20);
-}

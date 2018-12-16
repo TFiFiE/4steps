@@ -11,7 +11,6 @@ class Board : public QWidget {
   Q_OBJECT
 public:
   explicit Board(Globals& globals_,const Side viewpoint,const std::array<bool,NUM_SIDES>& controllableSides_={true,true},QWidget* const parent=nullptr,const Qt::WindowFlags f=Qt::WindowFlags());
-  ~Board();
   bool setupPhase() const;
   Side sideToMove() const;
   MoveTree& currentMoveNode() const;

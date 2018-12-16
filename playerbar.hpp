@@ -14,8 +14,6 @@ public:
   qint64 nextChange() const {return nextChange_;}
   static QString timeDisplay(const qint64 milliseconds);
 private:
-  QSize sizeHint() const override;
-
   qint64 nextChange_;
 
   QHBoxLayout hBoxLayout;

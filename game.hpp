@@ -14,7 +14,8 @@ class Game : public QMainWindow {
   Q_OBJECT
 public:
   explicit Game(Globals& globals_,const Side viewpoint,QWidget* const parent=nullptr,const std::shared_ptr<ASIP> session_=std::shared_ptr<ASIP>());
-  void closeEvent(QCloseEvent*) override;
+  virtual bool event(QEvent* event) override;
+  virtual bool eventFilter(QObject* watched,QEvent* event) override;
 private:
   static std::array<bool,NUM_SIDES> getControllableSides(const std::shared_ptr<ASIP> session);
   static std::vector<qint64> getTickTimes();
@@ -30,6 +31,7 @@ private:
   const std::shared_ptr<ASIP> session;
   Board board;
   QDockWidget dockWidgets[NUM_SIDES];
+  bool dockWidgetResized;
   PlayerBar playerBars[NUM_SIDES];
   QTimer timer,ticker;
   unsigned int processedMoves;
