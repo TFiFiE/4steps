@@ -75,7 +75,7 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
 
   stepMode.setEnabled(controllable);
   stepMode.setCheckable(true);
-  stepMode.setChecked(board.stepMode());
+  stepMode.setChecked(board.stepMode);
   stepMode.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_S));
   connect(&stepMode,&QAction::toggled,&board,&Board::setStepMode);
   controlsMenu->addAction(&stepMode);
@@ -108,7 +108,7 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
       dockWidget.installEventFilter(this);
       dockWidget.setObjectName(dockWidget.windowTitle());
     }
-    setDockWidgets(board.southIsUp());
+    setDockWidgets(board.southIsUp);
     connect(&board,&Board::boardRotated,this,&Game::setDockWidgets);
 
     connect(&board,&Board::sendSetup,this,[=](const Placement& placement) {
@@ -259,7 +259,7 @@ void Game::updateTimes()
     playerBars[side].setTimes(times[side]);
   if (session->getStatus()==ASIP::LIVE) {
     const Side sideToMove=session->sideToMove();
-    nextChange=std::min(nextChange,playerBars[sideToMove].nextChange());
+    nextChange=std::min(nextChange,playerBars[sideToMove].nextChange.get());
     soundTicker(sideToMove,std::get<0>(times[sideToMove]));
   }
   else

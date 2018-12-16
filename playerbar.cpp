@@ -22,11 +22,11 @@ void PlayerBar::setTimes(const std::array<qint64,3>& times)
   potentialReserve.setText(timeDisplay(std::get<1>(times)));
   used.setText(timeDisplay(std::get<2>(times)));
 
-  nextChange_=1000-std::get<2>(times)%1000;
+  nextChange=1000-std::get<2>(times)%1000;
   if (std::get<0>(times)>=1000)
-    nextChange_=std::min(nextChange_,1+std::get<0>(times)%1000);
+    nextChange=std::min(nextChange.get(),1+std::get<0>(times)%1000);
   if (std::get<1>(times)>=1000)
-    nextChange_=std::min(nextChange_,1+std::get<1>(times)%1000);
+    nextChange=std::min(nextChange.get(),1+std::get<1>(times)%1000);
 }
 
 void PlayerBar::setActive(const bool active)

@@ -5,6 +5,7 @@
 #include <QMediaPlayer>
 #include <QMediaPlaylist>
 struct Globals;
+#include "readonly.hpp"
 #include "tree.hpp"
 
 class Board : public QWidget {
@@ -26,10 +27,9 @@ public:
   void toggleSound(const bool soundOn_);
   void setStepMode(const bool newStepMode);
   void playSound(const QString& soundFile);
-  void setControllable(const std::array<bool,NUM_SIDES>& sides);
-  std::array<bool,NUM_SIDES> controllableSides() const {return controllableSides_;}
-  bool southIsUp() const {return southIsUp_;}
-  bool stepMode() const {return stepMode_;}
+  void setControllable(const std::array<bool,NUM_SIDES>& controllableSides_);
+
+  readonly<Board,bool> southIsUp,stepMode;
 private:
   int squareWidth() const;
   int squareHeight() const;
@@ -76,11 +76,10 @@ private:
   ExtendedSteps::const_iterator afterCurrentStep;
   std::array<unsigned int,NUM_PIECE_TYPES-1> numSetupPieces;
   int currentSetupPiece;
-  std::array<bool,NUM_SIDES> controllableSides_;
-  bool southIsUp_,autoRotate,soundOn;
+  std::array<bool,NUM_SIDES> controllableSides;
+  bool autoRotate,soundOn;
   std::array<SquareIndex,2> drag;
   ExtendedSteps dragSteps;
-  bool stepMode_;
   std::array<SquareIndex,2> highlighted;
 signals:
   void gameStarted();

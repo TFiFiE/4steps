@@ -4,6 +4,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLCDNumber>
+#include "readonly.hpp"
 
 class PlayerBar : public QWidget {
   Q_OBJECT
@@ -11,11 +12,10 @@ public:
   explicit PlayerBar();
   void setTimes(const std::array<qint64,3>& times);
   void setActive(const bool active);
-  qint64 nextChange() const {return nextChange_;}
   static QString timeDisplay(const qint64 milliseconds);
-private:
-  qint64 nextChange_;
 
+  readonly<PlayerBar,qint64> nextChange;
+private:
   QHBoxLayout hBoxLayout;
 public:
   QLabel player;

@@ -7,10 +7,10 @@
 
 Board::Board(Globals& globals_,const Side viewpoint,const std::array<bool,NUM_SIDES>& controllableSides_,QWidget* const parent,const Qt::WindowFlags f) :
   QWidget(parent,f),
+  southIsUp(viewpoint==SECOND_SIDE),
   globals(globals_),
   afterCurrentStep(potentialMove.end()),
-  controllableSides_(controllableSides_),
-  southIsUp_(viewpoint==SECOND_SIDE),
+  controllableSides(controllableSides_),
   autoRotate(false),
   soundOn(true),
   drag{NO_SQUARE,NO_SQUARE}
@@ -52,7 +52,7 @@ const GameState& Board::gameState() const
 
 bool Board::playable() const
 {
-  return currentNode.result().endCondition==NO_END && controllableSides_[sideToMove()];
+  return currentNode.result().endCondition==NO_END && controllableSides[sideToMove()];
 }
 
 void Board::receiveSetup(const Placement& placement,const bool sound)
@@ -100,15 +100,15 @@ void Board::receiveGameTree(const GameTreeNode& gameTreeNode,const bool sound)
 
 void Board::rotate()
 {
-    southIsUp_=!southIsUp_;
+    southIsUp=!southIsUp;
     refreshHighlights(false);
     update();
-    boardRotated(southIsUp_);
+    boardRotated(southIsUp);
 }
 
 void Board::setViewpoint(const Side side)
 {
-  if ((side==SECOND_SIDE)!=southIsUp_)
+  if ((side==SECOND_SIDE)!=southIsUp)
     rotate();
 }
 
@@ -130,13 +130,13 @@ void Board::toggleSound(const bool soundOn_)
 
 void Board::setStepMode(const bool newStepMode)
 {
-  stepMode_=newStepMode;
-  setMouseTracking(stepMode_);
+  stepMode=newStepMode;
+  setMouseTracking(stepMode);
   if (refreshHighlights(true))
     update();
 
   globals.settings.beginGroup("Board");
-  globals.settings.setValue("step_mode",stepMode_);
+  globals.settings.setValue("step_mode",stepMode.get());
   globals.settings.endGroup();
 }
 
@@ -147,9 +147,9 @@ void Board::playSound(const QString& soundFile)
   qMediaPlayer.play();
 }
 
-void Board::setControllable(const std::array<bool,NUM_SIDES>& sides)
+void Board::setControllable(const std::array<bool,NUM_SIDES>& controllableSides_)
 {
-  controllableSides_=sides;
+  controllableSides=controllableSides_;
   update();
 }
 
@@ -165,7 +165,7 @@ int Board::squareHeight() const
 
 void Board::normalizeOrientation(unsigned int& file,unsigned int& rank) const
 {
-  if (southIsUp_)
+  if (southIsUp)
     file=NUM_FILES-1-file;
   else
     rank=NUM_RANKS-1-rank;
@@ -278,7 +278,7 @@ bool Board::setUpPiece(const SquareIndex destination)
 
 bool Board::refreshHighlights(const bool clearSelected)
 {
-  if (stepMode_ && !setupPlacementPhase())
+  if (stepMode && !setupPlacementPhase())
     return updateStepHighlights();
   else {
     bool change=(highlighted[DESTINATION]!=NO_SQUARE);
@@ -330,7 +330,7 @@ bool Board::singleSquareAction(const SquareIndex square)
       return true;
     }
   }
-  else if (stepMode_)
+  else if (stepMode)
     return doubleSquareAction(highlighted[ORIGIN],highlighted[DESTINATION]);
   else {
     if (highlighted[ORIGIN]==NO_SQUARE) {
@@ -445,7 +445,7 @@ void Board::mousePressEvent(QMouseEvent* event)
     case Qt::RightButton:
       if (drag[ORIGIN]!=NO_SQUARE)
         endDrag();
-      else if (!stepMode_ && highlighted[ORIGIN]!=NO_SQUARE) {
+      else if (!stepMode && highlighted[ORIGIN]!=NO_SQUARE) {
         highlighted[ORIGIN]=NO_SQUARE;
         update();
       }
@@ -544,7 +544,7 @@ void Board::mouseDoubleClickEvent(QMouseEvent* event)
           finalizeSetup(placement,true);
         }
       }
-      else if (gameState().currentPieces[positionToSquare(event->pos())]==NO_PIECE && (!stepMode_ || found(highlighted,NO_SQUARE))) {
+      else if (gameState().currentPieces[positionToSquare(event->pos())]==NO_PIECE && (!stepMode || found(highlighted,NO_SQUARE))) {
         const ExtendedSteps playedMove(potentialMove.cbegin(),afterCurrentStep);
         switch (currentMoveNode().legalMove(gameState())) {
           case LEGAL:

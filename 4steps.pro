@@ -56,6 +56,7 @@ HEADERS += \
     movetree.hpp \
     opengame.hpp \
     playerbar.hpp \
+    readonly.hpp \
     server.hpp \
     timecontrol.hpp \
     timeestimator.hpp \
