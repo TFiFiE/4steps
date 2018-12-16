@@ -39,6 +39,7 @@ private:
   bool finished;
 
   QAction forceUpdate,resign,fullScreen,rotate,autoRotate,sound,stepMode;
+  QActionGroup iconSets;
   QLabel cornerMessage;
 };
 

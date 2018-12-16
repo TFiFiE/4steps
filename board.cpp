@@ -20,8 +20,10 @@ Board::Board(Globals& globals_,const Side viewpoint,const bool soundOn,const std
 
   globals.settings.beginGroup("Board");
   const auto stepMode=globals.settings.value("step_mode").toBool();
+  const auto iconSet=static_cast<PieceIcons::Set>(globals.settings.value("icon_set",PieceIcons::VECTOR).toInt());
   globals.settings.endGroup();
   setStepMode(stepMode);
+  setIconSet(iconSet);
 }
 
 bool Board::setupPhase() const
@@ -138,6 +140,18 @@ void Board::setStepMode(const bool newStepMode)
   globals.settings.beginGroup("Board");
   globals.settings.setValue("step_mode",stepMode.get());
   globals.settings.endGroup();
+}
+
+void Board::setIconSet(const PieceIcons::Set newIconSet)
+{
+  if (iconSet!=newIconSet) {
+    iconSet=newIconSet;
+    update();
+
+    globals.settings.beginGroup("Board");
+    globals.settings.setValue("icon_set",static_cast<int>(iconSet));
+    globals.settings.endGroup();
+  }
 }
 
 void Board::playSound(const QString& soundFile)
@@ -668,13 +682,13 @@ void Board::paintEvent(QPaintEvent*)
       if (square!=drag[ORIGIN]) {
         const PieceTypeAndSide pieceOnSquare=gameState().currentPieces[square];
         if (pieceOnSquare!=NO_PIECE)
-          globals.pieceIcons[pieceOnSquare].render(&qPainter,qRect);
+          globals.pieceIcons.drawPiece(qPainter,iconSet,pieceOnSquare,qRect);
       }
     }
   if (playable() && setupPlacementPhase())
-    globals.pieceIcons[toPieceTypeAndSide(static_cast<PieceType>(currentSetupPiece+1),sideToMove())].render(&qPainter,QRect((NUM_FILES-1)/2.0*squareWidth(),(NUM_RANKS-1)/2.0*squareHeight(),squareWidth(),squareHeight()));
+    globals.pieceIcons.drawPiece(qPainter,iconSet,toPieceTypeAndSide(static_cast<PieceType>(currentSetupPiece+1),sideToMove()),QRect((NUM_FILES-1)/2.0*squareWidth(),(NUM_RANKS-1)/2.0*squareHeight(),squareWidth(),squareHeight()));
   if (drag[ORIGIN]!=NO_SQUARE)
-    globals.pieceIcons[gameState().currentPieces[drag[ORIGIN]]].render(&qPainter,QRect(mousePosition.x()-squareWidth()/2,mousePosition.y()-squareHeight()/2,squareWidth(),squareHeight()));
+    globals.pieceIcons.drawPiece(qPainter,iconSet,gameState().currentPieces[drag[ORIGIN]],QRect(mousePosition.x()-squareWidth()/2,mousePosition.y()-squareHeight()/2,squareWidth(),squareHeight()));
   qPainter.end();
 }
 

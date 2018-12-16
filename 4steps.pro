@@ -32,6 +32,7 @@ SOURCES += \
     mainwindow.cpp \
     movetree.cpp \
     opengame.cpp \
+    pieceicons.cpp \
     playerbar.cpp \
     server.cpp \
     timecontrol.cpp \
@@ -55,6 +56,7 @@ HEADERS += \
     messagebox.hpp \
     movetree.hpp \
     opengame.hpp \
+    pieceicons.hpp \
     playerbar.hpp \
     readonly.hpp \
     server.hpp \

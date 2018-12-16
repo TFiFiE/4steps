@@ -7,6 +7,7 @@
 struct Globals;
 #include "readonly.hpp"
 #include "tree.hpp"
+#include "pieceicons.hpp"
 
 class Board : public QWidget {
   Q_OBJECT
@@ -26,10 +27,12 @@ public:
   void setAutoRotate(const bool on);
   void toggleSound(const bool soundOn_);
   void setStepMode(const bool newStepMode);
+  void setIconSet(const PieceIcons::Set newIconSet);
   void playSound(const QString& soundFile);
   void setControllable(const std::array<bool,NUM_SIDES>& controllableSides_);
 
   readonly<Board,bool> southIsUp,stepMode,soundOn;
+  readonly<Board,PieceIcons::Set> iconSet;
 private:
   int squareWidth() const;
   int squareHeight() const;

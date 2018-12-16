@@ -23,7 +23,8 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   rotate(tr("&Rotate")),
   autoRotate(tr("&Auto-rotate")),
   sound(tr("&Sound")),
-  stepMode(tr("&Step mode"))
+  stepMode(tr("&Step mode")),
+  iconSets(this)
 {
   setCentralWidget(&board);
   const auto gameMenu=menuBar()->addMenu(tr("&Game"));
@@ -70,6 +71,17 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   sound.setShortcut(QKeySequence(Qt::Key_S));
   connect(&sound,&QAction::toggled,&board,&Board::toggleSound);
   boardMenu->addAction(&sound);
+
+  const auto iconMenu=boardMenu->addMenu(tr("&Piece icons"));
+  for (const auto& iconSet:{tr("&Vector"),tr("&Raster")}) {
+    const auto& action=iconMenu->addAction(iconSet);
+    iconSets.addAction(action);
+    action->setCheckable(true);
+  }
+  iconSets.actions()[board.iconSet]->setChecked(true);
+  connect(&iconSets,&QActionGroup::triggered,&board,[this](QAction* const action) {
+    board.setIconSet(static_cast<PieceIcons::Set>(iconSets.actions().indexOf(action)));
+  });
 
   const auto controlsMenu=menuBar()->addMenu(tr("&Controls"));
 
