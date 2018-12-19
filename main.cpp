@@ -3,6 +3,7 @@
 #include <QScreen>
 #include "globals.hpp"
 #include "mainwindow.hpp"
+#include "iconengine.hpp"
 
 int main(int argc,char* argv[])
 {
@@ -11,6 +12,7 @@ int main(int argc,char* argv[])
   Globals globals("4steps.ini",QSettings::IniFormat);
   MainWindow mainWindow(globals);
   mainWindow.setGeometry(QStyle::alignedRect(Qt::LeftToRight,Qt::AlignCenter,mainWindow.size(),qApp->primaryScreen()->availableGeometry()));
+  QApplication::setWindowIcon(QIcon(new IconEngine));
   mainWindow.show();
 
   srand(time(nullptr));

@@ -13,6 +13,7 @@ public:
   };
 
   PieceIcons();
+  static void setSquareViewBox(QSvgRenderer& qSvgRenderer);
   void drawPiece(QPainter& painter,const Set set,const PieceTypeAndSide piece,const QRect rectangle);
 private:
   QSvgRenderer vector[NUM_PIECE_SIDE_COMBINATIONS];

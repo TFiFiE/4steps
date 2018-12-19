@@ -27,6 +27,7 @@ SOURCES += \
     game.cpp \
     gamelist.cpp \
     gamestate.cpp \
+    iconengine.cpp \
     login.cpp \
     main.cpp \
     mainwindow.cpp \
@@ -50,6 +51,7 @@ HEADERS += \
     gamelist.hpp \
     gamestate.hpp \
     globals.hpp \
+    iconengine.hpp \
     io.hpp \
     login.hpp \
     mainwindow.hpp \

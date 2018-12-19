@@ -13,20 +13,25 @@ PieceIcons::PieceIcons()
 
       QSvgRenderer& qSvgRenderer=vector[piece];
       qSvgRenderer.load(directoryString+"/vector/"+oldSideFileString[side]+'-'+pieceFileString[pieceType]+".svg");
-      const QRectF viewBoxF=qSvgRenderer.viewBoxF();
-      const qreal width =viewBoxF.width();
-      const qreal height=viewBoxF.height();
-      if (width>height) {
-        const qreal margin=(width-height)/2;
-        qSvgRenderer.setViewBox(viewBoxF+QMarginsF(0,margin,0,margin));
-      }
-      else if (width<height) {
-        const qreal margin=(height-width)/2;
-        qSvgRenderer.setViewBox(viewBoxF+QMarginsF(margin,0,margin,0));
-      }
+      setSquareViewBox(qSvgRenderer);
 
       raster[piece].load(directoryString+"/raster/"+newSideFileString[side]+pieceFileString[pieceType]+".png");
     }
+}
+
+void PieceIcons::setSquareViewBox(QSvgRenderer& qSvgRenderer)
+{
+  const QRectF viewBoxF=qSvgRenderer.viewBoxF();
+  const qreal width =viewBoxF.width();
+  const qreal height=viewBoxF.height();
+  if (width>height) {
+    const qreal margin=(width-height)/2;
+    qSvgRenderer.setViewBox(viewBoxF+QMarginsF(0,margin,0,margin));
+  }
+  else if (width<height) {
+    const qreal margin=(height-width)/2;
+    qSvgRenderer.setViewBox(viewBoxF+QMarginsF(margin,0,margin,0));
+  }
 }
 
 void PieceIcons::drawPiece(QPainter& painter,const Set set,const PieceTypeAndSide piece,const QRect rectangle)
