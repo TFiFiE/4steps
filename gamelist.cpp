@@ -81,9 +81,8 @@ GameList::GameList(Server* const server,const QString& labelText) :
           server->session.processReply(*networkReply);
         }
         catch (const std::exception& exception) {
-          #if 0 // SERVER BUG: Cancelling with ASIP 2.0 triggers error.
-          QMessageBox::critical(server,tr("Error cancelling game"),exception.what());
-          #endif
+          if (server->session.serverURL().host()!="arimaa.com") // SERVER BUG: Cancelling with ASIP 2.0 triggers error.
+            QMessageBox::critical(server,tr("Error cancelling game"),exception.what());
         }
         server->refreshPage();
       });

@@ -6,7 +6,8 @@
 class ASIP1 : public ASIP {
   Q_OBJECT
 public:
-  explicit ASIP1(QNetworkAccessManager& networkAccessManager_,const QString& serverURL,QObject* const parent=nullptr,Data startingData=Data());
+  explicit ASIP1(QNetworkAccessManager& networkAccessManager,const QString& serverURL,QObject* const parent=nullptr,Data startingData=Data());
+  virtual std::unique_ptr<ASIP> create(QNetworkAccessManager& networkAccessManager,const QString& serverURL,QObject* const parent=nullptr,Data startingData=Data()) const override;
 private:
   virtual QByteArray getRequestData(const std::vector<std::pair<QString,QString> >& items) override;
   virtual Data getReplyData(const QByteArray& data) override;

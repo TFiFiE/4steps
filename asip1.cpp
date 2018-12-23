@@ -2,9 +2,15 @@
 #include <QUrlQuery>
 #include "asip1.hpp"
 
-ASIP1::ASIP1(QNetworkAccessManager& networkAccessManager_,const QString& serverURL,QObject* const parent,Data startingData) :
-  ASIP(networkAccessManager_,serverURL,parent,startingData)
+ASIP1::ASIP1(QNetworkAccessManager& networkAccessManager,const QString& serverURL,QObject* const parent,Data startingData) :
+  ASIP(networkAccessManager,serverURL,parent,startingData)
 {
+}
+
+std::unique_ptr<ASIP> ASIP1::create(QNetworkAccessManager& networkAccessManager,const QString& serverURL,QObject* const parent,Data startingData) const
+{
+  using namespace std;
+  return make_unique<ASIP1>(networkAccessManager,serverURL,parent,startingData);
 }
 
 QByteArray ASIP1::getRequestData(const std::vector<std::pair<QString,QString> >& items)

@@ -37,7 +37,8 @@ public:
   };
 
   explicit ASIP(QNetworkAccessManager& networkAccessManager_,const QString& serverURL,QObject* const parent=nullptr,Data startingData=Data());
-  virtual ~ASIP();
+  virtual std::unique_ptr<ASIP> create(QNetworkAccessManager& networkAccessManager,const QString& serverURL,QObject* const parent=nullptr,Data startingData=Data()) const=0;
+  virtual ~ASIP() {}
   Data processReply(QNetworkReply& networkReply);
   QUrl serverURL() const;
   qint64 timeSinceLastReply() const;

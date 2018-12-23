@@ -13,10 +13,6 @@ ASIP::ASIP(QNetworkAccessManager& networkAccessManager_,const QString& serverURL
 {
 }
 
-ASIP::~ASIP()
-{
-}
-
 ASIP::Data ASIP::processReply(QNetworkReply& networkReply)
 {
   lastReplyTime=QDateTime::currentDateTimeUtc();
@@ -80,10 +76,10 @@ QNetworkReply* ASIP::openGames(QObject* const requester)
 QNetworkReply* ASIP::enterGame(QObject* const requester,const QString& gameID,const Side side)
 {
   const auto role=(side==NO_SIDE ? "v" : QString(toLetter(side)));
-  #if 1 // SERVER BUG: Can't spectate with ASIP 2.0.
-  if (role=="v") {
+  const auto server=serverURL();
+  if (server.host()=="arimaa.com" && role=="v") { // SERVER BUG: Can't spectate with ASIP 2.0.
     QReadLocker readLocker(&mostRecentData_mutex);
-    ASIP1 asip1(networkAccessManager,"http://arimaa.com/arimaa/gameroom/client1gr.cgi",nullptr,mostRecentData);
+    ASIP1 asip1(networkAccessManager,server.adjusted(QUrl::RemoveFilename).toString()+"client1gr.cgi",nullptr,mostRecentData);
     readLocker.unlock();
     const auto result=asip1.post(requester,{{"action","reserveseat"},dataPair("sid"),{"gid",gameID},{"role",role}});
     QWriteLocker writeLocker(&mostRecentData_mutex);
@@ -91,7 +87,6 @@ QNetworkReply* ASIP::enterGame(QObject* const requester,const QString& gameID,co
     writeLocker.unlock();
     return result;
   }
-  #endif
   return post(requester,{{"action","reserveseat"},dataPair("sid"),{"gid",gameID},{"role",role}});
 }
 
@@ -180,10 +175,12 @@ std::vector<ASIP::GameInfo> ASIP::getGameList(QNetworkReply& networkReply,const 
 
 std::unique_ptr<ASIP> ASIP::getGame(QNetworkReply& networkReply)
 {
-  #if 1 // SERVER BUG: Can't spectate with ASIP 2.0.
-  if (networkReply.property("action")=="reserveseat" && networkReply.property("role")=="v") {
+  const auto server=serverURL();
+  const auto host=server.host();
+  if (host=="arimaa.com" && networkReply.property("role")=="v" && networkReply.property("action")=="reserveseat") {
+    // SERVER BUG: Can't spectate with ASIP 2.0.
     QReadLocker readLocker(&mostRecentData_mutex);
-    ASIP1 asip1(networkAccessManager,"http://arimaa.com/arimaa/gameroom/client1gr.cgi",nullptr,mostRecentData);
+    ASIP1 asip1(networkAccessManager,server.adjusted(QUrl::RemoveFilename).toString()+"client1gr.cgi",nullptr,mostRecentData);
     readLocker.unlock();
     asip1.processReply(networkReply);
     QWriteLocker writeLocker(&mostRecentData_mutex);
@@ -191,14 +188,21 @@ std::unique_ptr<ASIP> ASIP::getGame(QNetworkReply& networkReply)
     writeLocker.unlock();
   }
   else
-  #endif
     processReply(networkReply);
   QReadLocker readLocker(&mostRecentData_mutex);
   auto startingData=mostRecentData;
   readLocker.unlock();
   startingData.remove("sid");
-  using namespace std;
-  return make_unique<ASIP1>(networkAccessManager,mostRecentData.value("gsurl").toString(),nullptr,startingData);
+
+  auto gsurl=mostRecentData.value("gsurl").toString();
+  if (host=="arimaa.com") {
+    if (QUrl(gsurl).isRelative()) // SERVER BUG: Joining with ASIP 2.0 returns partial game server URL.
+      gsurl=server.adjusted(QUrl::RemoveFilename).toString()+"../java/ys/ms4/v5/"+gsurl;
+    if (server.fileName()=="client2gr.cgi") // SERVER BUG: Returned game server always uses ASIP 1.0.
+      gsurl=QUrl(gsurl).adjusted(QUrl::RemoveFilename).toString()+"client2gs.cgi";
+  }
+
+  return create(networkAccessManager,gsurl,nullptr,startingData);
 }
 
 bool ASIP::isEqualGame(const ASIP& otherGame) const
@@ -446,12 +450,7 @@ QNetworkReply* ASIP::post(QObject* const requester,const std::vector<std::pair<Q
 
 QNetworkRequest ASIP::getNetworkRequest(const QString& urlString)
 {
-  auto url=QUrl(urlString);
-  #if 1 // SERVER BUG: Joining with ASIP 2.0 returns partial game server URL.
-  if (url.isRelative())
-    url.setUrl("http://arimaa.com/arimaa/java/ys/ms4/v5/"+urlString);
-  #endif
-  QNetworkRequest networkRequest(url);
+  QNetworkRequest networkRequest((QUrl(urlString)));
   networkRequest.setHeader(QNetworkRequest::ContentTypeHeader,"application/x-www-form-urlencoded");
   return networkRequest;
 }

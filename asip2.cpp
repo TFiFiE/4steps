@@ -3,9 +3,15 @@
 #include <QJsonDocument>
 #include "asip2.hpp"
 
-ASIP2::ASIP2(QNetworkAccessManager& networkAccessManager_,const QString& serverURL,QObject* const parent,Data startingData) :
-  ASIP(networkAccessManager_,serverURL,parent,startingData)
+ASIP2::ASIP2(QNetworkAccessManager& networkAccessManager,const QString& serverURL,QObject* const parent,Data startingData) :
+  ASIP(networkAccessManager,serverURL,parent,startingData)
 {
+}
+
+std::unique_ptr<ASIP> ASIP2::create(QNetworkAccessManager& networkAccessManager,const QString& serverURL,QObject* const parent,Data startingData) const
+{
+  using namespace std;
+  return make_unique<ASIP2>(networkAccessManager,serverURL,parent,startingData);
 }
 
 std::vector<ASIP::GameListCategory> ASIP2::availableGameListCategories() const
