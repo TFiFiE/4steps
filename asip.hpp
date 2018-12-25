@@ -39,7 +39,7 @@ public:
   explicit ASIP(QNetworkAccessManager& networkAccessManager_,const QString& serverURL,QObject* const parent=nullptr,Data startingData=Data());
   virtual std::unique_ptr<ASIP> create(QNetworkAccessManager& networkAccessManager,const QString& serverURL,QObject* const parent=nullptr,Data startingData=Data()) const=0;
   virtual ~ASIP() {}
-  Data processReply(QNetworkReply& networkReply);
+  virtual Data processReply(QNetworkReply& networkReply);
   QUrl serverURL() const;
   qint64 timeSinceLastReply() const;
 
@@ -50,13 +50,15 @@ public:
   QNetworkReply* myGames(QObject* const requester);
   QNetworkReply* invitedGames(QObject* const requester);
   QNetworkReply* openGames(QObject* const requester);
-  QNetworkReply* enterGame(QObject* const requester,const QString& gameID,const Side side);
+  virtual QNetworkReply* enterGame(QObject* const requester,const QString& gameID,const Side side);
   QNetworkReply* cancelGame(QObject* const requester,const QString& gameID);
   QNetworkReply* logout(QObject* const requester);
   virtual std::vector<GameListCategory> availableGameListCategories() const;
   virtual void state();
   std::vector<GameInfo> getGameList(QNetworkReply& networkReply,const GameListCategory gameListCategory);
-  std::unique_ptr<ASIP> getGame(QNetworkReply& networkReply);
+  virtual std::unique_ptr<ASIP> getGame(QNetworkReply& networkReply);
+protected:
+  std::unique_ptr<ASIP> getGame() const;
 signals:
   void sendGameList(const GameListCategory,const std::vector<GameInfo>&);
 public:
@@ -88,6 +90,11 @@ signals:
 protected:
   std::pair<QString,QString> dataPair(const QString& key) const;
   QNetworkReply* post(QObject* const requester,const std::vector<std::pair<QString,QString> >& items);
+  void synchronizeData(const ASIP& source);
+
+  QNetworkAccessManager& networkAccessManager;
+  Data mostRecentData;
+  mutable QReadWriteLock mostRecentData_mutex;
 private:
   static QNetworkRequest getNetworkRequest(const QString& urlString);
   template<class Type> Type get(const QString& key) const;
@@ -97,10 +104,7 @@ private:
   static bool instantResponse(const QNetworkReply& networkReply);
   static EndCondition toEndCondition(const char letter);
 
-  QNetworkAccessManager& networkAccessManager;
   const QNetworkRequest server;
-  Data mostRecentData;
-  mutable QReadWriteLock mostRecentData_mutex;
   TimeEstimator timeEstimator;
   QDateTime lastReplyTime;
   QNetworkReply* gameStateReply;

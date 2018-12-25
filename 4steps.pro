@@ -18,6 +18,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 
 SOURCES += \
+    arimaa_com.cpp \
     asip.cpp \
     asip1.cpp \
     asip2.cpp \
@@ -40,6 +41,7 @@ SOURCES += \
     timeestimator.cpp
 
 HEADERS += \
+    arimaa_com.hpp \
     asip.hpp \
     asip1.hpp \
     asip2.hpp \

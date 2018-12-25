@@ -6,6 +6,7 @@
 #include "server.hpp"
 #include "asip1.hpp"
 #include "asip2.hpp"
+#include "arimaa_com.hpp"
 
 const char* Login::defaultGamerooms[]={"http://arimaa.com/arimaa/gameroom/client1gr.cgi",
                                        "http://arimaa.com/arimaa/gameroom/client2gr.cgi"};
@@ -61,10 +62,11 @@ Login::Login(Globals& globals_,MainWindow& mainWindow_) :
     password.setFocus();
   connect(&dialogButtonBox,&QDialogButtonBox::accepted,[&]{
     const auto gameroomURL=gameroom.text();
+    const auto gameroomHost=QUrl(gameroomURL).host();
     const auto usernameString=username.text();
     for (const auto server:mainWindow.servers) {
       const ASIP& asip=server->session;
-      if (QUrl(gameroomURL).host()==asip.serverURL().host() && usernameString==asip.username()) {
+      if (gameroomHost==asip.serverURL().host() && usernameString==asip.username()) {
         mainWindow.tabWidget.setCurrentWidget(server);
         close();
         return;
@@ -72,11 +74,19 @@ Login::Login(Globals& globals_,MainWindow& mainWindow_) :
     }
     setEnabled(false);
     ASIP* asip;
-    if (protocolButtons[0]->isChecked())
-      asip=new ASIP1(globals.networkAccessManager,gameroomURL,this);
+    const bool arimaa_com=(gameroomHost=="arimaa.com");
+    if (protocolButtons[0]->isChecked()) {
+      if (arimaa_com)
+        asip=new Arimaa_com<ASIP1>(globals.networkAccessManager,gameroomURL,this);
+      else
+        asip=new ASIP1(globals.networkAccessManager,gameroomURL,this);
+    }
     else {
       assert(protocolButtons[1]->isChecked());
-      asip=new ASIP2(globals.networkAccessManager,gameroomURL,this);
+      if (arimaa_com)
+        asip=new Arimaa_com<ASIP2>(globals.networkAccessManager,gameroomURL,this);
+      else
+        asip=new ASIP2(globals.networkAccessManager,gameroomURL,this);
     }
     const auto networkReply=asip->login(this,usernameString,password.text());
     connect(networkReply,&QNetworkReply::finished,this,[=]{loginAttempt(*networkReply,*asip);});
