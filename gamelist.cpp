@@ -43,17 +43,18 @@ GameList::GameList(Server* const server,const QString& labelText) :
       else
         role=NO_SIDE;
     }
-    const auto networkReply=server->session.enterGame(this,game.id,role);
-    connect(networkReply,&QNetworkReply::finished,this,[=] {
-      try {
-        server->addGame(*networkReply,viewpoint);
-        if (role!=NO_SIDE && game.players[role].isEmpty())
+    server->session.enterGame(this,game.id,role,[=](QNetworkReply* const networkReply) {
+      connect(networkReply,&QNetworkReply::finished,server,[=] {
+        try {
+          server->addGame(*networkReply,viewpoint);
+          if (role!=NO_SIDE && game.players[role].isEmpty())
+            server->refreshPage();
+        }
+        catch (const std::exception& exception) {
+          QMessageBox::critical(server,tr("Error opening game"),exception.what());
           server->refreshPage();
-      }
-      catch (const std::exception& exception) {
-        QMessageBox::critical(server,tr("Error opening game"),exception.what());
-        server->refreshPage();
-      }
+        }
+      });
     });
   });
   tableWidget.setContextMenuPolicy(Qt::CustomContextMenu);

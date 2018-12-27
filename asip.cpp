@@ -73,10 +73,11 @@ QNetworkReply* ASIP::openGames(QObject* const requester)
   return post(requester,{{"action","opengames"},dataPair("sid")});
 }
 
-QNetworkReply* ASIP::enterGame(QObject* const requester,const QString& gameID,const Side side)
+void ASIP::enterGame(QObject* const requester,const QString& gameID,const Side side,const std::function<void(QNetworkReply*)> networkReplyAction)
 {
   const auto role=(side==NO_SIDE ? "v" : QString(toLetter(side)));
-  return post(requester,{{"action","reserveseat"},dataPair("sid"),{"gid",gameID},{"role",role}});
+  const auto networkReply=post(requester,{{"action","reserveseat"},dataPair("sid"),{"gid",gameID},{"role",role}});
+  networkReplyAction(networkReply);
 }
 
 QNetworkReply* ASIP::cancelGame(QObject* const requester,const QString& gameID)

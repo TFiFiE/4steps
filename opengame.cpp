@@ -36,15 +36,16 @@ OpenGame::OpenGame(Server& server) :
       assert(roleButtons[2]->isChecked());
       role=NO_SIDE;
     }
-    const auto networkReply=server.session.enterGame(this,id.text(),role);
-    connect(networkReply,&QNetworkReply::finished,[&,networkReply] {
-      try {
-        server.addGame(*networkReply,role==NO_SIDE ? FIRST_SIDE : role);
-        close();
-      }
-      catch (const std::exception& exception) {
-        QMessageBox::critical(this,tr("Error opening game"),exception.what());
-      }
+    server.session.enterGame(this,id.text(),role,[=,&server](QNetworkReply* const networkReply) {
+      connect(networkReply,&QNetworkReply::finished,&server,[=,&server] {
+        try {
+          server.addGame(*networkReply,role==NO_SIDE ? FIRST_SIDE : role);
+          close();
+        }
+        catch (const std::exception& exception) {
+          QMessageBox::critical(this,tr("Error opening game"),exception.what());
+        }
+      });
     });
   });
   connect(&dialogButtonBox,&QDialogButtonBox::rejected,this,&OpenGame::close);

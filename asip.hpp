@@ -50,7 +50,7 @@ public:
   QNetworkReply* myGames(QObject* const requester);
   QNetworkReply* invitedGames(QObject* const requester);
   QNetworkReply* openGames(QObject* const requester);
-  virtual QNetworkReply* enterGame(QObject* const requester,const QString& gameID,const Side side);
+  virtual void enterGame(QObject* const requester,const QString& gameID,const Side side,const std::function<void(QNetworkReply*)> networkReplyAction);
   QNetworkReply* cancelGame(QObject* const requester,const QString& gameID);
   QNetworkReply* logout(QObject* const requester);
   virtual std::vector<GameListCategory> availableGameListCategories() const;

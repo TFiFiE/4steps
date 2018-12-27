@@ -39,23 +39,24 @@ typename ASIP::Data Arimaa_com<ASIP2>::processReply(QNetworkReply& networkReply)
 }
 
 template<class ASIP>
-QNetworkReply* Arimaa_com<ASIP>::enterGame(QObject* const requester,const QString& gameID,const Side side)
+void Arimaa_com<ASIP>::enterGame(QObject* const requester,const QString& gameID,const Side side,const std::function<void(QNetworkReply*)> networkReplyAction)
 {
-  return ASIP::enterGame(requester,gameID,side);
+  ASIP::enterGame(requester,gameID,side,networkReplyAction);
 }
 
 template<>
-QNetworkReply* Arimaa_com<ASIP2>::enterGame(QObject* const requester,const QString& gameID,const Side side)
+void Arimaa_com<ASIP2>::enterGame(QObject* const requester,const QString& gameID,const Side side,const std::function<void(QNetworkReply*)> networkReplyAction)
 {
   if (side==NO_SIDE) { // SERVER BUG: Can't spectate with ASIP 2.0.
     QReadLocker readLocker(&mostRecentData_mutex);
     ASIP1 asip1(networkAccessManager,serverURL().adjusted(QUrl::RemoveFilename).toString()+"client1gr.cgi",nullptr,mostRecentData);
     readLocker.unlock();
-    const auto result=asip1.enterGame(requester,gameID,side);
+    asip1.enterGame(requester,gameID,side,networkReplyAction);
     synchronizeData(asip1);
-    return result;
+    return;
   }
-  return ASIP::enterGame(requester,gameID,side);
+  else
+    ASIP::enterGame(requester,gameID,side,networkReplyAction);
 }
 
 template<class ASIP>
