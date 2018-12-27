@@ -31,7 +31,7 @@ void ASIP2::state()
       {"livegames",LIVE_GAMES},
       {"recentgames",RECENT_GAMES}};
     for (const auto gameListAction:gameListActions)
-      sendGameList(std::get<1>(gameListAction),getGameList(stateData[std::get<0>(gameListAction)].toList()));
+      emit sendGameList(std::get<1>(gameListAction),getGameList(stateData[std::get<0>(gameListAction)].toList()));
   });
 }
 

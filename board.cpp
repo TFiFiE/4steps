@@ -95,17 +95,17 @@ void Board::receiveGameTree(const GameTreeNode& gameTreeNode,const bool sound)
   }
   if (autoRotate)
     setViewpoint(sideToMove());
-  boardChanged();
+  emit boardChanged();
   refreshHighlights(true);
   update();
 }
 
 void Board::rotate()
 {
-    southIsUp=!southIsUp;
-    refreshHighlights(false);
-    update();
-    boardRotated(southIsUp);
+  southIsUp=!southIsUp;
+  refreshHighlights(false);
+  update();
+  emit boardRotated(southIsUp);
 }
 
 void Board::setViewpoint(const Side side)
@@ -277,7 +277,7 @@ bool Board::setUpPiece(const SquareIndex destination)
   if (isSetupSquare(sideToMove(),destination)) {
     auto& currentPieces=potentialSetup.currentPieces;
     if (std::all_of(currentPieces.begin(),currentPieces.end(),[](const PieceTypeAndSide& piece){return piece==NO_PIECE;}))
-      gameStarted();
+      emit gameStarted();
     PieceTypeAndSide& currentPiece=currentPieces[destination];
     if (currentPiece!=NO_PIECE)
       ++numSetupPieces[toPieceType(currentPiece)-1];
@@ -397,7 +397,7 @@ void Board::doSteps(const ExtendedSteps& steps)
     potentialMove.erase(afterCurrentStep,potentialMove.end());
     append(potentialMove,steps);
     afterCurrentStep=potentialMove.end();
-    boardChanged();
+    emit boardChanged();
     refreshHighlights(true);
     playStepSounds(steps,false);
   }
@@ -416,7 +416,7 @@ void Board::finalizeSetup(const Placement& placement,const bool sound)
 
   if (autoRotate)
     setViewpoint(sideToMove());
-  boardChanged();
+  emit boardChanged();
   refreshHighlights(true);
   update();
 }
@@ -426,7 +426,7 @@ void Board::finalizeMove(const ExtendedSteps& move)
   currentNode.makeMove(move);
   potentialMove.clear();
   afterCurrentStep=potentialMove.end();
-  boardChanged();
+  emit boardChanged();
   if (currentNode.result().endCondition==NO_END && autoRotate)
     setViewpoint(sideToMove());
   refreshHighlights(true);
@@ -466,7 +466,7 @@ void Board::mousePressEvent(QMouseEvent* event)
       else if (afterCurrentStep!=potentialMove.begin()) {
         assert(!setupPhase());
         --afterCurrentStep;
-        boardChanged();
+        emit boardChanged();
         refreshHighlights(true);
         update();
       }
@@ -475,7 +475,7 @@ void Board::mousePressEvent(QMouseEvent* event)
       if (afterCurrentStep!=potentialMove.end()) {
         assert(!setupPhase());
         ++afterCurrentStep;
-        boardChanged();
+        emit boardChanged();
         refreshHighlights(true);
         update();
       }
@@ -554,7 +554,7 @@ void Board::mouseDoubleClickEvent(QMouseEvent* event)
       if (setupPhase()) {
         if (currentSetupPiece<0 && !isSetupSquare(sideToMove(),positionToSquare(event->pos()))) {
           const Placement placement=gameState().placement(sideToMove());
-          sendSetup(placement,sideToMove());
+          emit sendSetup(placement,sideToMove());
           finalizeSetup(placement,true);
         }
       }
@@ -562,7 +562,7 @@ void Board::mouseDoubleClickEvent(QMouseEvent* event)
         const ExtendedSteps playedMove(potentialMove.cbegin(),afterCurrentStep);
         switch (currentMoveNode().legalMove(gameState())) {
           case LEGAL:
-            sendMove(playedMove,sideToMove());
+            emit sendMove(playedMove,sideToMove());
             playSound("qrc:/loud-step.wav");
             finalizeMove(playedMove);
           break;
@@ -586,7 +586,7 @@ void Board::mouseDoubleClickEvent(QMouseEvent* event)
       if (afterCurrentStep!=potentialMove.begin()) {
         assert(!setupPhase());
         afterCurrentStep=potentialMove.begin();
-        boardChanged();
+        emit boardChanged();
         refreshHighlights(true);
         update();
       }
@@ -596,7 +596,7 @@ void Board::mouseDoubleClickEvent(QMouseEvent* event)
       if (afterCurrentStep!=potentialMove.end()) {
         assert(!setupPhase());
         afterCurrentStep=potentialMove.end();
-        boardChanged();
+        emit boardChanged();
         refreshHighlights(true);
         update();
       }

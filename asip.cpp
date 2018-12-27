@@ -28,7 +28,7 @@ ASIP::Data ASIP::processReply(QNetworkReply& networkReply)
     throw std::runtime_error(error.value().toString().toStdString());
   const Status newStatus=getStatus();
   if (oldStatus!=newStatus)
-    statusChanged(oldStatus,newStatus);
+    emit statusChanged(oldStatus,newStatus);
   return replyData;
 }
 
@@ -110,7 +110,7 @@ void ASIP::state()
   for (const auto gameListAction:gameListActions) {
     const auto networkReply=post(this,{{"action",std::get<0>(gameListAction)},dataPair("sid")});
     connect(networkReply,&QNetworkReply::finished,this,[=]{
-      sendGameList(std::get<1>(gameListAction),getGameList(*networkReply,std::get<1>(gameListAction)));
+      emit sendGameList(std::get<1>(gameListAction),getGameList(*networkReply,std::get<1>(gameListAction)));
     });
   }
 }
@@ -346,7 +346,7 @@ void ASIP::leave()
 
 void ASIP::update(const bool hardSynchronization)
 {
-  updated(hardSynchronization);
+  emit updated(hardSynchronization);
   QReadLocker readLocker(&mostRecentData_mutex);
   const auto oldMoves=mostRecentData.value("moves").toString();
   const auto oldChat=mostRecentData.value("chat").toString();
