@@ -1,9 +1,9 @@
 #include <QHeaderView>
 #include <QNetworkReply>
-#include <QMessageBox>
 #include <QMenu>
 #include "gamelist.hpp"
 #include "server.hpp"
+#include "messagebox.hpp"
 
 GameList::GameList(Server* const server,const QString& labelText) :
   description(labelText)
@@ -43,19 +43,7 @@ GameList::GameList(Server* const server,const QString& labelText) :
       else
         role=NO_SIDE;
     }
-    server->session.enterGame(this,game.id,role,[=](QNetworkReply* const networkReply) {
-      connect(networkReply,&QNetworkReply::finished,server,[=] {
-        try {
-          server->addGame(*networkReply,viewpoint);
-          if (role!=NO_SIDE && game.players[role].isEmpty())
-            server->refreshPage();
-        }
-        catch (const std::exception& exception) {
-          QMessageBox::critical(server,tr("Error opening game"),exception.what());
-          server->refreshPage();
-        }
-      });
-    });
+    server->enterGame(game,role,viewpoint);
   });
   tableWidget.setContextMenuPolicy(Qt::CustomContextMenu);
   connect(&tableWidget,&QTableWidget::customContextMenuRequested,this,[=](const QPoint pos){
@@ -82,7 +70,7 @@ GameList::GameList(Server* const server,const QString& labelText) :
           server->session.processReply(*networkReply);
         }
         catch (const std::exception& exception) {
-          QMessageBox::critical(server,tr("Error cancelling game"),exception.what());
+          MessageBox(QMessageBox::Critical,tr("Error cancelling game"),exception.what(),QMessageBox::NoButton,server).exec();
         }
         server->refreshPage();
       });

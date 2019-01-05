@@ -1,8 +1,7 @@
 #include <QNetworkReply>
-#include <QMessageBox>
 #include "opengame.hpp"
 #include "server.hpp"
-#include "mainwindow.hpp"
+#include "messagebox.hpp"
 
 using namespace std;
 OpenGame::OpenGame(Server& server) :
@@ -43,7 +42,7 @@ OpenGame::OpenGame(Server& server) :
           close();
         }
         catch (const std::exception& exception) {
-          QMessageBox::critical(this,tr("Error opening game"),exception.what());
+          MessageBox(QMessageBox::Critical,tr("Error opening game"),exception.what(),QMessageBox::NoButton,this).exec();
         }
       });
     });

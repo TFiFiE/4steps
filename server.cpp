@@ -5,6 +5,7 @@
 #include "gamelist.hpp"
 #include "creategame.hpp"
 #include "opengame.hpp"
+#include "messagebox.hpp"
 #include "mainwindow.hpp"
 
 Server::Server(Globals& globals_,ASIP& session_,MainWindow& mainWindow_) :
@@ -35,6 +36,11 @@ Server::Server(Globals& globals_,ASIP& session_,MainWindow& mainWindow_) :
     if (gameList!=gameLists.end())
       gameList->second->receiveGames(games);
   });
+  connect(&session,&ASIP::childStatusChanged,this,[this](const ASIP::Status oldStatus,const ASIP::Status newStatus) {
+    if (oldStatus==ASIP::UNSTARTED && newStatus==ASIP::LIVE)
+      return;
+    refreshPage();
+  });
   refreshPage();
   for (auto& gameList:gameLists)
     vBoxLayout.addLayout(gameList.second.get());
@@ -52,15 +58,26 @@ void Server::refreshPage() const
   session.state();
 }
 
+void Server::enterGame(const ASIP::GameInfo& game,const Side role,const Side viewpoint)
+{
+  session.enterGame(this,game.id,role,[=](QNetworkReply* const networkReply) {
+    connect(networkReply,&QNetworkReply::finished,this,[=] {
+      try {
+        addGame(*networkReply,viewpoint);
+        if (role!=NO_SIDE && game.players[role].isEmpty())
+          refreshPage();
+      }
+      catch (const std::exception& exception) {
+        MessageBox(QMessageBox::Critical,tr("Error opening game"),exception.what(),QMessageBox::NoButton,this).exec();
+        refreshPage();
+      }
+    });
+  });
+}
+
 void Server::addGame(QNetworkReply& networkReply,const Side viewpoint,const bool guaranteedUnique) const
 {
-  const auto game=mainWindow.addGame(session.getGame(networkReply),viewpoint,guaranteedUnique);
-  if (game!=nullptr) // game not already added
-    connect(game,&ASIP::statusChanged,this,[this](const ASIP::Status oldStatus,const ASIP::Status newStatus) {
-      if (oldStatus==ASIP::UNSTARTED && newStatus==ASIP::LIVE)
-        return;
-      refreshPage();
-    });
+  mainWindow.addGame(session.getGame(networkReply),viewpoint,guaranteedUnique);
 }
 
 void Server::resizeEvent(QResizeEvent*)

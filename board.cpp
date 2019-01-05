@@ -568,15 +568,15 @@ void Board::mouseDoubleClickEvent(QMouseEvent* event)
           break;
           case ILLEGAL_PUSH_INCOMPLETION:
             playSound("qrc:/illegal-move.wav");
-            (new MessageBox<230>(QMessageBox::Critical,tr("Incomplete push"),tr("Push was not completed."),QMessageBox::NoButton,this))->show();
+            MessageBox(QMessageBox::Critical,tr("Incomplete push"),tr("Push was not completed."),QMessageBox::NoButton,this).exec();
           break;
           case ILLEGAL_PASS:
             playSound("qrc:/illegal-move.wav");
-            (new MessageBox<183>(QMessageBox::Critical,tr("Illegal pass"),tr("Move did not change board."),QMessageBox::NoButton,this))->show();
+            MessageBox(QMessageBox::Critical,tr("Illegal pass"),tr("Move did not change board."),QMessageBox::NoButton,this).exec();
           break;
           case ILLEGAL_REPETITION:
             playSound("qrc:/illegal-move.wav");
-            (new MessageBox<>(QMessageBox::Critical,tr("Illegal repetition"),tr("Move would repeat board and side to move too often."),QMessageBox::NoButton,this))->show();
+            MessageBox(QMessageBox::Critical,tr("Illegal repetition"),tr("Move would repeat board and side to move too often."),QMessageBox::NoButton,this).exec();
           break;
         }
       }

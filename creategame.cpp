@@ -1,8 +1,8 @@
 #include <QNetworkReply>
-#include <QMessageBox>
 #include "creategame.hpp"
 #include "globals.hpp"
 #include "server.hpp"
+#include "messagebox.hpp"
 
 using namespace std;
 CreateGame::CreateGame(Globals& globals_,ASIP& session_,Server& server_) :
@@ -68,7 +68,7 @@ void CreateGame::creationAttempt(QNetworkReply& networkReply)
     timeControl.writeSettings(globals.settings);
   }
   catch (const std::exception& exception) {
-    QMessageBox::critical(this,tr("Error creating game"),exception.what());
+    MessageBox(QMessageBox::Critical,tr("Error creating game"),exception.what(),QMessageBox::NoButton,this).exec();
     setEnabled(true);
   }
 }

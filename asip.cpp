@@ -176,7 +176,9 @@ std::unique_ptr<ASIP> ASIP::getGame() const
   readLocker.unlock();
   startingData.remove("sid");
 
-  return create(networkAccessManager,mostRecentData.value("gsurl").toString(),nullptr,startingData);
+  auto game=create(networkAccessManager,mostRecentData.value("gsurl").toString(),nullptr,startingData);
+  connect(game.get(),&ASIP::statusChanged,this,&ASIP::childStatusChanged);
+  return game;
 }
 
 bool ASIP::isEqualGame(const ASIP& otherGame) const

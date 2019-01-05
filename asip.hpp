@@ -61,6 +61,7 @@ protected:
   std::unique_ptr<ASIP> getGame() const;
 signals:
   void sendGameList(const GameListCategory,const std::vector<GameInfo>&);
+  void childStatusChanged(const Status oldStatus,const Status newStatus);
 public:
   // Game server
   bool isEqualGame(const ASIP& otherGame) const;

@@ -40,8 +40,9 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   resign.setEnabled(session!=nullptr && controllable);
   resign.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_R));
   connect(&resign,&QAction::triggered,[=]{
-    const QMessageBox::StandardButton result=QMessageBox::question(this,tr("Confirm resignation"),tr("Are you sure you want to resign?"),QMessageBox::Yes|QMessageBox::No,QMessageBox::No);
-    if (result==QMessageBox::Yes)
+    MessageBox messageBox(QMessageBox::Question,tr("Confirm resignation"),tr("Are you sure you want to resign?"),QMessageBox::Yes|QMessageBox::No,this);
+    messageBox.setDefaultButton(QMessageBox::No);
+    if (messageBox.exec()==QMessageBox::Yes)
       session->resign();
   });
   gameMenu->addAction(&resign);
@@ -353,7 +354,7 @@ void Game::announceResult(const Result& result)
 
   const QString winner=(result.winner==FIRST_SIDE ? tr("Gold") : tr("Silver"));
   const QString  loser=(result.winner==FIRST_SIDE ? tr("Silver") : tr("Gold"));
-  const QString title=(result.winner==NO_SIDE ? tr("No winner.") : winner+tr(" wins!"));
+  const QString title=(result.winner==NO_SIDE ? tr("No winner") : winner+tr(" wins!"));
 
   QString message;
   switch (result.endCondition) {
@@ -364,14 +365,14 @@ void Game::announceResult(const Result& result)
     case RESIGNATION:        message=loser+tr(" resigned."); break;
     case ILLEGAL_MOVE:       message=loser+tr(" played an illegal move."); break;
     case FORFEIT:            message=loser+tr(" forfeited."); break;
-    case ABANDONMENT:        message=tr("Neither player present when time ran out. Game abandoned."); break;
-    case SCORE:              message=tr("Global time limit ran out. ")+winner+tr(" wins by score."); break;
+    case ABANDONMENT:        message=tr("Neither player present when time ran out.\nGame abandoned."); break;
+    case SCORE:              message=tr("Global time limit ran out.\n")+winner+tr(" wins by score."); break;
     case REPETITION:         message=loser+tr(" repeated board and side to move too many times."); break;
     case MUTUAL_ELIMINATION: message=tr("All rabbits eliminated."); break;
     default: assert(false);
   }
 
-  const auto messageBox=new MessageBox<187>(QMessageBox::Information,title,message,QMessageBox::NoButton,this);
+  const auto messageBox=new MessageBox(QMessageBox::Information,title,message,QMessageBox::NoButton,this);
   messageBox->setWindowModality(Qt::NonModal);
   messageBox->show();
 }

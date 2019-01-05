@@ -1,5 +1,4 @@
 #include <QNetworkReply>
-#include <QMessageBox>
 #include "login.hpp"
 #include "globals.hpp"
 #include "mainwindow.hpp"
@@ -7,6 +6,7 @@
 #include "asip1.hpp"
 #include "asip2.hpp"
 #include "arimaa_com.hpp"
+#include "messagebox.hpp"
 
 const char* Login::defaultGamerooms[]={"http://arimaa.com/arimaa/gameroom/client1gr.cgi",
                                        "http://arimaa.com/arimaa/gameroom/client2gr.cgi"};
@@ -108,7 +108,7 @@ void Login::loginAttempt(QNetworkReply& networkReply,ASIP& asip)
   }
   catch (const std::exception& exception) {
     asip.deleteLater();
-    QMessageBox::critical(this,tr("Login error"),exception.what());
+    MessageBox(QMessageBox::Critical,tr("Login error"),exception.what(),QMessageBox::NoButton,this).exec();
     setEnabled(true);
     const QString message(exception.what());
     if (message.contains("Password",Qt::CaseInsensitive)) {
