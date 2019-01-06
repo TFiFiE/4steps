@@ -13,8 +13,8 @@ Server::Server(Globals& globals_,ASIP& session_,MainWindow& mainWindow_) :
   mainWindow(mainWindow_),
   globals(globals_),
   vBoxLayout(this),
-  newGame(tr("&New game")),
-  openGame(tr("&Open game")),
+  newGame(tr("&Create open game")),
+  openGame(tr("&Open existing game")),
   refresh(tr("&Refresh page"))
 {
   session.setParent(this);
@@ -31,6 +31,11 @@ Server::Server(Globals& globals_,ASIP& session_,MainWindow& mainWindow_) :
   hBoxLayout.addWidget(&openGame);
   hBoxLayout.addWidget(&refresh);
   vBoxLayout.addLayout(&hBoxLayout);
+
+  auto extraSiteWidget=session.siteWidget(*this);
+  if (extraSiteWidget!=nullptr)
+    vBoxLayout.addWidget(extraSiteWidget.release());
+
   connect(&session,&ASIP::sendGameList,this,[&](const ASIP::GameListCategory gameListCategory,const std::vector<ASIP::GameInfo>& games) {
     const auto gameList=gameLists.find(gameListCategory);
     if (gameList!=gameLists.end())

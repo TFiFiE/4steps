@@ -19,7 +19,7 @@ std::vector<ASIP::GameListCategory> ASIP2::availableGameListCategories() const
   return {MY_GAMES,INVITED_GAMES,OPEN_GAMES,LIVE_GAMES/*,RECENT_GAMES*/};
 }
 
-void ASIP2::state()
+std::vector<QNetworkReply*> ASIP2::state()
 {
   const auto stateReply=post(this,{{"action","state"},dataPair("sid")});
   connect(stateReply,&QNetworkReply::finished,this,[=]{
@@ -33,6 +33,7 @@ void ASIP2::state()
     for (const auto gameListAction:gameListActions)
       emit sendGameList(std::get<1>(gameListAction),getGameList(stateData[std::get<0>(gameListAction)].toList()));
   });
+  return std::vector<QNetworkReply*>(1,stateReply);
 }
 
 std::vector<ASIP::GameInfo> ASIP2::getGameList(const QVariantList& games)

@@ -23,6 +23,7 @@ SOURCES += \
     asip1.cpp \
     asip2.cpp \
     board.cpp \
+    bots.cpp \
     creategame.cpp \
     duration.cpp \
     game.cpp \
@@ -46,6 +47,7 @@ HEADERS += \
     asip1.hpp \
     asip2.hpp \
     board.hpp \
+    bots.hpp \
     creategame.hpp \
     def.hpp \
     duration.hpp \

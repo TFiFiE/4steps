@@ -16,6 +16,7 @@ private:
   QLabel description,lastUpdated;
   QTableWidget tableWidget;
   std::vector<ASIP::GameInfo> games;
+
   friend class Server;
 };
 

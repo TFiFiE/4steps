@@ -29,6 +29,7 @@ private:
         QWidget totalGameTimeWidget;
           Duration totalGameTime;
         QSpinBox totalGameMoves;
+
   friend class CreateGame;
 };
 

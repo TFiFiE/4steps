@@ -8,6 +8,7 @@
 #include <cassert>
 #include <QString>
 #include <QDialog>
+#include <QNetworkRequest>
 
 enum Side {
   FIRST_SIDE=0,
@@ -281,6 +282,13 @@ inline void openDialog(QDialog* const dialog)
 {
   dialog->setAttribute(Qt::WA_DeleteOnClose);
   dialog->show();
+}
+
+inline QNetworkRequest getNetworkRequest(const QUrl& url)
+{
+  QNetworkRequest networkRequest(url);
+  networkRequest.setHeader(QNetworkRequest::ContentTypeHeader,"application/x-www-form-urlencoded");
+  return networkRequest;
 }
 
 template<class String>

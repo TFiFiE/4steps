@@ -30,7 +30,7 @@ CreateGame::CreateGame(Globals& globals_,ASIP& session_,Server& server_) :
     timeControl.setEnabled(checked);
     rated.setEnabled(checked);
   });
-  hBoxLayout.addWidget(&yourSide);
+  hBoxLayout.addWidget(&yourSide,0,Qt::AlignCenter);
   hBoxLayout.addWidget(sideButtons[0].get());
   hBoxLayout.addWidget(sideButtons[1].get());
   hBoxLayout.addWidget(sideButtons[2].get());

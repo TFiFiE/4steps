@@ -9,7 +9,7 @@ public:
   explicit ASIP2(QNetworkAccessManager& networkAccessManager,const QString& serverURL,QObject* const parent=nullptr,Data startingData=Data());
   virtual std::unique_ptr<ASIP> create(QNetworkAccessManager& networkAccessManager,const QString& serverURL,QObject* const parent=nullptr,Data startingData=Data()) const override;
   virtual std::vector<GameListCategory> availableGameListCategories() const override;
-  virtual void state() override;
+  virtual std::vector<QNetworkReply*> state() override;
 private:
   std::vector<ASIP::GameInfo> getGameList(const QVariantList& games);
   virtual QByteArray getRequestData(const std::vector<std::pair<QString,QString> >& items) override;

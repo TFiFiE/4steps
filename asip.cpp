@@ -58,19 +58,19 @@ QNetworkReply* ASIP::createGame(QObject* const requester,const QString& timeCont
   return post(requester,{{"action","newgame"},dataPair("sid"),{"role",QString(toLetter(side))},{"timecontrol",timeControl},{"rated",rated ? "1" : "0"}});
 }
 
-QNetworkReply* ASIP::myGames(QObject* const requester)
+QNetworkReply* ASIP::myGames()
 {
-  return post(requester,{{"action","mygames"},dataPair("sid")});
+  return gameListAction("mygames",MY_GAMES);
 }
 
-QNetworkReply* ASIP::invitedGames(QObject* const requester)
+QNetworkReply* ASIP::invitedGames()
 {
-  return post(requester,{{"action","invitedmegames"},dataPair("sid")});
+  return gameListAction("invitedmegames",INVITED_GAMES);
 }
 
-QNetworkReply* ASIP::openGames(QObject* const requester)
+QNetworkReply* ASIP::openGames()
 {
-  return post(requester,{{"action","opengames"},dataPair("sid")});
+  return gameListAction("opengames",OPEN_GAMES);
 }
 
 void ASIP::enterGame(QObject* const requester,const QString& gameID,const Side side,const std::function<void(QNetworkReply*)> networkReplyAction)
@@ -102,18 +102,9 @@ std::vector<ASIP::GameListCategory> ASIP::availableGameListCategories() const
   return {MY_GAMES,INVITED_GAMES,OPEN_GAMES};
 }
 
-void ASIP::state()
+std::vector<QNetworkReply*> ASIP::state()
 {
-  const std::pair<QString,GameListCategory> gameListActions[]={
-    {"mygames",MY_GAMES},
-    {"invitedmegames",INVITED_GAMES},
-    {"opengames",OPEN_GAMES}};
-  for (const auto gameListAction:gameListActions) {
-    const auto networkReply=post(this,{{"action",std::get<0>(gameListAction)},dataPair("sid")});
-    connect(networkReply,&QNetworkReply::finished,this,[=]{
-      emit sendGameList(std::get<1>(gameListAction),getGameList(*networkReply,std::get<1>(gameListAction)));
-    });
-  }
+  return {myGames(),invitedGames(),openGames()};
 }
 
 std::vector<ASIP::GameInfo> ASIP::getGameList(QNetworkReply& networkReply,const GameListCategory gameListCategory)
@@ -179,6 +170,15 @@ std::unique_ptr<ASIP> ASIP::getGame() const
   auto game=create(networkAccessManager,mostRecentData.value("gsurl").toString(),nullptr,startingData);
   connect(game.get(),&ASIP::statusChanged,this,&ASIP::childStatusChanged);
   return game;
+}
+
+QNetworkReply* ASIP::gameListAction(const QString& action,const ASIP::GameListCategory gameListCategory)
+{
+  const auto networkReply=post(this,{{"action",action},dataPair("sid")});
+  connect(networkReply,&QNetworkReply::finished,this,[this,networkReply,gameListCategory] {
+    emit sendGameList(gameListCategory,getGameList(*networkReply,gameListCategory));
+  });
+  return networkReply;
 }
 
 bool ASIP::isEqualGame(const ASIP& otherGame) const
@@ -313,38 +313,38 @@ void ASIP::forceUpdate()
 
 void ASIP::start()
 {
-  authDependingAction("startgame");
+  postAuthDependingAction("startgame");
 }
 
 void ASIP::sendMove(const QString& move)
 {
-  authDependingAction("move",{{"move",move}});
+  postAuthDependingAction("move",{{"move",move}});
 }
 
 void ASIP::resign()
 {
-  authDependingAction("resign");
+  postAuthDependingAction("resign");
 }
 
 void ASIP::requestTakeback()
 {
-  authDependingAction("takeback",{{"takeback","req"}});
+  postAuthDependingAction("takeback",{{"takeback","req"}});
 }
 
 void ASIP::replyToTakeback(const bool accepted)
 {
-  authDependingAction("takebackreply",{{"takebackreply",accepted ? "yes" : "no"}});
+  postAuthDependingAction("takebackreply",{{"takebackreply",accepted ? "yes" : "no"}});
 }
 
 void ASIP::sendChat(const QString& chat)
 {
-  authDependingAction("chat",{{"chat",chat}});
+  postAuthDependingAction("chat",{{"chat",chat}});
 }
 
 void ASIP::leave()
 {
   if (role()!=NO_SIDE)
-    authDependingAction("leave");
+    postAuthDependingAction("leave");
 }
 
 void ASIP::update(const bool hardSynchronization)
@@ -377,7 +377,7 @@ void ASIP::update(const bool hardSynchronization)
   });
 }
 
-void ASIP::authDependingAction(const QString& action,const std::initializer_list<std::pair<QString,QString> >& extraItems)
+void ASIP::postAuthDependingAction(const QString& action,const std::initializer_list<std::pair<QString,QString> >& extraItems)
 {
   const auto doAction=[=]{
     std::vector<std::pair<QString,QString> > items={{"action",action},dataPair("sid"),dataPair("auth")};
@@ -387,16 +387,16 @@ void ASIP::authDependingAction(const QString& action,const std::initializer_list
       processReply(*actionReply);
     });};
   QReadLocker readLocker(&mostRecentData_mutex);
-  if (mostRecentData.find("auth")==mostRecentData.end()) {
+  if (mostRecentData.contains("auth")) {
+    readLocker.unlock();
+    doAction();
+  }
+  else {
     const QObject* const oneTime=new QObject(this);
     connect(this,&ASIP::updated,oneTime,[=]{
       delete oneTime;
       doAction();
     });
-  }
-  else {
-    readLocker.unlock();
-    doAction();
   }
 }
 
@@ -428,13 +428,6 @@ void ASIP::synchronizeData(const ASIP& source)
   QWriteLocker writeLocker(&mostRecentData_mutex);
   QReadLocker readLocker(&source.mostRecentData_mutex);
   mostRecentData=source.mostRecentData;
-}
-
-QNetworkRequest ASIP::getNetworkRequest(const QString& urlString)
-{
-  QNetworkRequest networkRequest((QUrl(urlString)));
-  networkRequest.setHeader(QNetworkRequest::ContentTypeHeader,"application/x-www-form-urlencoded");
-  return networkRequest;
 }
 
 template<class Type>

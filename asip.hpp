@@ -6,6 +6,7 @@ class QNetworkAccessManager;
 class QNetworkReply;
 #include <QNetworkRequest>
 #include <QReadWriteLock>
+class Server;
 #include "tree.hpp"
 #include "timeestimator.hpp"
 
@@ -43,25 +44,30 @@ public:
   QUrl serverURL() const;
   qint64 timeSinceLastReply() const;
 
+  QNetworkAccessManager& networkAccessManager;
+
   // Game room
   QString username() const;
   QNetworkReply* login(QObject* const requester,const QString& username,const QString& password);
   QNetworkReply* createGame(QObject* const requester,const QString& timeControl,const bool rated,const Side role);
-  QNetworkReply* myGames(QObject* const requester);
-  QNetworkReply* invitedGames(QObject* const requester);
-  QNetworkReply* openGames(QObject* const requester);
+  QNetworkReply* myGames();
+  QNetworkReply* invitedGames();
+  QNetworkReply* openGames();
   virtual void enterGame(QObject* const requester,const QString& gameID,const Side side,const std::function<void(QNetworkReply*)> networkReplyAction);
   QNetworkReply* cancelGame(QObject* const requester,const QString& gameID);
   QNetworkReply* logout(QObject* const requester);
   virtual std::vector<GameListCategory> availableGameListCategories() const;
-  virtual void state();
+  virtual std::vector<QNetworkReply*> state();
   std::vector<GameInfo> getGameList(QNetworkReply& networkReply,const GameListCategory gameListCategory);
   virtual std::unique_ptr<ASIP> getGame(QNetworkReply& networkReply);
+  virtual std::unique_ptr<QWidget> siteWidget(Server&) {return nullptr;}
 protected:
   std::unique_ptr<ASIP> getGame() const;
 signals:
   void sendGameList(const GameListCategory,const std::vector<GameInfo>&);
   void childStatusChanged(const Status oldStatus,const Status newStatus);
+private:
+  QNetworkReply* gameListAction(const QString& action,const GameListCategory gameListCategory);
 public:
   // Game server
   bool isEqualGame(const ASIP& otherGame) const;
@@ -84,7 +90,7 @@ public:
   void leave();
 private:
   void update(const bool hardSynchronization);
-  void authDependingAction(const QString& action,const std::initializer_list<std::pair<QString,QString> >& extraItems={});
+  void postAuthDependingAction(const QString& action,const std::initializer_list<std::pair<QString,QString> >& extraItems={});
 signals:
   void updated(const bool hardSynchronization);
   void statusChanged(const Status oldStatus,const Status newStatus);
@@ -93,11 +99,9 @@ protected:
   QNetworkReply* post(QObject* const requester,const std::vector<std::pair<QString,QString> >& items);
   void synchronizeData(const ASIP& source);
 
-  QNetworkAccessManager& networkAccessManager;
   Data mostRecentData;
   mutable QReadWriteLock mostRecentData_mutex;
 private:
-  static QNetworkRequest getNetworkRequest(const QString& urlString);
   template<class Type> Type get(const QString& key) const;
   void updateCache(const Data& replyData);
   virtual QByteArray getRequestData(const std::vector<std::pair<QString,QString> >& items)=0;
