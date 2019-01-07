@@ -23,15 +23,20 @@ std::vector<QNetworkReply*> ASIP2::state()
 {
   const auto stateReply=post(this,{{"action","state"},dataPair("sid")});
   connect(stateReply,&QNetworkReply::finished,this,[=]{
-    const auto stateData=processReply(*stateReply);
-    const std::pair<QString,GameListCategory> gameListActions[]={
-      {"mygames",MY_GAMES},
-      {"invitedmegames",INVITED_GAMES},
-      {"opengames",OPEN_GAMES},
-      {"livegames",LIVE_GAMES},
-      {"recentgames",RECENT_GAMES}};
-    for (const auto gameListAction:gameListActions)
-      emit sendGameList(std::get<1>(gameListAction),getGameList(stateData[std::get<0>(gameListAction)].toList()));
+    try {
+      const auto stateData=processReply(*stateReply);
+      const std::pair<QString,GameListCategory> gameListActions[]={
+        {"mygames",MY_GAMES},
+        {"invitedmegames",INVITED_GAMES},
+        {"opengames",OPEN_GAMES},
+        {"livegames",LIVE_GAMES},
+        {"recentgames",RECENT_GAMES}};
+      for (const auto gameListAction:gameListActions)
+        emit sendGameList(std::get<1>(gameListAction),getGameList(stateData[std::get<0>(gameListAction)].toList()));
+    }
+    catch (const std::exception& exception) {
+      emit error(exception);
+    }
   });
   return std::vector<QNetworkReply*>(1,stateReply);
 }

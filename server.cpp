@@ -36,6 +36,9 @@ Server::Server(Globals& globals_,ASIP& session_,MainWindow& mainWindow_) :
   if (extraSiteWidget!=nullptr)
     vBoxLayout.addWidget(extraSiteWidget.release());
 
+  connect(&session,&ASIP::error,this,[this](const std::exception& exception) {
+    MessageBox(QMessageBox::Critical,tr("Error from game room"),exception.what(),QMessageBox::NoButton,this).exec();
+  });
   connect(&session,&ASIP::sendGameList,this,[&](const ASIP::GameListCategory gameListCategory,const std::vector<ASIP::GameInfo>& games) {
     const auto gameList=gameLists.find(gameListCategory);
     if (gameList!=gameLists.end())

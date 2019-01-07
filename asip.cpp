@@ -176,7 +176,12 @@ QNetworkReply* ASIP::gameListAction(const QString& action,const ASIP::GameListCa
 {
   const auto networkReply=post(this,{{"action",action},dataPair("sid")});
   connect(networkReply,&QNetworkReply::finished,this,[this,networkReply,gameListCategory] {
-    emit sendGameList(gameListCategory,getGameList(*networkReply,gameListCategory));
+    try {
+      emit sendGameList(gameListCategory,getGameList(*networkReply,gameListCategory));
+    }
+    catch (const std::exception& exception) {
+      emit error(exception);
+    }
   });
   return networkReply;
 }
@@ -289,12 +294,22 @@ void ASIP::sit()
 {
   QNetworkReply* sitReply=post(this,{{"action","sit"},dataPair("tid"),dataPair("grid")});
   connect(sitReply,&QNetworkReply::finished,this,[=]() {
-    processReply(*sitReply);
-    gameStateReply=post(this,{{"action","gamestate"},dataPair("sid")});
-    connect(gameStateReply,&QNetworkReply::finished,this,[=]() {
-      processReply(*gameStateReply);
-      update(false);
-    });
+    try {
+      processReply(*sitReply);
+      gameStateReply=post(this,{{"action","gamestate"},dataPair("sid")});
+      connect(gameStateReply,&QNetworkReply::finished,this,[=]() {
+        try {
+          processReply(*gameStateReply);
+          update(false);
+        }
+        catch (const std::exception& exception) {
+          emit error(exception);
+        }
+      });
+    }
+    catch (const std::exception& exception) {
+      emit error(exception);
+    }
   });
 }
 
@@ -305,8 +320,13 @@ void ASIP::forceUpdate()
     gameStateReply->deleteLater();
     gameStateReply=post(this,{{"action","gamestate"},dataPair("sid"),{"wait","0"},{"maxwait","0"}});
     connect(gameStateReply,&QNetworkReply::finished,this,[=]() {
-      processReply(*gameStateReply);
-      update(true);
+      try {
+        processReply(*gameStateReply);
+        update(true);
+      }
+      catch (const std::exception& exception) {
+        emit error(exception);
+      }
     });
   }
 }
@@ -358,22 +378,17 @@ void ASIP::update(const bool hardSynchronization)
   connect(gameStateReply,&QNetworkReply::finished,this,[=]() {
     try {
       processReply(*gameStateReply);
+      QWriteLocker writeLocker(&mostRecentData_mutex);
+      auto& newMoves=mostRecentData["moves"];
+      auto& newChat=mostRecentData["chat"];
+      newMoves=oldMoves+newMoves.toString();
+      newChat=oldChat+newChat.toString();
+      writeLocker.unlock();
+      update(false);
     }
     catch (const std::exception& exception) {
-      if (exception.what()==std::string("Gameserver: No Game Data"))
-        return;
-      else if (startsWith(exception.what(),"Gameserver: Invalid Session Id: "))
-        return;
-      else
-        throw;
+      emit error(exception);
     }
-    QWriteLocker writeLocker(&mostRecentData_mutex);
-    auto& newMoves=mostRecentData["moves"];
-    auto& newChat=mostRecentData["chat"];
-    newMoves=oldMoves+newMoves.toString();
-    newChat=oldChat+newChat.toString();
-    writeLocker.unlock();
-    update(false);
   });
 }
 
@@ -384,7 +399,12 @@ void ASIP::postAuthDependingAction(const QString& action,const std::initializer_
     items.insert(items.end(),extraItems);
     QNetworkReply* actionReply=post(this,items);
     connect(actionReply,&QNetworkReply::finished,[=]{
-      processReply(*actionReply);
+      try {
+        processReply(*actionReply);
+      }
+      catch (const std::exception& exception) {
+        emit error(exception);
+      }
     });};
   QReadLocker readLocker(&mostRecentData_mutex);
   if (mostRecentData.contains("auth")) {

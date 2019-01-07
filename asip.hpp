@@ -113,6 +113,8 @@ private:
   TimeEstimator timeEstimator;
   QDateTime lastReplyTime;
   QNetworkReply* gameStateReply;
+signals:
+  void error(const std::exception& exception);
 };
 
 #endif // ASIP_HPP

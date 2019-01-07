@@ -112,6 +112,9 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
     restoreState(saveState()); // QT BUG: https://bugreports.qt.io/browse/QTBUG-65592
 
   if (session!=nullptr) {
+    connect(session.get(),&ASIP::error,this,[this](const std::exception& exception) {
+      MessageBox(QMessageBox::Critical,tr("Error from game server"),exception.what(),QMessageBox::NoButton,this).exec();
+    });
     connect(&board,&Board::gameStarted,session.get(),&ASIP::start);
     for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side)) {
       auto& dockWidget=dockWidgets[side];
