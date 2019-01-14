@@ -37,6 +37,7 @@ SOURCES += \
     opengame.cpp \
     pieceicons.cpp \
     playerbar.cpp \
+    popup.cpp \
     server.cpp \
     timecontrol.cpp \
     timeestimator.cpp
@@ -64,6 +65,7 @@ HEADERS += \
     opengame.hpp \
     pieceicons.hpp \
     playerbar.hpp \
+    popup.hpp \
     readonly.hpp \
     server.hpp \
     timecontrol.hpp \

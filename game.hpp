@@ -13,7 +13,7 @@ class ASIP;
 class Game : public QMainWindow {
   Q_OBJECT
 public:
-  explicit Game(Globals& globals_,const Side viewpoint,QWidget* const parent=nullptr,const std::shared_ptr<ASIP> session_=std::shared_ptr<ASIP>());
+  explicit Game(Globals& globals_,const Side viewpoint,QWidget* const parent=nullptr,const std::shared_ptr<ASIP> session_=std::shared_ptr<ASIP>(),const bool customSetup=false);
   virtual bool event(QEvent* event) override;
   virtual bool eventFilter(QObject* watched,QEvent* event) override;
 private:

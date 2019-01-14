@@ -8,11 +8,11 @@
 #include "messagebox.hpp"
 #include "io.hpp"
 
-Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const std::shared_ptr<ASIP> session_) :
+Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const std::shared_ptr<ASIP> session_,const bool customSetup) :
   QMainWindow(parent),
   globals(globals_),
   session(session_),
-  board(globals,viewpoint,session!=nullptr,{session==nullptr,session==nullptr}),
+  board(globals,viewpoint,session!=nullptr,{session==nullptr,session==nullptr},customSetup),
   dockWidgetResized(false),
   processedMoves(0),
   nextTickTime(-1),

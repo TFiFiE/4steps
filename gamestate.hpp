@@ -12,6 +12,8 @@ public:
   Placement placement(const Side side) const;
   bool isSupported(const SquareIndex square,const Side side) const;
   bool isFrozen(const SquareIndex square) const;
+  bool floatingPiece(const SquareIndex square) const;
+  bool legalPosition() const;
   Squares legalDestinations(const SquareIndex origin) const;
   bool legalOrigin(const SquareIndex square) const;
   std::vector<std::vector<ExtendedStep> > legalRoutes(const SquareIndex origin,const SquareIndex destination) const;

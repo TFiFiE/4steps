@@ -36,6 +36,14 @@ public:
     else
       assert(false);
   }
+  void customSetup(const MoveTree& moveTree)
+  {
+    gameTree->emplace_back(Placement(),MoveTrees());
+    firstSetupNode=--gameTree->end();
+    MoveTrees& moveTrees=firstSetupNode->second;
+    moveTrees.emplace_back(moveTree);
+    moveNode=&moveTrees.back();
+  }
   void makeMove(const ExtendedSteps& move)
   {
     assert(moveNode!=nullptr);

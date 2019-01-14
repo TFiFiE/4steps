@@ -18,7 +18,7 @@ struct MoveTree {
   bool changedSquare(const SquareIndex square) const;
   MoveLegality legalMove(const GameState& resultingState) const;
   bool hasLegalMoves(const GameState& startingState) const;
-  void detectGameEnd();
+  Result detectGameEnd();
   MoveTree& makeMove(const ExtendedSteps& move);
 };
 

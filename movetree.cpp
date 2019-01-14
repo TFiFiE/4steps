@@ -104,7 +104,7 @@ bool MoveTree::hasLegalMoves(const GameState& startingState) const
   return false;
 }
 
-void MoveTree::detectGameEnd()
+Result MoveTree::detectGameEnd()
 {
   assert(currentState.stepsAvailable==MAX_STEPS_PER_MOVE);
   bool goal[NUM_SIDES]={false,false};
@@ -127,18 +127,19 @@ void MoveTree::detectGameEnd()
     if (goal[side]) {
       result.endCondition=GOAL;
       result.winner=side;
-      return;
+      return result;
     }
     else if (eliminated[otherSide(side)]) {
       result.endCondition=ELIMINATION;
       result.winner=side;
-      return;
+      return result;
     }
   }
   if (!hasLegalMoves(currentState)) {
     result.endCondition=IMMOBILIZATION;
     result.winner=playedSide;
   }
+  return result;
 }
 
 MoveTree& MoveTree::makeMove(const ExtendedSteps& move)

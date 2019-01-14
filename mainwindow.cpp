@@ -9,6 +9,7 @@ MainWindow::MainWindow(Globals& globals_,QWidget* const parent) :
   QMainWindow(parent),
   globals(globals_),
   emptyGame(tr("Edit &new game")),
+  customGame(tr("Set up &custom position")),
   logIn(tr("&Log in")),
   quit(tr("&Quit")),
   buildTime(tr("Built: ")+__DATE__+QString(" ")+__TIME__)
@@ -17,11 +18,15 @@ MainWindow::MainWindow(Globals& globals_,QWidget* const parent) :
   const auto menu=menuBar()->addMenu(tr("&Game"));
 
   emptyGame.setShortcut(QKeySequence::New);
-  connect(&emptyGame,&QAction::triggered,this,[=]{new Game(globals,FIRST_SIDE,this);});
+  connect(&emptyGame,&QAction::triggered,this,[this]{new Game(globals,FIRST_SIDE,this);});
   menu->addAction(&emptyGame);
 
+  customGame.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_C));
+  connect(&customGame,&QAction::triggered,this,[this]{new Game(globals,FIRST_SIDE,this,nullptr,true);});
+  menu->addAction(&customGame);
+
   logIn.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_L));
-  connect(&logIn,&QAction::triggered,this,[&]{openDialog(new Login(globals,*this));});
+  connect(&logIn,&QAction::triggered,this,[this]{openDialog(new Login(globals,*this));});
   menu->addAction(&logIn);
 
   quit.setShortcuts(QKeySequence::Quit);

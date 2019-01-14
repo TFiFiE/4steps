@@ -53,6 +53,29 @@ bool GameState::isFrozen(const SquareIndex square) const
   return dominatingNeighbor;
 }
 
+bool GameState::floatingPiece(const SquareIndex square) const
+{
+  if (isTrap(square)) {
+    const PieceTypeAndSide pieceTypeAndSide=currentPieces[square];
+    if (pieceTypeAndSide!=NO_PIECE) {
+      const Side pieceSide=toSide(pieceTypeAndSide);
+      for (const auto adjacentSquare:adjacentSquares(square))
+        if (isSide(currentPieces[adjacentSquare],pieceSide))
+          return false;
+      return true;
+    }
+  }
+  return false;
+}
+
+bool GameState::legalPosition() const
+{
+  for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square))
+    if (floatingPiece(square))
+      return false;
+  return true;
+}
+
 Squares GameState::legalDestinations(const SquareIndex origin) const
 {
   Squares result;

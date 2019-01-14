@@ -12,7 +12,7 @@ struct Globals;
 class Board : public QWidget {
   Q_OBJECT
 public:
-  explicit Board(Globals& globals_,const Side viewpoint,const bool soundOn,const std::array<bool,NUM_SIDES>& controllableSides_={true,true},QWidget* const parent=nullptr,const Qt::WindowFlags f=Qt::WindowFlags());
+  explicit Board(Globals& globals_,const Side viewpoint,const bool soundOn,const std::array<bool,NUM_SIDES>& controllableSides_={true,true},const bool customSetup_=false,QWidget* const parent=nullptr,const Qt::WindowFlags f=Qt::WindowFlags());
   bool setupPhase() const;
   Side sideToMove() const;
   MoveTree& currentMoveNode() const;
@@ -43,6 +43,7 @@ private:
   static int closestAxisDirection(unsigned int value,const unsigned int size);
   SquareIndex closestAdjacentSquare(const QPoint& position) const;
   bool setupPlacementPhase() const;
+  bool isSetupSquare(const Side side,const SquareIndex square) const;
   bool validDrop() const;
 
   void initSetup();
@@ -80,16 +81,20 @@ private:
   std::array<unsigned int,NUM_PIECE_TYPES-1> numSetupPieces;
   int currentSetupPiece;
   std::array<bool,NUM_SIDES> controllableSides;
+  bool customSetup;
   bool autoRotate;
   std::array<SquareIndex,2> drag;
   ExtendedSteps dragSteps;
   std::array<SquareIndex,2> highlighted;
+  const QColor neutralColor;
 signals:
   void gameStarted();
   void boardChanged();
   void boardRotated(const bool southIsUp);
   void sendSetup(const Placement& placement,const Side side);
   void sendMove(const ExtendedSteps& move,const Side side);
+
+  friend class Popup;
 };
 
 #endif // BOARD_HPP

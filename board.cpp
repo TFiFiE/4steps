@@ -4,19 +4,23 @@
 #include "globals.hpp"
 #include "messagebox.hpp"
 #include "io.hpp"
+#include "popup.hpp"
 
-Board::Board(Globals& globals_,const Side viewpoint,const bool soundOn,const std::array<bool,NUM_SIDES>& controllableSides_,QWidget* const parent,const Qt::WindowFlags f) :
+Board::Board(Globals& globals_,const Side viewpoint,const bool soundOn,const std::array<bool,NUM_SIDES>& controllableSides_,const bool customSetup_,QWidget* const parent,const Qt::WindowFlags f) :
   QWidget(parent,f),
   southIsUp(viewpoint==SECOND_SIDE),
   globals(globals_),
   afterCurrentStep(potentialMove.end()),
   controllableSides(controllableSides_),
+  customSetup(customSetup_),
   autoRotate(false),
-  drag{NO_SQUARE,NO_SQUARE}
+  drag{NO_SQUARE,NO_SQUARE},
+  neutralColor(0x89,0x65,0x7B)
 {
   qMediaPlayer.setPlaylist(&qMediaPlaylist);
   toggleSound(soundOn);
-  initSetup();
+  if (!customSetup)
+    initSetup();
 
   globals.settings.beginGroup("Board");
   const auto stepMode=globals.settings.value("step_mode").toBool();
@@ -28,12 +32,12 @@ Board::Board(Globals& globals_,const Side viewpoint,const bool soundOn,const std
 
 bool Board::setupPhase() const
 {
-  return currentNode.inSetup();
+  return customSetup || currentNode.inSetup();
 }
 
 Side Board::sideToMove() const
 {
-  return currentNode.sideToMove();
+  return customSetup ? potentialSetup.sideToMove : currentNode.sideToMove();
 }
 
 MoveTree& Board::currentMoveNode() const
@@ -199,8 +203,8 @@ SquareIndex Board::orientedSquare(unsigned int file,unsigned int rank) const
 
 SquareIndex Board::positionToSquare(const QPoint& position) const
 {
-  const int file=position.x()/squareWidth();
-  const int rank=position.y()/squareHeight();
+  const int file=floorDiv(position.x(),squareWidth());
+  const int rank=floorDiv(position.y(),squareHeight());
   return orientedSquare(file,rank);
 }
 
@@ -217,8 +221,8 @@ int Board::closestAxisDirection(unsigned int value,const unsigned int size)
 
 SquareIndex Board::closestAdjacentSquare(const QPoint& position) const
 {
-  const int file=position.x()/squareWidth();
-  const int rank=position.y()/squareHeight();
+  const int file=floorDiv(position.x(),squareWidth());
+  const int rank=floorDiv(position.y(),squareHeight());
   const int localX=position.x()%squareWidth();
   const int localY=position.y()%squareHeight();
   const int  widthDirection=(file==0 ? 1 : (file==NUM_FILES-1 ? -1 : closestAxisDirection(localX,squareWidth())));
@@ -238,7 +242,12 @@ SquareIndex Board::closestAdjacentSquare(const QPoint& position) const
 
 bool Board::setupPlacementPhase() const
 {
-  return setupPhase() && currentSetupPiece>=0;
+  return !customSetup && currentNode.inSetup() && currentSetupPiece>=0;
+}
+
+bool Board::isSetupSquare(const Side side,const SquareIndex square) const
+{
+  return customSetup || ::isSetupSquare(side,square);
 }
 
 bool Board::validDrop() const
@@ -316,7 +325,7 @@ bool Board::updateStepHighlights(const QPoint& mousePosition)
   highlighted[ORIGIN]=positionToSquare(mousePosition);
   highlighted[DESTINATION]=closestAdjacentSquare(mousePosition);
   if (setupPhase()) {
-    if (!isSetupSquare(sideToMove(),highlighted[ORIGIN]))
+    if (potentialSetup.currentPieces[highlighted[ORIGIN]]==NO_PIECE || !isSetupSquare(sideToMove(),highlighted[ORIGIN]))
       fill(highlighted,NO_SQUARE);
     else if (!isSetupSquare(sideToMove(),highlighted[DESTINATION]))
       highlighted[DESTINATION]=NO_SQUARE;
@@ -348,7 +357,7 @@ bool Board::singleSquareAction(const SquareIndex square)
     return doubleSquareAction(highlighted[ORIGIN],highlighted[DESTINATION]);
   else {
     if (highlighted[ORIGIN]==NO_SQUARE) {
-      if (setupPhase() ? isSetupSquare(sideToMove(),square) : gameState().legalOrigin(square)) {
+      if (setupPhase() ? (potentialSetup.currentPieces[square]!=NO_PIECE && isSetupSquare(sideToMove(),square)) : gameState().legalOrigin(square)) {
         highlighted[ORIGIN]=square;
         return true;
       }
@@ -383,7 +392,12 @@ bool Board::doubleSquareSetupAction(const SquareIndex origin,const SquareIndex d
 {
   if (isSetupSquare(sideToMove(),destination)) {
     GameState::Board& currentPieces=potentialSetup.currentPieces;
-    std::swap(currentPieces[origin],currentPieces[destination]);
+    if (customSetup) {
+      currentPieces[destination]=currentPieces[origin];
+      currentPieces[origin]=NO_PIECE;
+    }
+    else
+      std::swap(currentPieces[origin],currentPieces[destination]);
     refreshHighlights(true);
     return true;
   }
@@ -449,7 +463,8 @@ void Board::mousePressEvent(QMouseEvent* event)
   switch (event->button()) {
     case Qt::LeftButton: {
       const SquareIndex square=positionToSquare(event->pos());
-      if (setupPhase() ? isSide(gameState().currentPieces[square],sideToMove()) : gameState().legalOrigin(square)) {
+      const PieceTypeAndSide currentPiece=gameState().currentPieces[square];
+      if (customSetup ? currentPiece!=NO_PIECE : (currentNode.inSetup() ? isSide(currentPiece,sideToMove()) : gameState().legalOrigin(square))) {
         fill(drag,square);
         dragSteps.clear();
         update();
@@ -462,6 +477,9 @@ void Board::mousePressEvent(QMouseEvent* event)
       else if (!stepMode && highlighted[ORIGIN]!=NO_SQUARE) {
         highlighted[ORIGIN]=NO_SQUARE;
         update();
+      }
+      else if (customSetup) {
+        new Popup(*this,positionToSquare(event->pos()));
       }
       else if (afterCurrentStep!=potentialMove.begin()) {
         assert(!setupPhase());
@@ -551,7 +569,25 @@ void Board::mouseDoubleClickEvent(QMouseEvent* event)
   }
   switch (event->button()) {
     case Qt::LeftButton: {
-      if (setupPhase()) {
+      if (customSetup) {
+        if (potentialSetup.legalPosition()) {
+          MoveTree moveTree(potentialSetup);
+          if (moveTree.detectGameEnd().endCondition==NO_END) {
+            customSetup=false;
+            currentNode.customSetup(moveTree);
+            if (autoRotate)
+              setViewpoint(sideToMove());
+            emit boardChanged();
+            refreshHighlights(true);
+            update();
+          }
+          else
+            MessageBox(QMessageBox::Critical,tr("Terminal position"),tr("Game already finished in this position."),QMessageBox::NoButton,this).exec();
+        }
+        else
+          MessageBox(QMessageBox::Critical,tr("Illegal position"),tr("Unprotected piece on trap."),QMessageBox::NoButton,this).exec();
+      }
+      else if (currentNode.inSetup()) {
         if (currentSetupPiece<0 && !isSetupSquare(sideToMove(),positionToSquare(event->pos()))) {
           const Placement placement=gameState().placement(sideToMove());
           emit sendSetup(placement,sideToMove());
@@ -628,6 +664,7 @@ void Board::focusOutEvent(QFocusEvent*)
 void Board::paintEvent(QPaintEvent*)
 {
   const QColor sideColors[NUM_SIDES]={Qt::white,Qt::black};
+  const QColor mildSideColors[NUM_SIDES]={{0xC9,0xC9,0xC9},{0x23,0x23,0x23}};
   QPainter qPainter(this);
 
   qreal factor=squareHeight()/static_cast<qreal>(qPainter.fontMetrics().height());
@@ -653,21 +690,23 @@ void Board::paintEvent(QPaintEvent*)
           continue;
         else {
           qPainter.setBrush(sideColors[sideToMove()]);
-          qPen.setColor(sideColors[!sideToMove()]);
+          qPen.setColor(sideColors[otherSide(sideToMove())]);
         }
       }
       else if (pass==1)
         continue;
       else {
         if (!setupPhase() && (square==drag[ORIGIN] || found<ORIGIN>(dragSteps,square)))
-          qPainter.setBrush(sideToMove()==FIRST_SIDE ? QColor(0xC9,0xC9,0xC9) : QColor(0x23,0x23,0x23));
-        else if (setupPhase() ? playable() && isSetupRank(sideToMove(),rank) : gameState().stepsAvailable==MAX_STEPS_PER_MOVE && currentMoveNode().changedSquare(square))
-          qPainter.setBrush(sideColors[!sideToMove()]);
+          qPainter.setBrush(mildSideColors[sideToMove()]);
+        else if (setupPhase() ? !customSetup && playable() && isSetupRank(sideToMove(),rank) : gameState().stepsAvailable==MAX_STEPS_PER_MOVE && currentMoveNode().changedSquare(square))
+          qPainter.setBrush(sideColors[otherSide(sideToMove())]);
         else {
           if (isTrapSquare)
             qPainter.setBrush(rank<NUM_RANKS/2 ? QColor(0xF6,0x66,0x10) : QColor(0x42,0x00,0xF2));
+          else if (customSetup)
+            qPainter.setBrush(mildSideColors[sideToMove()]);
           else
-            qPainter.setBrush(QColor(0x89,0x65,0x7B));
+            qPainter.setBrush(neutralColor);
         }
         qPen.setColor(sideColors[sideToMove()]);
       }
@@ -676,7 +715,7 @@ void Board::paintEvent(QPaintEvent*)
       qPainter.drawRect(qRect);
       if (isTrapSquare) {
         if (currentNode.result().endCondition!=NO_END)
-          qPainter.setPen(QColor(0x89,0x65,0x7B));
+          qPainter.setPen(neutralColor);
         qPainter.drawText(qRect,Qt::AlignCenter,toCoordinates(file,rank,'A').begin());
       }
       if (square!=drag[ORIGIN]) {

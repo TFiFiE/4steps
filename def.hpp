@@ -97,6 +97,13 @@ typedef std::list<std::pair<Placement,MoveTrees> > GameTree;
 
 const unsigned int numStartingPiecesPerType[]={8,2,2,2,1,1};
 
+template<class Integer>
+Integer floorDiv(const Integer dividend,const Integer divisor)
+{
+  assert(divisor>0);
+  return dividend>=0 ? dividend/divisor : -1-(-1-dividend)/divisor;
+}
+
 template<class T>
 inline void increment(T& t)
 {
@@ -201,7 +208,7 @@ inline bool isAdjacent(const SquareIndex square1,const SquareIndex square2)
 
 inline bool isSetupRank(const Side side,const unsigned int rank)
 {
-  return side==0 ? rank<NUM_SETUP_RANKS : rank>=NUM_RANKS-NUM_SETUP_RANKS;
+  return side==FIRST_SIDE ? rank<NUM_SETUP_RANKS : rank>=NUM_RANKS-NUM_SETUP_RANKS;
 }
 
 inline bool isSetupSquare(const Side side,const SquareIndex square)
