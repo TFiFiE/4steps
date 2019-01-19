@@ -157,11 +157,14 @@ inline Side otherSide(const Side side)
   return static_cast<Side>(!side);
 }
 
+inline bool isValidSquare(const unsigned int file,const unsigned int rank)
+{
+  return file<NUM_FILES && rank<NUM_RANKS;
+}
+
 inline SquareIndex toSquare(const unsigned int file,const unsigned int rank)
 {
-  if (file>=NUM_FILES || rank>=NUM_RANKS)
-    return NO_SQUARE;
-  return static_cast<SquareIndex>(file+rank*NUM_FILES);
+  return isValidSquare(file,rank) ? static_cast<SquareIndex>(file+rank*NUM_FILES) : NO_SQUARE;
 }
 
 inline int toFile(const SquareIndex square)

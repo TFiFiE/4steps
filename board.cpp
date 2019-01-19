@@ -197,8 +197,12 @@ QRect Board::visualRectangle(unsigned int file,unsigned int rank) const
 
 SquareIndex Board::orientedSquare(unsigned int file,unsigned int rank) const
 {
-  normalizeOrientation(file,rank);
-  return toSquare(file,rank);
+  if (isValidSquare(file,rank)) {
+    normalizeOrientation(file,rank);
+    return toSquare(file,rank);
+  }
+  else
+    return NO_SQUARE;
 }
 
 SquareIndex Board::positionToSquare(const QPoint& position) const
@@ -247,7 +251,7 @@ bool Board::setupPlacementPhase() const
 
 bool Board::isSetupSquare(const Side side,const SquareIndex square) const
 {
-  return customSetup || ::isSetupSquare(side,square);
+  return customSetup ? square!=NO_SQUARE : ::isSetupSquare(side,square);
 }
 
 bool Board::validDrop() const
@@ -325,7 +329,7 @@ bool Board::updateStepHighlights(const QPoint& mousePosition)
   highlighted[ORIGIN]=positionToSquare(mousePosition);
   highlighted[DESTINATION]=closestAdjacentSquare(mousePosition);
   if (setupPhase()) {
-    if (potentialSetup.currentPieces[highlighted[ORIGIN]]==NO_PIECE || !isSetupSquare(sideToMove(),highlighted[ORIGIN]))
+    if (!isSetupSquare(sideToMove(),highlighted[ORIGIN]) || potentialSetup.currentPieces[highlighted[ORIGIN]]==NO_PIECE)
       fill(highlighted,NO_SQUARE);
     else if (!isSetupSquare(sideToMove(),highlighted[DESTINATION]))
       highlighted[DESTINATION]=NO_SQUARE;
@@ -347,7 +351,9 @@ bool Board::updateStepHighlights(const QPoint& mousePosition)
 
 bool Board::singleSquareAction(const SquareIndex square)
 {
-  if (setupPlacementPhase()) {
+  if (square==NO_SQUARE)
+    return false;
+  else if (setupPlacementPhase()) {
     if (setUpPiece(square)) {
       refreshHighlights(true);
       return true;
@@ -357,7 +363,7 @@ bool Board::singleSquareAction(const SquareIndex square)
     return doubleSquareAction(highlighted[ORIGIN],highlighted[DESTINATION]);
   else {
     if (highlighted[ORIGIN]==NO_SQUARE) {
-      if (setupPhase() ? (potentialSetup.currentPieces[square]!=NO_PIECE && isSetupSquare(sideToMove(),square)) : gameState().legalOrigin(square)) {
+      if (setupPhase() ? (isSetupSquare(sideToMove(),square) && potentialSetup.currentPieces[square]!=NO_PIECE) : gameState().legalOrigin(square)) {
         highlighted[ORIGIN]=square;
         return true;
       }
@@ -460,16 +466,17 @@ void Board::mousePressEvent(QMouseEvent* event)
     event->ignore();
     return;
   }
+  const SquareIndex square=positionToSquare(event->pos());
   switch (event->button()) {
-    case Qt::LeftButton: {
-      const SquareIndex square=positionToSquare(event->pos());
-      const PieceTypeAndSide currentPiece=gameState().currentPieces[square];
-      if (customSetup ? currentPiece!=NO_PIECE : (currentNode.inSetup() ? isSide(currentPiece,sideToMove()) : gameState().legalOrigin(square))) {
-        fill(drag,square);
-        dragSteps.clear();
-        update();
+    case Qt::LeftButton:
+      if (square!=NO_SQUARE) {
+        const PieceTypeAndSide currentPiece=gameState().currentPieces[square];
+        if (customSetup ? currentPiece!=NO_PIECE : (currentNode.inSetup() ? isSide(currentPiece,sideToMove()) : gameState().legalOrigin(square))) {
+          fill(drag,square);
+          dragSteps.clear();
+          update();
+        }
       }
-    }
     break;
     case Qt::RightButton:
       if (drag[ORIGIN]!=NO_SQUARE)
@@ -479,7 +486,8 @@ void Board::mousePressEvent(QMouseEvent* event)
         update();
       }
       else if (customSetup) {
-        new Popup(*this,positionToSquare(event->pos()));
+        if (square!=NO_SQUARE)
+          new Popup(*this,square);
       }
       else if (afterCurrentStep!=potentialMove.begin()) {
         assert(!setupPhase());
@@ -518,7 +526,7 @@ void Board::mouseMoveEvent(QMouseEvent* event)
       const SquareIndex square=positionToSquare(event->pos());
       if (drag[DESTINATION]!=square) {
         drag[DESTINATION]=square;
-        if (drag[ORIGIN]==drag[DESTINATION])
+        if (square==NO_SQUARE || drag[ORIGIN]==drag[DESTINATION])
           dragSteps.clear();
         else if (!setupPhase())
           dragSteps=gameState().preferredRoute(drag[ORIGIN],drag[DESTINATION],dragSteps);
@@ -569,51 +577,54 @@ void Board::mouseDoubleClickEvent(QMouseEvent* event)
   }
   switch (event->button()) {
     case Qt::LeftButton: {
-      if (customSetup) {
-        if (potentialSetup.legalPosition()) {
-          MoveTree moveTree(potentialSetup);
-          if (moveTree.detectGameEnd().endCondition==NO_END) {
-            customSetup=false;
-            currentNode.customSetup(moveTree);
-            if (autoRotate)
-              setViewpoint(sideToMove());
-            emit boardChanged();
-            refreshHighlights(true);
-            update();
+      const SquareIndex eventSquare=positionToSquare(event->pos());
+      if ((eventSquare==NO_SQUARE || gameState().currentPieces[eventSquare]==NO_PIECE) && (!stepMode || found(highlighted,NO_SQUARE))) {
+        if (customSetup) {
+          if (potentialSetup.legalPosition()) {
+            MoveTree moveTree(potentialSetup);
+            if (moveTree.detectGameEnd().endCondition==NO_END) {
+              customSetup=false;
+              currentNode.customSetup(moveTree);
+              if (autoRotate)
+                setViewpoint(sideToMove());
+              emit boardChanged();
+              refreshHighlights(true);
+              update();
+            }
+            else
+              MessageBox(QMessageBox::Critical,tr("Terminal position"),tr("Game already finished in this position."),QMessageBox::NoButton,this).exec();
           }
           else
-            MessageBox(QMessageBox::Critical,tr("Terminal position"),tr("Game already finished in this position."),QMessageBox::NoButton,this).exec();
+            MessageBox(QMessageBox::Critical,tr("Illegal position"),tr("Unprotected piece on trap."),QMessageBox::NoButton,this).exec();
         }
-        else
-          MessageBox(QMessageBox::Critical,tr("Illegal position"),tr("Unprotected piece on trap."),QMessageBox::NoButton,this).exec();
-      }
-      else if (currentNode.inSetup()) {
-        if (currentSetupPiece<0 && !isSetupSquare(sideToMove(),positionToSquare(event->pos()))) {
-          const Placement placement=gameState().placement(sideToMove());
-          emit sendSetup(placement,sideToMove());
-          finalizeSetup(placement,true);
+        else if (currentNode.inSetup()) {
+          if (currentSetupPiece<0) {
+            const Placement placement=gameState().placement(sideToMove());
+            emit sendSetup(placement,sideToMove());
+            finalizeSetup(placement,true);
+          }
         }
-      }
-      else if (gameState().currentPieces[positionToSquare(event->pos())]==NO_PIECE && (!stepMode || found(highlighted,NO_SQUARE))) {
-        const ExtendedSteps playedMove(potentialMove.cbegin(),afterCurrentStep);
-        switch (currentMoveNode().legalMove(gameState())) {
-          case LEGAL:
-            emit sendMove(playedMove,sideToMove());
-            playSound("qrc:/loud-step.wav");
-            finalizeMove(playedMove);
-          break;
-          case ILLEGAL_PUSH_INCOMPLETION:
-            playSound("qrc:/illegal-move.wav");
-            MessageBox(QMessageBox::Critical,tr("Incomplete push"),tr("Push was not completed."),QMessageBox::NoButton,this).exec();
-          break;
-          case ILLEGAL_PASS:
-            playSound("qrc:/illegal-move.wav");
-            MessageBox(QMessageBox::Critical,tr("Illegal pass"),tr("Move did not change board."),QMessageBox::NoButton,this).exec();
-          break;
-          case ILLEGAL_REPETITION:
-            playSound("qrc:/illegal-move.wav");
-            MessageBox(QMessageBox::Critical,tr("Illegal repetition"),tr("Move would repeat board and side to move too often."),QMessageBox::NoButton,this).exec();
-          break;
+        else {
+          const ExtendedSteps playedMove(potentialMove.cbegin(),afterCurrentStep);
+          switch (currentMoveNode().legalMove(gameState())) {
+            case LEGAL:
+              emit sendMove(playedMove,sideToMove());
+              playSound("qrc:/loud-step.wav");
+              finalizeMove(playedMove);
+            break;
+            case ILLEGAL_PUSH_INCOMPLETION:
+              playSound("qrc:/illegal-move.wav");
+              MessageBox(QMessageBox::Critical,tr("Incomplete push"),tr("Push was not completed."),QMessageBox::NoButton,this).exec();
+            break;
+            case ILLEGAL_PASS:
+              playSound("qrc:/illegal-move.wav");
+              MessageBox(QMessageBox::Critical,tr("Illegal pass"),tr("Move did not change board."),QMessageBox::NoButton,this).exec();
+            break;
+            case ILLEGAL_REPETITION:
+              playSound("qrc:/illegal-move.wav");
+              MessageBox(QMessageBox::Critical,tr("Illegal repetition"),tr("Move would repeat board and side to move too often."),QMessageBox::NoButton,this).exec();
+            break;
+          }
         }
       }
     }
