@@ -75,7 +75,7 @@ public:
   bool gameStateAvailable() const;
   Status getStatus() const;
   Side sideToMove() const;
-  std::pair<GameTreeNode,unsigned int> getMoves() const;
+  std::pair<GameTreeNode,size_t> getMoves() const;
   std::array<QString,NUM_SIDES> getPlayers() const;
   Result getResult() const;
   std::array<std::array<qint64,3>,NUM_SIDES> getTimes() const;

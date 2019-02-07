@@ -13,7 +13,7 @@ struct MoveTree {
   explicit MoveTree(const MoveTree& moveTree);
   MoveTree& operator=(const MoveTree& rhs);
   bool operator==(const MoveTree& rhs) const;
-  unsigned int numDescendants() const;
+  size_t numDescendants() const;
   std::vector<GameState> history() const;
   bool changedSquare(const SquareIndex square) const;
   MoveLegality legalMove(const GameState& resultingState) const;

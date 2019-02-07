@@ -57,7 +57,7 @@ inline SquareIndex toDestination(const SquareIndex origin,const char directionLe
 
 inline std::string toString(const PieceTypeAndSide pieceTypeAndSide,const SquareIndex square)
 {
-  return std::string(1,pieceLetters[pieceTypeAndSide])+toCoordinates(square).begin();
+  return pieceLetters[pieceTypeAndSide]+std::string(toCoordinates(square).data());
 }
 
 inline char toLetter(const Side side)
@@ -162,14 +162,14 @@ inline PieceSteps toMove(const std::string& input)
   return result;
 }
 
-inline std::pair<GameTreeNode,unsigned int> toTree(const std::string& lines)
+inline std::pair<GameTreeNode,size_t> toTree(const std::string& lines)
 {
   GameTreeNode iterator;
 
   std::stringstream ss;
   ss<<lines;
 
-  std::vector<std::pair<unsigned int,std::string> > moves;
+  std::vector<std::pair<size_t,std::string> > moves;
   int moveIndex=-1;
   std::string move;
   std::string word;

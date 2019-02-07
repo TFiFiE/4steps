@@ -313,9 +313,8 @@ inline void runtime_assert(const bool condition,const QString& message)
   runtime_assert(condition,message.toStdString());
 }
 
-#if __cplusplus <= 201103L
 #include <memory>
-
+#ifndef __cpp_lib_make_unique
 template<typename T,typename... Args>
 std::unique_ptr<T> make_unique(Args&&... args)
 {

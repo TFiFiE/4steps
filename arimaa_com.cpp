@@ -10,15 +10,15 @@
 #include "io.hpp"
 #include "bots.hpp"
 
-template<class ASIP>
-Arimaa_com<ASIP>::Arimaa_com(QNetworkAccessManager& networkAccessManager,const QString& serverURL,QObject* const parent,typename ASIP::Data startingData) :
-  ASIP(networkAccessManager,serverURL,parent,startingData),
+template<class Base>
+Arimaa_com<Base>::Arimaa_com(QNetworkAccessManager& networkAccessManager,const QString& serverURL,QObject* const parent,typename Base::Data startingData) :
+  Base(networkAccessManager,serverURL,parent,startingData),
   ratedMode(true)
 {
-  ASIP::connect(this,&ASIP::sendGameList,[this](const typename ASIP::GameListCategory gameListCategory,const std::vector<typename ASIP::GameInfo>& games) {
+  Base::connect(this,&Base::sendGameList,[this](const typename Base::GameListCategory gameListCategory,const std::vector<typename Base::GameInfo>& games) {
     auto& fixedCatGames=fixedGames[gameListCategory];
     fixedCatGames.clear();
-    const bool alreadyJoined=(gameListCategory!=ASIP::INVITED_GAMES && gameListCategory!=ASIP::OPEN_GAMES);
+    const bool alreadyJoined=(gameListCategory!=Base::INVITED_GAMES && gameListCategory!=Base::OPEN_GAMES);
     for (const auto& game:games) {
       if (alreadyJoined || !game.rated || std::none_of(std::begin(game.players),std::end(game.players),isBotName))
         fixedCatGames.emplace(game.id);
@@ -26,17 +26,17 @@ Arimaa_com<ASIP>::Arimaa_com(QNetworkAccessManager& networkAccessManager,const Q
   });
 }
 
-template<class ASIP>
-std::unique_ptr<::ASIP> Arimaa_com<ASIP>::create(QNetworkAccessManager& networkAccessManager,const QString& serverURL,QObject* const parent,typename ASIP::Data startingData) const
+template<class Base>
+std::unique_ptr<::ASIP> Arimaa_com<Base>::create(QNetworkAccessManager& networkAccessManager,const QString& serverURL,QObject* const parent,typename Base::Data startingData) const
 {
   using namespace std;
-  return make_unique<Arimaa_com<ASIP> >(networkAccessManager,serverURL,parent,startingData);
+  return make_unique<Arimaa_com<Base> >(networkAccessManager,serverURL,parent,startingData);
 }
 
-template<class ASIP>
-typename ASIP::Data Arimaa_com<ASIP>::processReply(QNetworkReply& networkReply)
+template<class Base>
+typename Base::Data Arimaa_com<Base>::processReply(QNetworkReply& networkReply)
 {
-  return ASIP::processReply(networkReply);
+  return Base::processReply(networkReply);
 }
 
 template<>
@@ -52,10 +52,10 @@ typename ASIP::Data Arimaa_com<ASIP2>::processReply(QNetworkReply& networkReply)
   }
 }
 
-template<class ASIP>
-void Arimaa_com<ASIP>::enterGame(QObject* const requester,const QString& gameID,const Side side,const std::function<void(QNetworkReply*)> networkReplyAction)
+template<class Base>
+void Arimaa_com<Base>::enterGame(QObject* const requester,const QString& gameID,const Side side,const std::function<void(QNetworkReply*)> networkReplyAction)
 {
-  ASIP::enterGame(requester,gameID,side,networkReplyAction);
+  Base::enterGame(requester,gameID,side,networkReplyAction);
 }
 
 template<>
@@ -97,10 +97,10 @@ void Arimaa_com<ASIP2>::enterGame(QObject* const requester,const QString& gameID
   ASIP::enterGame(requester,gameID,side,networkReplyAction);
 }
 
-template<class ASIP>
-std::unique_ptr<::ASIP> Arimaa_com<ASIP>::getGame(QNetworkReply& networkReply)
+template<class Base>
+std::unique_ptr<::ASIP> Arimaa_com<Base>::getGame(QNetworkReply& networkReply)
 {
-  return ASIP::getGame(networkReply);
+  return Base::getGame(networkReply);
 }
 
 template<>
@@ -127,8 +127,8 @@ std::unique_ptr<::ASIP> Arimaa_com<ASIP2>::getGame(QNetworkReply& networkReply)
   return ASIP::getGame();
 }
 
-template<class ASIP>
-bool Arimaa_com<ASIP>::possiblyDerateable(const QString& gameID) const
+template<class Base>
+bool Arimaa_com<Base>::possiblyDerateable(const QString& gameID) const
 {
   if (ratedMode)
     return false;
@@ -138,18 +138,18 @@ bool Arimaa_com<ASIP>::possiblyDerateable(const QString& gameID) const
   return true;
 }
 
-template<class ASIP>
-std::unique_ptr<QWidget> Arimaa_com<ASIP>::siteWidget(Server& server)
+template<class Base>
+std::unique_ptr<QWidget> Arimaa_com<Base>::siteWidget(Server& server)
 {
   const auto mainLayout=new QHBoxLayout;
 
   mainLayout->addWidget(botWidget(server.mainWindow).release());
 
-  if (std::is_same<ASIP,ASIP2>::value) {
+  if (std::is_same<Base,ASIP2>::value) {
     const auto ratedBox=new QCheckBox("Keep joined bot games rated");
     mainLayout->addWidget(ratedBox,0,Qt::AlignCenter);
     ratedBox->setChecked(ratedMode);
-    ASIP::connect(ratedBox,&QCheckBox::toggled,[this](const bool checked) {ratedMode=checked;});
+    Base::connect(ratedBox,&QCheckBox::toggled,[this](const bool checked) {ratedMode=checked;});
 
     mainLayout->addWidget(chatroomWidget().release());
   }
@@ -160,21 +160,22 @@ std::unique_ptr<QWidget> Arimaa_com<ASIP>::siteWidget(Server& server)
   return widget;
 }
 
-template<class ASIP>
-bool Arimaa_com<ASIP>::isBotName(const QString& playerName)
+template<class Base>
+bool Arimaa_com<Base>::isBotName(const QString& playerName)
 {
   return playerName.indexOf("bot_")==0;
 }
 
-template<class ASIP>
-QUrl Arimaa_com<ASIP>::serverDirectory() const
+template<class Base>
+QUrl Arimaa_com<Base>::serverDirectory() const
 {
-  return ASIP::serverURL().adjusted(QUrl::RemoveFilename);
+  return Base::serverURL().adjusted(QUrl::RemoveFilename);
 }
 
-template<class ASIP> template<class Function>
-bool Arimaa_com<ASIP>::doMeDependingAction(Function)
+template<class Base> template<class Function>
+bool Arimaa_com<Base>::doMeDependingAction(Function action)
 {
+  static_cast<void>(action);
   return false;
 }
 
@@ -197,6 +198,12 @@ bool Arimaa_com<ASIP2>::doMeDependingAction(Function action)
   return true;
 }
 
+template<class Base>
+std::unique_ptr<QWidget> Arimaa_com<Base>::chatroomWidget()
+{
+  return nullptr;
+}
+
 template<>
 std::unique_ptr<QWidget> Arimaa_com<ASIP2>::chatroomWidget()
 {
@@ -214,19 +221,19 @@ std::unique_ptr<QWidget> Arimaa_com<ASIP2>::chatroomWidget()
   return chatroom;
 }
 
-template<class ASIP>
-std::unique_ptr<QWidget> Arimaa_com<ASIP>::botWidget(MainWindow& mainWindow)
+template<class Base>
+std::unique_ptr<QWidget> Arimaa_com<Base>::botWidget(MainWindow& mainWindow)
 {
   using namespace std;
   auto bots=make_unique<QPushButton>("Bot launcher");
 
   const auto url=serverDirectory().toString()+"botLadderAll.cgi";
-  ASIP::connect(bots.get(),&QPushButton::clicked,this,[this,url,&mainWindow] {
+  Base::connect(bots.get(),&QPushButton::clicked,this,[this,url,&mainWindow] {
     #if 1
-    new Bots(*this,url+"?u="+ASIP::username(),mainWindow);
+    new Bots(*this,url+"?u="+Base::username(),mainWindow);
     #else
     const bool possible=doMeDependingAction([this,url,&mainWindow] {
-      const auto me=ASIP::mostRecentData.value("me").template value<QVariantHash>();
+      const auto me=Base::mostRecentData.value("me").template value<QVariantHash>();
       new Bots(*this,url+"?u="+me["id"].toString(),mainWindow);
     });
     if (!possible)

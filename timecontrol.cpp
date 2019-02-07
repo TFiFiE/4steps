@@ -1,3 +1,4 @@
+#include <array>
 #include <QCheckBox>
 #include "timecontrol.hpp"
 #include "globals.hpp"

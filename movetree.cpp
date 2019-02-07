@@ -37,9 +37,9 @@ bool MoveTree::operator==(const MoveTree& rhs) const
          branches==rhs.branches;
 }
 
-unsigned int MoveTree::numDescendants() const
+size_t MoveTree::numDescendants() const
 {
-  unsigned int result=branches.size();
+  size_t result=branches.size();
   for (const auto& branch:branches)
     result+=branch.second.numDescendants();
   return result;

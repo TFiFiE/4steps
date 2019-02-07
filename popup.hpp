@@ -1,6 +1,7 @@
 #ifndef POPUP_HPP
 #define POPUP_HPP
 
+#include <array>
 #include <QWidget>
 class Board;
 #include "def.hpp"

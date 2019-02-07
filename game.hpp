@@ -24,7 +24,7 @@ private:
   void updateTimes();
   qint64 updateCornerMessage();
   void soundTicker(const Side sideToMove,const qint64 timeLeft);
-  bool processMoves(const std::pair<GameTreeNode,unsigned int>& treeAndNumber,const Side role,const Result& result,const bool hardSynchronization);
+  bool processMoves(const std::pair<GameTreeNode,size_t>& treeAndNumber,const Side role,const Result& result,const bool hardSynchronization);
   void announceResult(const Result& result);
 
   Globals& globals;
@@ -34,7 +34,7 @@ private:
   bool dockWidgetResized;
   PlayerBar playerBars[NUM_SIDES];
   QTimer timer,ticker;
-  unsigned int processedMoves;
+  size_t processedMoves;
   int nextTickTime;
   bool finished;
 

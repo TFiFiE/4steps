@@ -84,7 +84,7 @@ void GameList::receiveGames(std::vector<ASIP::GameInfo> games_)
 {
   games.swap(games_);
 
-  tableWidget.setRowCount(games.size());
+  tableWidget.setRowCount(static_cast<int>(games.size()));
   unsigned int gameIndex=0;
   for (const auto& game:games) {
     for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side)) {

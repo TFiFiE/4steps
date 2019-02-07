@@ -137,11 +137,11 @@ void Bots::parse(QString page)
     }
   }
 
-  standardItemModel.setRowCount(rows.size()-1);
+  standardItemModel.setRowCount(static_cast<int>(rows.size()-1));
   for (unsigned int rowIndex=0;rowIndex<rows.size();++rowIndex) {
     const auto& row=rows[rowIndex];
     if (rowIndex==0) {
-      standardItemModel.setColumnCount(row.size());
+      standardItemModel.setColumnCount(static_cast<int>(row.size()));
       for (unsigned int cellIndex=0;cellIndex<row.size();++cellIndex) {
         const auto& cell=row[cellIndex];
         standardItemModel.setHeaderData(cellIndex,Qt::Horizontal,QString(cell.first).replace('_',' '));
@@ -204,7 +204,7 @@ void Bots::createGame(const QModelIndex& index)
         const QObject* const pending=new QObject(this);
         connect(&session,&ASIP::sendGameList,pending,[=](const typename ASIP::GameListCategory gameListCategory,const std::vector<typename ASIP::GameInfo>& games) {
           if (gameListCategory==ASIP::OPEN_GAMES) {
-            for (int gameIndex=games.size()-1;gameIndex>=0;--gameIndex) {
+            for (int gameIndex=static_cast<int>(games.size()-1);gameIndex>=0;--gameIndex) {
               const auto& game=games[gameIndex];
               if (game.players[side]==botName) {
                 delete pending;

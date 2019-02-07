@@ -143,8 +143,8 @@ struct PreferredRoute {
     if (lhs.size()!=rhs.size())
       return lhs.size()<rhs.size();
 
-    const unsigned int minSize=std::min(preference.size(),lhs.size());
-    for (unsigned int index=0;index<minSize;++index) {
+    const size_t minSize=std::min(preference.size(),lhs.size());
+    for (size_t index=0;index<minSize;++index) {
       const int diff=distance(std::get<DESTINATION>(preference[index]),std::get<DESTINATION>(lhs[index]))-
                      distance(std::get<DESTINATION>(preference[index]),std::get<DESTINATION>(rhs[index]));
       if (diff!=0)

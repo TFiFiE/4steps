@@ -76,7 +76,7 @@ void Popup::paintEvent(QPaintEvent*)
 
   const Side side=otherSide(board.sideToMove());
   qRect.setHeight(board.squareHeight()*ROWS_PER_SIDE);
-  qRect.moveTo(left ? 0 : board.squareWidth()*(pieceOnSquare.cbegin()->size()-1),side==upSide ? 0 : board.squareHeight()*ROWS_PER_SIDE);
+  qRect.moveTo(left ? 0 : board.squareWidth()*static_cast<int>(pieceOnSquare.cbegin()->size()-1),side==upSide ? 0 : board.squareHeight()*ROWS_PER_SIDE);
   qPainter.setBrush(sideColors[side]);
   qPainter.drawRect(qRect);
 

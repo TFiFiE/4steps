@@ -1,6 +1,7 @@
 #ifndef LOGIN_HPP
 #define LOGIN_HPP
 
+#include <array>
 #include <memory>
 class QNetworkReply;
 #include <QDialog>

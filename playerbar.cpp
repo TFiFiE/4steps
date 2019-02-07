@@ -1,3 +1,4 @@
+#include <array>
 #include "playerbar.hpp"
 
 PlayerBar::PlayerBar() :

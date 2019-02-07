@@ -1,6 +1,7 @@
 #ifndef GAMESTATE_HPP
 #define GAMESTATE_HPP
 
+#include <array>
 #include "def.hpp"
 
 class GameState {

@@ -267,7 +267,7 @@ void Board::initSetup()
 
 void Board::nextSetupPiece()
 {
-  currentSetupPiece=numSetupPieces.size()-1;
+  currentSetupPiece=static_cast<int>(numSetupPieces.size()-1);
   while (true) {
     if (currentSetupPiece<0) {
       // Fill remaining squares with most numerous piece type.
@@ -656,17 +656,6 @@ void Board::mouseDoubleClickEvent(QMouseEvent* event)
   event->accept();
 }
 
-void Board::keyPressEvent(QKeyEvent* event)
-{
-  switch (event->key()) {
-    default:
-      event->ignore();
-      return;
-    break;
-  }
-  event->accept();
-}
-
 void Board::focusOutEvent(QFocusEvent*)
 {
   endDrag();
@@ -681,7 +670,7 @@ void Board::paintEvent(QPaintEvent*)
   qreal factor=squareHeight()/static_cast<qreal>(qPainter.fontMetrics().height());
   for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square))
     if (isTrap(square))
-      factor=std::min(factor,squareWidth()/static_cast<qreal>(qPainter.fontMetrics().width(toCoordinates(square,'A').begin())));
+      factor=std::min(factor,squareWidth()/static_cast<qreal>(qPainter.fontMetrics().width(toCoordinates(square,'A').data())));
   if (factor>0) {
     QFont qFont(qPainter.font());
     qFont.setPointSizeF(qFont.pointSizeF()*factor);
@@ -727,7 +716,7 @@ void Board::paintEvent(QPaintEvent*)
       if (isTrapSquare) {
         if (currentNode.result().endCondition!=NO_END)
           qPainter.setPen(neutralColor);
-        qPainter.drawText(qRect,Qt::AlignCenter,toCoordinates(file,rank,'A').begin());
+        qPainter.drawText(qRect,Qt::AlignCenter,toCoordinates(file,rank,'A').data());
       }
       if (square!=drag[ORIGIN]) {
         const PieceTypeAndSide pieceOnSquare=gameState().currentPieces[square];

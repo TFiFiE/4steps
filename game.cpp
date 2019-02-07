@@ -307,7 +307,7 @@ void Game::soundTicker(const Side sideToMove,const qint64 timeLeft)
 {
   if (session->role()==sideToMove) {
     const std::vector<qint64> tickTimes=getTickTimes();
-    for (int index=tickTimes.size()-1;index>=0;--index) {
+    for (int index=static_cast<int>(tickTimes.size()-1);index>=0;--index) {
       const auto tickTime=tickTimes[index];
       if (tickTime<nextTickTime)
         break;
@@ -325,15 +325,15 @@ void Game::soundTicker(const Side sideToMove,const qint64 timeLeft)
     ticker.stop();
 }
 
-bool Game::processMoves(const std::pair<GameTreeNode,unsigned int>& treeAndNumber,const Side role,const Result& result,const bool hardSynchronization)
+bool Game::processMoves(const std::pair<GameTreeNode,size_t>& treeAndNumber,const Side role,const Result& result,const bool hardSynchronization)
 {
   const auto& receivedTree=treeAndNumber.first;
-  const unsigned int sessionMoves=treeAndNumber.second;
+  const size_t sessionMoves=treeAndNumber.second;
   const auto& receivedHistory=receivedTree.history();
   const auto& localHistory=board.history();
   bool sound=(role!=otherSide(receivedTree.sideToMove()));
   if (search(localHistory.begin(),localHistory.end(),receivedHistory.begin(),receivedHistory.end())==localHistory.begin()) {
-    const unsigned int movesAhead=localHistory.size()-receivedHistory.size();
+    const size_t movesAhead=localHistory.size()-receivedHistory.size();
     if (movesAhead==0)
       return false;
     else if (!hardSynchronization && sessionMoves+movesAhead==processedMoves) {
