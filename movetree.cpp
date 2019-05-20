@@ -1,10 +1,17 @@
 #include "movetree.hpp"
 
-MoveTree::MoveTree(const GameState& currentState_,MoveTree* const previousHistory) :
-  previousNode(previousHistory),
+MoveTree::MoveTree(const GameState& currentState_) :
+  previousNode(nullptr),
   currentState(currentState_),
   result{NO_SIDE,NO_END}
 {
+}
+
+MoveTree::MoveTree(const GameState& currentState_,MoveTree* const previousNode_) :
+  previousNode(previousNode_),
+  currentState(currentState_)
+{
+  detectGameEnd();
 }
 
 MoveTree::MoveTree(const MoveTree& moveTree) :
@@ -13,28 +20,11 @@ MoveTree::MoveTree(const MoveTree& moveTree) :
   result(moveTree.result),
   branches(moveTree.branches)
 {
-  for (auto& branch:branches)
-    branch.second.previousNode=this;
-}
-
-MoveTree& MoveTree::operator=(const MoveTree& rhs)
-{
-  if (this!=&rhs) {
-    previousNode=rhs.previousNode;
-    currentState=rhs.currentState;
-    result=rhs.result;
-    branches=rhs.branches;
-    for (auto& branch:branches)
-      branch.second.previousNode=this;
+  for (auto branch=branches.begin();branch!=branches.end();++branch) {
+    auto& child=branch->second;
+    child.previousNode=this;
+    child.previousEdge=branch;
   }
-  return *this;
-}
-
-bool MoveTree::operator==(const MoveTree& rhs) const
-{
-  return (previousNode==nullptr)==(rhs.previousNode==nullptr) &&
-         currentState==rhs.currentState &&
-         branches==rhs.branches;
 }
 
 size_t MoveTree::numDescendants() const
@@ -135,18 +125,33 @@ Result MoveTree::detectGameEnd()
       return result;
     }
   }
-  if (!hasLegalMoves(currentState)) {
+  if (hasLegalMoves(currentState)) {
+    result.endCondition=NO_END;
+    result.winner=NO_SIDE;
+  }
+  else {
     result.endCondition=IMMOBILIZATION;
     result.winner=playedSide;
   }
   return result;
 }
 
-MoveTree& MoveTree::makeMove(const ExtendedSteps& move)
+MoveTree& MoveTree::makeMove(const ExtendedSteps& move,const bool overwriteSteps)
 {
-  branches.emplace_back(move,MoveTree(std::get<RESULTING_STATE>(move.back()),this));
-  MoveTree& newHistory=branches.back().second;
-  newHistory.currentState.switchTurn();
-  newHistory.detectGameEnd();
-  return newHistory;
+  GameState gameState(std::get<RESULTING_STATE>(move.back()));
+  gameState.switchTurn();
+  const auto found=find_if(branches.begin(),branches.end(),[&gameState](const decltype(branches)::value_type& branch) {
+    return gameState==branch.second.currentState;
+  });
+  if (found==branches.end()) {
+    branches.emplace_back(move,MoveTree(gameState,this));
+    MoveTree& newHistory=branches.back().second;
+    newHistory.previousEdge=--branches.end();
+    return newHistory;
+  }
+  else {
+    if (overwriteSteps)
+      found->first=move;
+    return found->second;
+  }
 }

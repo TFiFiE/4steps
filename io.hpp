@@ -2,6 +2,7 @@
 #define IO_HPP
 
 #include <sstream>
+#include "tree.hpp"
 
 const char pieceLetters[]="RrCcDdHhMmEe ";
 
@@ -164,7 +165,7 @@ inline PieceSteps toMove(const std::string& input)
 
 inline std::pair<GameTreeNode,size_t> toTree(const std::string& lines)
 {
-  GameTreeNode iterator;
+  auto iterator=GameTreeNode::create();
 
   std::stringstream ss;
   ss<<lines;
@@ -177,7 +178,7 @@ inline std::pair<GameTreeNode,size_t> toTree(const std::string& lines)
     const int newMoveIndex=toMoveIndex(word);
     if (newMoveIndex>=0) {
       if (!move.empty()) {
-        runtime_assert(moveIndex>=0,"Move list does not begin begin with move index.");
+        runtime_assert(moveIndex>=0,"Move list does not begin with move index.");
         moves.emplace_back(moveIndex,move);
         move.clear();
       }
@@ -187,7 +188,7 @@ inline std::pair<GameTreeNode,size_t> toTree(const std::string& lines)
       move+=word+' ';
   }
   if (!move.empty()) {
-    runtime_assert(moveIndex>=0,"Move list does not begin begin with move index.");
+    runtime_assert(moveIndex>=0,"Move list does not begin with move index.");
     moves.emplace_back(moveIndex,move);
   }
   for (const auto& move:moves) {

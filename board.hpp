@@ -16,7 +16,6 @@ public:
   bool setupPhase() const;
   Side sideToMove() const;
   MoveTree& currentMoveNode() const;
-  std::vector<GameState> history() const;
   const GameState& gameState() const;
   bool playable() const;
   void receiveSetup(const Placement& placement,const bool sound);
@@ -33,6 +32,7 @@ public:
 
   readonly<Board,bool> southIsUp,stepMode,soundOn;
   readonly<Board,PieceIcons::Set> iconSet;
+  readonly<Board,GameTreeNode> currentNode;
 private:
   int squareWidth() const;
   int squareHeight() const;
@@ -73,7 +73,6 @@ private:
   QMediaPlayer qMediaPlayer;
   QMediaPlaylist qMediaPlaylist;
 
-  GameTreeNode currentNode;
   GameState potentialSetup;
   ExtendedSteps potentialMove;
   ExtendedSteps::const_iterator afterCurrentStep;

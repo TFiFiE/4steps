@@ -40,7 +40,8 @@ SOURCES += \
     popup.cpp \
     server.cpp \
     timecontrol.cpp \
-    timeestimator.cpp
+    timeestimator.cpp \
+    tree.cpp
 
 HEADERS += \
     arimaa_com.hpp \

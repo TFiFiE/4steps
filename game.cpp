@@ -330,7 +330,7 @@ bool Game::processMoves(const std::pair<GameTreeNode,size_t>& treeAndNumber,cons
   const auto& receivedTree=treeAndNumber.first;
   const size_t sessionMoves=treeAndNumber.second;
   const auto& receivedHistory=receivedTree.history();
-  const auto& localHistory=board.history();
+  const auto& localHistory=board.currentNode.get().history();
   bool sound=(role!=otherSide(receivedTree.sideToMove()));
   if (search(localHistory.begin(),localHistory.end(),receivedHistory.begin(),receivedHistory.end())==localHistory.begin()) {
     const size_t movesAhead=localHistory.size()-receivedHistory.size();

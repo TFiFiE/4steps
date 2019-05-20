@@ -9,6 +9,7 @@
 Board::Board(Globals& globals_,const Side viewpoint,const bool soundOn,const std::array<bool,NUM_SIDES>& controllableSides_,const bool customSetup_,QWidget* const parent,const Qt::WindowFlags f) :
   QWidget(parent,f),
   southIsUp(viewpoint==SECOND_SIDE),
+  currentNode(GameTreeNode::create()),
   globals(globals_),
   afterCurrentStep(potentialMove.end()),
   controllableSides(controllableSides_),
@@ -32,22 +33,17 @@ Board::Board(Globals& globals_,const Side viewpoint,const bool soundOn,const std
 
 bool Board::setupPhase() const
 {
-  return customSetup || currentNode.inSetup();
+  return customSetup || currentNode.get().inSetup();
 }
 
 Side Board::sideToMove() const
 {
-  return customSetup ? potentialSetup.sideToMove : currentNode.sideToMove();
+  return customSetup ? potentialSetup.sideToMove : currentNode.get().sideToMove();
 }
 
 MoveTree& Board::currentMoveNode() const
 {
-  return currentNode.getMoveNode();
-}
-
-std::vector<GameState> Board::history() const
-{
-  return currentNode.history();
+  return currentNode.get().getMoveNode();
 }
 
 const GameState& Board::gameState() const
@@ -58,7 +54,7 @@ const GameState& Board::gameState() const
 
 bool Board::playable() const
 {
-  return currentNode.result().endCondition==NO_END && controllableSides[sideToMove()];
+  return currentNode.get().result().endCondition==NO_END && controllableSides[sideToMove()];
 }
 
 void Board::receiveSetup(const Placement& placement,const bool sound)
@@ -79,12 +75,12 @@ void Board::receiveMove(const PieceSteps& pieceSteps,const bool sound)
 
 void Board::receiveGameTree(const GameTreeNode& gameTreeNode,const bool sound)
 {
-  currentNode=gameTreeNode;
+  currentNode=gameTreeNode.mergeInto(currentNode);
   if (setupPhase()) {
     if (sound && sideToMove()==SECOND_SIDE)
       playSound("qrc:/finished-setup.wav");
 
-    potentialSetup=currentNode.history().back();
+    potentialSetup=currentNode.get().history().back();
     initSetup();
   }
   else {
@@ -92,7 +88,7 @@ void Board::receiveGameTree(const GameTreeNode& gameTreeNode,const bool sound)
       if (currentMoveNode().previousNode==nullptr)
         playSound("qrc:/finished-setup.wav");
       else
-        playStepSounds(currentMoveNode().previousNode->branches.back().first,true);
+        playStepSounds(currentMoveNode().previousEdge->first,true);
     }
     potentialMove.clear();
     afterCurrentStep=potentialMove.end();
@@ -246,7 +242,7 @@ SquareIndex Board::closestAdjacentSquare(const QPoint& position) const
 
 bool Board::setupPlacementPhase() const
 {
-  return !customSetup && currentNode.inSetup() && currentSetupPiece>=0;
+  return !customSetup && currentNode.get().inSetup() && currentSetupPiece>=0;
 }
 
 bool Board::isSetupSquare(const Side side,const SquareIndex square) const
@@ -432,7 +428,7 @@ void Board::finalizeSetup(const Placement& placement,const bool sound)
     potentialSetup.sideToMove=SECOND_SIDE;
     initSetup();
   }
-  currentNode.addSetup(placement);
+  currentNode.data.addSetup(placement);
 
   if (autoRotate)
     setViewpoint(sideToMove());
@@ -443,11 +439,11 @@ void Board::finalizeSetup(const Placement& placement,const bool sound)
 
 void Board::finalizeMove(const ExtendedSteps& move)
 {
-  currentNode.makeMove(move);
+  currentNode.data.makeMove(move);
   potentialMove.clear();
   afterCurrentStep=potentialMove.end();
   emit boardChanged();
-  if (currentNode.result().endCondition==NO_END && autoRotate)
+  if (currentNode.get().result().endCondition==NO_END && autoRotate)
     setViewpoint(sideToMove());
   refreshHighlights(true);
   update();
@@ -471,7 +467,7 @@ void Board::mousePressEvent(QMouseEvent* event)
     case Qt::LeftButton:
       if (square!=NO_SQUARE) {
         const PieceTypeAndSide currentPiece=gameState().currentPieces[square];
-        if (customSetup ? currentPiece!=NO_PIECE : (currentNode.inSetup() ? isSide(currentPiece,sideToMove()) : gameState().legalOrigin(square))) {
+        if (customSetup ? currentPiece!=NO_PIECE : (currentNode.get().inSetup() ? isSide(currentPiece,sideToMove()) : gameState().legalOrigin(square))) {
           fill(drag,square);
           dragSteps.clear();
           update();
@@ -584,7 +580,7 @@ void Board::mouseDoubleClickEvent(QMouseEvent* event)
             MoveTree moveTree(potentialSetup);
             if (moveTree.detectGameEnd().endCondition==NO_END) {
               customSetup=false;
-              currentNode.customSetup(moveTree);
+              currentNode.data.customSetup(moveTree);
               if (autoRotate)
                 setViewpoint(sideToMove());
               emit boardChanged();
@@ -597,7 +593,7 @@ void Board::mouseDoubleClickEvent(QMouseEvent* event)
           else
             MessageBox(QMessageBox::Critical,tr("Illegal position"),tr("Unprotected piece on trap."),QMessageBox::NoButton,this).exec();
         }
-        else if (currentNode.inSetup()) {
+        else if (currentNode.get().inSetup()) {
           if (currentSetupPiece<0) {
             const Placement placement=gameState().placement(sideToMove());
             emit sendSetup(placement,sideToMove());
@@ -714,7 +710,7 @@ void Board::paintEvent(QPaintEvent*)
       const QRect qRect=visualRectangle(file,rank);
       qPainter.drawRect(qRect);
       if (isTrapSquare) {
-        if (currentNode.result().endCondition!=NO_END)
+        if (currentNode.get().result().endCondition!=NO_END)
           qPainter.setPen(neutralColor);
         qPainter.drawText(qRect,Qt::AlignCenter,toCoordinates(file,rank,'A').data());
       }
