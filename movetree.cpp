@@ -46,13 +46,6 @@ std::vector<GameState> MoveTree::history() const
   }
 }
 
-bool MoveTree::changedSquare(const SquareIndex square) const
-{
-  if (previousNode==nullptr)
-    return false;
-  return currentState.currentPieces[square]!=previousNode->currentState.currentPieces[square];
-}
-
 MoveLegality MoveTree::legalMove(const GameState& resultingState) const
 {
   if (resultingState.inPush)

@@ -18,7 +18,6 @@ struct MoveTree {
   bool operator==(const MoveTree& rhs) const=delete;
   size_t numDescendants() const;
   std::vector<GameState> history() const;
-  bool changedSquare(const SquareIndex square) const;
   MoveLegality legalMove(const GameState& resultingState) const;
   bool hasLegalMoves(const GameState& startingState) const;
   Result detectGameEnd();

@@ -26,9 +26,16 @@ Board::Board(Globals& globals_,const Side viewpoint,const bool soundOn,const std
   globals.settings.beginGroup("Board");
   const auto stepMode=globals.settings.value("step_mode").toBool();
   const auto iconSet=static_cast<PieceIcons::Set>(globals.settings.value("icon_set",PieceIcons::VECTOR).toInt());
+  const auto animate=globals.settings.value("animate",true).toBool();
+  const auto animationDelay=globals.settings.value("animation_delay",375).toInt();
   globals.settings.endGroup();
+
   setStepMode(stepMode);
   setIconSet(iconSet);
+  setAnimate(animate);
+  setAnimationDelay(animationDelay);
+
+  connect(&animationTimer,&QTimer::timeout,this,&Board::animateNextStep);
 }
 
 bool Board::setupPhase() const
@@ -52,25 +59,24 @@ const GameState& Board::gameState() const
                         (afterCurrentStep==potentialMove.begin() ? currentMoveNode().currentState : std::get<RESULTING_STATE>(*(afterCurrentStep-1)));
 }
 
+const GameState& Board::displayedGameState() const
+{
+  if (isAnimating()) {
+    const auto& previousNode=currentMoveNode().previousNode;
+    assert(previousNode!=nullptr);
+    const auto& previousMove=currentMoveNode().previousEdge->first;
+    if (nextAnimatedStep==previousMove.begin())
+      return previousNode->currentState;
+    else
+      return std::get<RESULTING_STATE>(*--decltype(nextAnimatedStep)(nextAnimatedStep));
+  }
+  else
+    return gameState();
+}
+
 bool Board::playable() const
 {
   return currentNode.get().result().endCondition==NO_END && controllableSides[sideToMove()];
-}
-
-void Board::receiveSetup(const Placement& placement,const bool sound)
-{
-  runtime_assert(setupPhase(),"Not in setup phase.");
-  potentialSetup.add(placement);
-  finalizeSetup(placement,sound);
-}
-
-void Board::receiveMove(const PieceSteps& pieceSteps,const bool sound)
-{
-  runtime_assert(!setupPhase(),"Still in setup phase.");
-  const ExtendedSteps move=GameState(gameState()).takePieceSteps(pieceSteps);
-  if (sound)
-    playStepSounds(move,true);
-  finalizeMove(move);
 }
 
 void Board::receiveGameTree(const GameTreeNode& gameTreeNode,const bool sound)
@@ -87,6 +93,8 @@ void Board::receiveGameTree(const GameTreeNode& gameTreeNode,const bool sound)
     if (sound) {
       if (currentMoveNode().previousNode==nullptr)
         playSound("qrc:/finished-setup.wav");
+      else if (animate)
+        animateMove(false);
       else
         playStepSounds(currentMoveNode().previousEdge->first,true);
     }
@@ -132,26 +140,27 @@ void Board::toggleSound(const bool soundOn_)
 
 void Board::setStepMode(const bool newStepMode)
 {
-  stepMode=newStepMode;
+  setSetting(stepMode,newStepMode,"step_mode");
   setMouseTracking(stepMode);
   if (refreshHighlights(true))
     update();
-
-  globals.settings.beginGroup("Board");
-  globals.settings.setValue("step_mode",stepMode.get());
-  globals.settings.endGroup();
 }
 
 void Board::setIconSet(const PieceIcons::Set newIconSet)
 {
-  if (iconSet!=newIconSet) {
-    iconSet=newIconSet;
+  if (setSetting(iconSet,newIconSet,"icon_set"))
     update();
+}
 
-    globals.settings.beginGroup("Board");
-    globals.settings.setValue("icon_set",static_cast<int>(iconSet));
-    globals.settings.endGroup();
-  }
+void Board::setAnimate(const bool newAnimate)
+{
+  setSetting(animate,newAnimate,"animate");
+}
+
+void Board::setAnimationDelay(const int newAnimationDelay)
+{
+  if (setSetting(animationDelay,newAnimationDelay,"animation_delay"))
+    animationTimer.setInterval(animationDelay);
 }
 
 void Board::playSound(const QString& soundFile)
@@ -253,6 +262,27 @@ bool Board::isSetupSquare(const Side side,const SquareIndex square) const
 bool Board::validDrop() const
 {
   return setupPhase() ? (isSetupSquare(sideToMove(),drag[DESTINATION]) && drag[ORIGIN]!=drag[DESTINATION]) : !dragSteps.empty();
+}
+
+bool Board::isAnimating() const
+{
+  return animationTimer.isActive();
+}
+
+template<class Type>
+bool Board::setSetting(readonly<Board,Type>& currentValue,const Type newValue,const QString& key)
+{
+  if (currentValue==newValue)
+    return false;
+  else {
+    currentValue=newValue;
+
+    globals.settings.beginGroup("Board");
+    globals.settings.setValue(key,currentValue.get());
+    globals.settings.endGroup();
+
+    return true;
+  }
 }
 
 void Board::initSetup()
@@ -456,16 +486,41 @@ void Board::endDrag()
   update();
 }
 
+void Board::undoSteps(const bool all)
+{
+  if (afterCurrentStep!=potentialMove.begin()) {
+    assert(!setupPhase());
+    if (all)
+      afterCurrentStep=potentialMove.begin();
+    else
+      --afterCurrentStep;
+    emit boardChanged();
+    refreshHighlights(true);
+    update();
+  }
+}
+
+void Board::redoSteps(const bool all)
+{
+  if (afterCurrentStep!=potentialMove.end()) {
+    assert(!setupPhase());
+    if (all)
+      afterCurrentStep=potentialMove.end();
+    else
+      ++afterCurrentStep;
+    emit boardChanged();
+    refreshHighlights(true);
+    update();
+  }
+}
+
 void Board::mousePressEvent(QMouseEvent* event)
 {
-  if (!playable()) {
-    event->ignore();
-    return;
-  }
+  disableAnimation();
   const SquareIndex square=positionToSquare(event->pos());
   switch (event->button()) {
     case Qt::LeftButton:
-      if (square!=NO_SQUARE) {
+      if (square!=NO_SQUARE && playable()) {
         const PieceTypeAndSide currentPiece=gameState().currentPieces[square];
         if (customSetup ? currentPiece!=NO_PIECE : (currentNode.get().inSetup() ? isSide(currentPiece,sideToMove()) : gameState().legalOrigin(square))) {
           fill(drag,square);
@@ -475,32 +530,23 @@ void Board::mousePressEvent(QMouseEvent* event)
       }
     break;
     case Qt::RightButton:
-      if (drag[ORIGIN]!=NO_SQUARE)
-        endDrag();
-      else if (!stepMode && highlighted[ORIGIN]!=NO_SQUARE) {
-        highlighted[ORIGIN]=NO_SQUARE;
-        update();
-      }
-      else if (customSetup) {
-        if (square!=NO_SQUARE)
-          new Popup(*this,square);
-      }
-      else if (afterCurrentStep!=potentialMove.begin()) {
-        assert(!setupPhase());
-        --afterCurrentStep;
-        emit boardChanged();
-        refreshHighlights(true);
-        update();
+      if (playable()) {
+        if (drag[ORIGIN]!=NO_SQUARE)
+          endDrag();
+        else if (!stepMode && highlighted[ORIGIN]!=NO_SQUARE) {
+          highlighted[ORIGIN]=NO_SQUARE;
+          update();
+        }
+        else if (customSetup) {
+          if (square!=NO_SQUARE)
+            new Popup(*this,square);
+        }
+        else
+          undoSteps(false);
       }
     break;
     case Qt::MidButton:
-      if (afterCurrentStep!=potentialMove.end()) {
-        assert(!setupPhase());
-        ++afterCurrentStep;
-        emit boardChanged();
-        refreshHighlights(true);
-        update();
-      }
+      animateMove(true);
     break;
     default:
       event->ignore();
@@ -518,6 +564,7 @@ void Board::mouseMoveEvent(QMouseEvent* event)
   }
   event->accept();
   if ((event->buttons()&Qt::LeftButton)!=0) {
+    disableAnimation();
     if (drag[ORIGIN]!=NO_SQUARE) {
       const SquareIndex square=positionToSquare(event->pos());
       if (drag[DESTINATION]!=square) {
@@ -536,28 +583,29 @@ void Board::mouseMoveEvent(QMouseEvent* event)
 
 void Board::mouseReleaseEvent(QMouseEvent* event)
 {
-  if (!playable()) {
-    event->ignore();
-    return;
-  }
   switch (event->button()) {
-    case Qt::LeftButton: {
-      const SquareIndex eventSquare=positionToSquare(event->pos());
-      if (drag[ORIGIN]!=NO_SQUARE) {
-        assert(eventSquare==drag[DESTINATION]);
-        if (drag[ORIGIN]==eventSquare)
-          singleSquareAction(eventSquare);
-        else if (setupPhase())
-          doubleSquareSetupAction(drag[ORIGIN],eventSquare);
-        else
-          doSteps(dragSteps);
-        endDrag();
+    case Qt::LeftButton:
+      disableAnimation();
+      if (playable()) {
+        const SquareIndex eventSquare=positionToSquare(event->pos());
+        if (drag[ORIGIN]!=NO_SQUARE) {
+          assert(eventSquare==drag[DESTINATION]);
+          if (drag[ORIGIN]==eventSquare)
+            singleSquareAction(eventSquare);
+          else if (setupPhase())
+            doubleSquareSetupAction(drag[ORIGIN],eventSquare);
+          else
+            doSteps(dragSteps);
+          endDrag();
+        }
+        else if (singleSquareAction(eventSquare))
+          update();
       }
-      else if (singleSquareAction(eventSquare))
-        update();
-    }
+    break;
+    case Qt::MidButton:
     break;
     default:
+      disableAnimation();
       event->ignore();
       return;
     break;
@@ -573,6 +621,7 @@ void Board::mouseDoubleClickEvent(QMouseEvent* event)
   }
   switch (event->button()) {
     case Qt::LeftButton: {
+      disableAnimation();
       const SquareIndex eventSquare=positionToSquare(event->pos());
       if ((eventSquare==NO_SQUARE || gameState().currentPieces[eventSquare]==NO_PIECE) && (!stepMode || found(highlighted,NO_SQUARE))) {
         if (customSetup) {
@@ -625,30 +674,25 @@ void Board::mouseDoubleClickEvent(QMouseEvent* event)
       }
     }
     break;
-    case Qt::RightButton: {
-      if (afterCurrentStep!=potentialMove.begin()) {
-        assert(!setupPhase());
-        afterCurrentStep=potentialMove.begin();
-        emit boardChanged();
-        refreshHighlights(true);
-        update();
-      }
-    }
-    break;
-    case Qt::MidButton:
-      if (afterCurrentStep!=potentialMove.end()) {
-        assert(!setupPhase());
-        afterCurrentStep=potentialMove.end();
-        emit boardChanged();
-        refreshHighlights(true);
-        update();
-      }
+    case Qt::RightButton:
+      disableAnimation();
+      undoSteps(true);
     break;
     default:
       event->ignore();
       return;
     break;
   }
+  event->accept();
+}
+
+void Board::wheelEvent(QWheelEvent* event)
+{
+  disableAnimation();
+  if (event->angleDelta().y()<0)
+    undoSteps(false);
+  else
+    redoSteps(false);
   event->accept();
 }
 
@@ -666,12 +710,15 @@ void Board::paintEvent(QPaintEvent*)
   qreal factor=squareHeight()/static_cast<qreal>(qPainter.fontMetrics().height());
   for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square))
     if (isTrap(square))
-      factor=std::min(factor,squareWidth()/static_cast<qreal>(qPainter.fontMetrics().width(toCoordinates(square,'A').data())));
+      factor=std::min(factor,squareWidth()/static_cast<qreal>(qPainter.fontMetrics().horizontalAdvance(toCoordinates(square,'A').data())));
   if (factor>0) {
     QFont qFont(qPainter.font());
     qFont.setPointSizeF(qFont.pointSizeF()*factor);
     qPainter.setFont(qFont);
   }
+
+  const GameState& gameState_=displayedGameState();
+  const auto previousPieces=(setupPhase() || currentMoveNode().previousNode==nullptr ? nullptr : &currentMoveNode().previousNode->currentState.currentPieces);
 
   QPen qPen(Qt::SolidPattern,1);
   const QPoint mousePosition=mapFromGlobal(QCursor::pos());
@@ -680,8 +727,8 @@ void Board::paintEvent(QPaintEvent*)
       const unsigned int file=toFile(square);
       const unsigned int rank=toRank(square);
       const bool isTrapSquare=isTrap(file,rank);
-      if (drag[ORIGIN]==NO_SQUARE ? found(highlighted,square) || (gameState().inPush && square==gameState().followupDestination)
-                                  : validDrop() && square==drag[DESTINATION]) {
+      if (!isAnimating() && (drag[ORIGIN]==NO_SQUARE ? found(highlighted,square) || (gameState_.inPush && square==gameState_.followupDestination)
+                                                     : square==drag[DESTINATION] && validDrop())) {
         if (pass==0)
           continue;
         else {
@@ -692,9 +739,11 @@ void Board::paintEvent(QPaintEvent*)
       else if (pass==1)
         continue;
       else {
-        if (!setupPhase() && (square==drag[ORIGIN] || found<ORIGIN>(dragSteps,square)))
+        if (!isAnimating() && !setupPhase() && (square==drag[ORIGIN] || found<ORIGIN>(dragSteps,square)))
           qPainter.setBrush(mildSideColors[sideToMove()]);
-        else if (setupPhase() ? !customSetup && playable() && isSetupRank(sideToMove(),rank) : gameState().stepsAvailable==MAX_STEPS_PER_MOVE && currentMoveNode().changedSquare(square))
+        else if (setupPhase() ? !customSetup && playable() && isSetupRank(sideToMove(),rank)
+                              : (isAnimating() || gameState_.stepsAvailable==MAX_STEPS_PER_MOVE) &&
+                                previousPieces!=nullptr && (*previousPieces)[square]!=gameState_.currentPieces[square])
           qPainter.setBrush(sideColors[otherSide(sideToMove())]);
         else {
           if (isTrapSquare)
@@ -714,36 +763,79 @@ void Board::paintEvent(QPaintEvent*)
           qPainter.setPen(neutralColor);
         qPainter.drawText(qRect,Qt::AlignCenter,toCoordinates(file,rank,'A').data());
       }
-      if (square!=drag[ORIGIN]) {
-        const PieceTypeAndSide pieceOnSquare=gameState().currentPieces[square];
+      if (square!=drag[ORIGIN] || isAnimating()) {
+        const PieceTypeAndSide pieceOnSquare=gameState_.currentPieces[square];
         if (pieceOnSquare!=NO_PIECE)
           globals.pieceIcons.drawPiece(qPainter,iconSet,pieceOnSquare,qRect);
       }
     }
   if (playable() && setupPlacementPhase())
     globals.pieceIcons.drawPiece(qPainter,iconSet,toPieceTypeAndSide(static_cast<PieceType>(currentSetupPiece+1),sideToMove()),QRect((NUM_FILES-1)/2.0*squareWidth(),(NUM_RANKS-1)/2.0*squareHeight(),squareWidth(),squareHeight()));
-  if (drag[ORIGIN]!=NO_SQUARE)
-    globals.pieceIcons.drawPiece(qPainter,iconSet,gameState().currentPieces[drag[ORIGIN]],QRect(mousePosition.x()-squareWidth()/2,mousePosition.y()-squareHeight()/2,squareWidth(),squareHeight()));
+  if (drag[ORIGIN]!=NO_SQUARE && !isAnimating())
+    globals.pieceIcons.drawPiece(qPainter,iconSet,gameState_.currentPieces[drag[ORIGIN]],QRect(mousePosition.x()-squareWidth()/2,mousePosition.y()-squareHeight()/2,squareWidth(),squareHeight()));
   qPainter.end();
+}
+
+void Board::animateMove(const bool showStart)
+{
+  if (setupPhase() || currentMoveNode().previousNode==nullptr) {
+    if (currentNode.get().currentPhase()!=GameTreeNode::FIRST_SETUP)
+      playSound("qrc:/finished-setup.wav");
+  }
+  else {
+    qMediaPlaylist.clear();
+    const auto& previousMove=currentMoveNode().previousEdge->first;
+    nextAnimatedStep=previousMove.begin();
+    assert(nextAnimatedStep!=previousMove.end());
+    if (showStart) {
+      animationTimer.start();
+      update();
+    }
+    else
+      animateNextStep();
+  }
+}
+
+void Board::animateNextStep()
+{
+  if (qMediaPlayer.state()==QMediaPlayer::StoppedState)
+    qMediaPlaylist.clear();
+  const auto lastStep=currentMoveNode().previousEdge->first.end();
+  if (!playCaptureSound(*nextAnimatedStep++))
+    qMediaPlaylist.addMedia(QUrl(nextAnimatedStep==lastStep ? "qrc:/loud-step.wav" : "qrc:/soft-step.wav"));
+  qMediaPlayer.play();
+  if (nextAnimatedStep==lastStep)
+    animationTimer.stop();
+  else
+    animationTimer.start();
+  update();
+}
+
+void Board::disableAnimation()
+{
+  animationTimer.stop();
 }
 
 void Board::playStepSounds(const ExtendedSteps& steps,const bool emphasize)
 {
   qMediaPlaylist.clear();
-  for (const auto& step:steps) {
-    const auto trappedPiece=std::get<TRAPPED_PIECE>(step);
-    if (trappedPiece!=NO_PIECE) {
-      if (toSide(trappedPiece)==std::get<RESULTING_STATE>(step).sideToMove)
-        qMediaPlaylist.addMedia(QUrl("qrc:/dropped-piece.wav"));
-      else
-        qMediaPlaylist.addMedia(QUrl("qrc:/captured-piece.wav"));
-    }
-  }
-  if (qMediaPlaylist.isEmpty()) {
-    if (emphasize)
-      qMediaPlaylist.addMedia(QUrl("qrc:/loud-step.wav"));
-    else
-      qMediaPlaylist.addMedia(QUrl("qrc:/soft-step.wav"));
-  }
+  for (const auto& step:steps)
+    playCaptureSound(step);
+  if (qMediaPlaylist.isEmpty())
+    qMediaPlaylist.addMedia(QUrl(emphasize ? "qrc:/loud-step.wav" : "qrc:/soft-step.wav"));
   qMediaPlayer.play();
+}
+
+bool Board::playCaptureSound(const ExtendedStep& step)
+{
+  const auto trappedPiece=std::get<TRAPPED_PIECE>(step);
+  if (trappedPiece==NO_PIECE)
+    return false;
+  else {
+    if (toSide(trappedPiece)==std::get<RESULTING_STATE>(step).sideToMove)
+      qMediaPlaylist.addMedia(QUrl("qrc:/dropped-piece.wav"));
+    else
+      qMediaPlaylist.addMedia(QUrl("qrc:/captured-piece.wav"));
+    return true;
+  }
 }

@@ -2,6 +2,7 @@
 #define BOARD_HPP
 
 #include <QWidget>
+#include <QTimer>
 #include <QMediaPlayer>
 #include <QMediaPlaylist>
 struct Globals;
@@ -17,9 +18,8 @@ public:
   Side sideToMove() const;
   MoveTree& currentMoveNode() const;
   const GameState& gameState() const;
+  const GameState& displayedGameState() const;
   bool playable() const;
-  void receiveSetup(const Placement& placement,const bool sound);
-  void receiveMove(const PieceSteps& pieceSteps,const bool sound);
   void receiveGameTree(const GameTreeNode& gameTreeNode,const bool sound);
   void rotate();
   void setViewpoint(const Side side);
@@ -27,12 +27,15 @@ public:
   void toggleSound(const bool soundOn_);
   void setStepMode(const bool newStepMode);
   void setIconSet(const PieceIcons::Set newIconSet);
+  void setAnimate(const bool newAnimate);
+  void setAnimationDelay(const int newAnimationDelay);
   void playSound(const QString& soundFile);
   void setControllable(const std::array<bool,NUM_SIDES>& controllableSides_);
 
-  readonly<Board,bool> southIsUp,stepMode,soundOn;
+  readonly<Board,bool> southIsUp,stepMode,soundOn,animate;
   readonly<Board,PieceIcons::Set> iconSet;
   readonly<Board,GameTreeNode> currentNode;
+  readonly<Board,int> animationDelay;
 private:
   int squareWidth() const;
   int squareHeight() const;
@@ -45,7 +48,9 @@ private:
   bool setupPlacementPhase() const;
   bool isSetupSquare(const Side side,const SquareIndex square) const;
   bool validDrop() const;
+  bool isAnimating() const;
 
+  template<class Type> bool setSetting(readonly<Board,Type>& currentValue,const Type newValue,const QString& key);
   void initSetup();
   void nextSetupPiece();
   bool setUpPiece(const SquareIndex destination);
@@ -59,17 +64,26 @@ private:
   void finalizeSetup(const Placement& placement,const bool sound);
   void finalizeMove(const ExtendedSteps& playedMove);
   void endDrag();
+  void undoSteps(const bool all);
+  void redoSteps(const bool all);
 
   void mousePressEvent(QMouseEvent* event) override;
   void mouseMoveEvent(QMouseEvent* event) override;
   void mouseReleaseEvent(QMouseEvent* event) override;
   void mouseDoubleClickEvent(QMouseEvent* event) override;
+  void wheelEvent(QWheelEvent* event) override;
   void focusOutEvent(QFocusEvent*) override;
   void paintEvent(QPaintEvent*) override;
 
+  void animateMove(const bool showStart);
+  void animateNextStep();
+  void disableAnimation();
   void playStepSounds(const ExtendedSteps& steps,const bool emphasize);
+  bool playCaptureSound(const ExtendedStep& step);
 
   Globals& globals;
+  QTimer animationTimer;
+  ExtendedSteps::const_iterator nextAnimatedStep;
   QMediaPlayer qMediaPlayer;
   QMediaPlaylist qMediaPlaylist;
 

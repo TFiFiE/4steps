@@ -22,6 +22,7 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   fullScreen(tr("&Full screen")),
   rotate(tr("&Rotate")),
   autoRotate(tr("&Auto-rotate")),
+  animate(tr("Animate &moves")),
   sound(tr("&Sound")),
   stepMode(tr("&Step mode")),
   iconSets(this)
@@ -66,6 +67,13 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   autoRotate.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_A));
   connect(&autoRotate,&QAction::toggled,&board,&Board::setAutoRotate);
   boardMenu->addAction(&autoRotate);
+
+  animate.setEnabled(session!=nullptr);
+  animate.setCheckable(true);
+  animate.setChecked(board.animate);
+  animate.setShortcut(QKeySequence(Qt::Key_M));
+  connect(&animate,&QAction::toggled,&board,&Board::setAnimate);
+  boardMenu->addAction(&animate);
 
   sound.setCheckable(true);
   sound.setChecked(board.soundOn);

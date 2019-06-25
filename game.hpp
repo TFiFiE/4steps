@@ -38,7 +38,7 @@ private:
   int nextTickTime;
   bool finished;
 
-  QAction forceUpdate,resign,fullScreen,rotate,autoRotate,sound,stepMode;
+  QAction forceUpdate,resign,fullScreen,rotate,autoRotate,animate,sound,stepMode;
   QActionGroup iconSets;
   QLabel cornerMessage;
 };
