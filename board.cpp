@@ -813,7 +813,10 @@ void Board::animateNextStep()
 
 void Board::disableAnimation()
 {
-  animationTimer.stop();
+  if (isAnimating()) {
+    animationTimer.stop();
+    update();
+  }
 }
 
 void Board::playStepSounds(const ExtendedSteps& steps,const bool emphasize)
