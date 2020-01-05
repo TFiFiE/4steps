@@ -64,7 +64,7 @@ ASIP* MainWindow::addGame(std::unique_ptr<ASIP> newGame,const Side viewpoint,con
   }
 
   if (!guaranteedUnique)
-    for (const auto existingGame:games)
+    for (const auto& existingGame:games)
       if (auto existingGame_=existingGame.lock())
         if (existingGame_->isEqualGame(*newGame)) {
           new Game(globals,viewpoint,this,existingGame_);

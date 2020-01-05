@@ -4,7 +4,7 @@
 #include <vector>
 #include <set>
 #include <tuple>
-#include <list>
+#include <memory>
 #include <cassert>
 #include <QString>
 #include <QDialog>
@@ -91,9 +91,9 @@ typedef std::tuple<SquareIndex,SquareIndex,PieceTypeAndSide,PieceTypeAndSide> Pi
 enum {STEPPING_PIECE=RESULTING_STATE};
 typedef std::vector<PieceStep> PieceSteps;
 
-struct MoveTree;
-typedef std::list<MoveTree> MoveTrees;
-typedef std::list<std::pair<Placement,MoveTrees> > GameTree;
+struct Node;
+typedef std::shared_ptr<Node> NodePtr;
+typedef std::vector<NodePtr> GameTree;
 
 const unsigned int numStartingPiecesPerType[]={8,2,2,2,1,1};
 
@@ -132,6 +132,20 @@ template<class Container>
 inline void append(Container& target,const Container& extension)
 {
   target.insert(target.end(),extension.begin(),extension.end());
+}
+
+template<class Iterator>
+inline Iterator unsorted_unique(const Iterator begin,const Iterator end)
+{
+  typedef typename std::remove_reference<decltype(*begin)>::type value_type;
+  typedef std::pair<value_type,size_t> Pair;
+  std::vector<Pair> pairs;
+  pairs.reserve(distance(begin,end));
+  transform(make_move_iterator(begin),make_move_iterator(end),back_inserter(pairs),[&pairs](value_type&& value){return Pair(value,pairs.size());});
+  sort(pairs.begin(),pairs.end());
+  const auto pairs_end=unique(pairs.begin(),pairs.end(),[](const Pair& lhs,const Pair& rhs){return lhs.first==rhs.first;});
+  sort(pairs.begin(),pairs_end,[](const Pair& lhs,const Pair& rhs) {return lhs.second<rhs.second;});
+  return transform(make_move_iterator(pairs.begin()),make_move_iterator(pairs_end),begin,[](Pair&& pair) {return pair.first;});
 }
 
 inline PieceTypeAndSide toPieceTypeAndSide(const PieceType pieceType,const Side side)

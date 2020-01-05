@@ -7,8 +7,8 @@
 #include <QMediaPlaylist>
 struct Globals;
 #include "readonly.hpp"
-#include "tree.hpp"
 #include "pieceicons.hpp"
+#include "gamestate.hpp"
 
 class Board : public QWidget {
   Q_OBJECT
@@ -16,11 +16,12 @@ public:
   explicit Board(Globals& globals_,const Side viewpoint,const bool soundOn,const std::array<bool,NUM_SIDES>& controllableSides_={true,true},const bool customSetup_=false,QWidget* const parent=nullptr,const Qt::WindowFlags f=Qt::WindowFlags());
   bool setupPhase() const;
   Side sideToMove() const;
-  MoveTree& currentMoveNode() const;
+  const NodePtr& currentNode() const;
+  NodePtr& currentNode();
   const GameState& gameState() const;
   const GameState& displayedGameState() const;
   bool playable() const;
-  void receiveGameTree(const GameTreeNode& gameTreeNode,const bool sound);
+  void receiveGameTree(const GameTree& gameTreeNode,const bool sound);
   void rotate();
   void setViewpoint(const Side side);
   void setAutoRotate(const bool on);
@@ -34,7 +35,8 @@ public:
 
   readonly<Board,bool> southIsUp,stepMode,soundOn,animate;
   readonly<Board,PieceIcons::Set> iconSet;
-  readonly<Board,GameTreeNode> currentNode;
+  readonly<Board,GameTree> gameTree;
+  const NodePtr root;
   readonly<Board,int> animationDelay;
 private:
   int squareWidth() const;

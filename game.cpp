@@ -251,13 +251,13 @@ void Game::synchronize(const bool hard)
     playerBars[side].player.setText(players[side]);
     playerBars[side].setActive(side==sideToMove);
   }
-  const auto moves=session->getMoves();
+  const auto moves=session->getMoves(board.root);
   auto result=session->getResult();
   if (processMoves(moves,role,result,hard))
     nextTickTime=-1;
   updateTimes();
 
-  const auto technicalResult=moves.first.result();
+  const auto technicalResult=moves.first.front()->result;
   if (technicalResult.endCondition!=NO_END && technicalResult!=result) {
     assert(technicalResult.winner!=NO_SIDE);
     if (otherSide(technicalResult.winner)==role) {
@@ -333,25 +333,22 @@ void Game::soundTicker(const Side sideToMove,const qint64 timeLeft)
     ticker.stop();
 }
 
-bool Game::processMoves(const std::pair<GameTreeNode,size_t>& treeAndNumber,const Side role,const Result& result,const bool hardSynchronization)
+bool Game::processMoves(const std::pair<GameTree,size_t>& treeAndNumber,const Side role,const Result& result,const bool hardSynchronization)
 {
   const auto& receivedTree=treeAndNumber.first;
   const size_t sessionMoves=treeAndNumber.second;
-  const auto& receivedHistory=receivedTree.history();
-  const auto& localHistory=board.currentNode.get().history();
-  bool sound=(role!=otherSide(receivedTree.sideToMove()));
-  if (search(localHistory.begin(),localHistory.end(),receivedHistory.begin(),receivedHistory.end())==localHistory.begin()) {
-    const size_t movesAhead=localHistory.size()-receivedHistory.size();
-    if (movesAhead==0)
+  const auto& serverNode=*receivedTree.front();
+  const int movesAhead=serverNode.numMovesBefore(board.currentNode().get());
+  if (movesAhead==0)
+    return false;
+  else if (movesAhead>0 && !hardSynchronization && sessionMoves+movesAhead==processedMoves) {
+    if (result.endCondition==NO_END)
       return false;
-    else if (!hardSynchronization && sessionMoves+movesAhead==processedMoves) {
-      if (result.endCondition!=NO_END)
-        sound=false;
-      else
-        return false;
-    }
+    else
+      board.receiveGameTree(receivedTree,false);
   }
-  board.receiveGameTree(receivedTree,sound);
+  else
+    board.receiveGameTree(receivedTree,role!=otherSide(serverNode.currentState.sideToMove));
   processedMoves=sessionMoves;
   return true;
 }

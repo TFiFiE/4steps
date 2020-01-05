@@ -2,7 +2,7 @@
 #define IO_HPP
 
 #include <sstream>
-#include "tree.hpp"
+#include "node.hpp"
 
 const char pieceLetters[]="RrCcDdHhMmEe ";
 
@@ -163,9 +163,10 @@ inline PieceSteps toMove(const std::string& input)
   return result;
 }
 
-inline std::pair<GameTreeNode,size_t> toTree(const std::string& lines)
+inline std::pair<GameTree,size_t> toTree(const std::string& lines,NodePtr root)
 {
-  auto iterator=GameTreeNode::create();
+  assert(root->isGameStart());
+  GameTree gameTree(1,std::move(root));
 
   std::stringstream ss;
   ss<<lines;
@@ -192,14 +193,17 @@ inline std::pair<GameTreeNode,size_t> toTree(const std::string& lines)
     moves.emplace_back(moveIndex,move);
   }
   for (const auto& move:moves) {
-    if (move.second=="takeback")
-      iterator.undo();
+    auto& node=gameTree.front();
+    if (move.second=="takeback") {
+      gameTree.emplace(gameTree.begin(),node);
+      gameTree.front()=gameTree.front()->previousNode;
+    }
     else if (move.first<NUM_SIDES)
-      iterator.addSetup(toPlacement(move.second));
+      node=Node::addSetup(node,toPlacement(move.second));
     else
-      iterator.makeMove(toMove(move.second));
+      node=Node::makeMove(node,toMove(move.second));
   }
-  return {iterator,moves.size()};
+  return {gameTree,moves.size()};
 }
 
 #endif // IO_HPP

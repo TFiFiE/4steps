@@ -9,7 +9,8 @@
 Board::Board(Globals& globals_,const Side viewpoint,const bool soundOn,const std::array<bool,NUM_SIDES>& controllableSides_,const bool customSetup_,QWidget* const parent,const Qt::WindowFlags f) :
   QWidget(parent,f),
   southIsUp(viewpoint==SECOND_SIDE),
-  currentNode(GameTreeNode::create()),
+  gameTree(Node::createTree()),
+  root(Node::root(gameTree.get().front())),
   globals(globals_),
   afterCurrentStep(potentialMove.end()),
   controllableSides(controllableSides_),
@@ -40,31 +41,36 @@ Board::Board(Globals& globals_,const Side viewpoint,const bool soundOn,const std
 
 bool Board::setupPhase() const
 {
-  return customSetup || currentNode.get().inSetup();
+  return customSetup || currentNode()->inSetup();
 }
 
 Side Board::sideToMove() const
 {
-  return customSetup ? potentialSetup.sideToMove : currentNode.get().sideToMove();
+  return customSetup ? potentialSetup.sideToMove : currentNode()->currentState.sideToMove;
 }
 
-MoveTree& Board::currentMoveNode() const
+const NodePtr& Board::currentNode() const
 {
-  return currentNode.get().getMoveNode();
+  return gameTree.get().front();
+}
+
+NodePtr& Board::currentNode()
+{
+  return gameTree.data.front();
 }
 
 const GameState& Board::gameState() const
 {
   return setupPhase() ? potentialSetup :
-                        (afterCurrentStep==potentialMove.begin() ? currentMoveNode().currentState : std::get<RESULTING_STATE>(*(afterCurrentStep-1)));
+                        (afterCurrentStep==potentialMove.begin() ? currentNode()->currentState : std::get<RESULTING_STATE>(*(afterCurrentStep-1)));
 }
 
 const GameState& Board::displayedGameState() const
 {
   if (isAnimating()) {
-    const auto& previousNode=currentMoveNode().previousNode;
+    const auto& previousNode=currentNode()->previousNode;
     assert(previousNode!=nullptr);
-    const auto& previousMove=currentMoveNode().previousEdge->first;
+    const auto& previousMove=currentNode()->move;
     if (nextAnimatedStep==previousMove.begin())
       return previousNode->currentState;
     else
@@ -76,27 +82,40 @@ const GameState& Board::displayedGameState() const
 
 bool Board::playable() const
 {
-  return currentNode.get().result().endCondition==NO_END && controllableSides[sideToMove()];
+  return currentNode()->result.endCondition==NO_END && controllableSides[sideToMove()];
 }
 
-void Board::receiveGameTree(const GameTreeNode& gameTreeNode,const bool sound)
+void Board::receiveGameTree(const GameTree& gameTreeNode,const bool sound)
 {
-  currentNode=gameTreeNode.mergeInto(currentNode);
+  const auto& serverNode=gameTreeNode.front();
+  const int movesBehind=currentNode()->numMovesBefore(serverNode.get());
+  int insertPos;
+  if (movesBehind>=0) {
+    if (movesBehind>0)
+      currentNode()=serverNode;
+    insertPos=1;
+  }
+  else
+    insertPos=0;
+  auto& gameTree_=gameTree.data;
+  gameTree_.insert(gameTree_.begin()+insertPos,gameTreeNode.begin()+insertPos,gameTreeNode.end());
+  gameTree_.erase(unsorted_unique(gameTree_.begin(),gameTree_.end()),gameTree_.end());
+
   if (setupPhase()) {
     if (sound && sideToMove()==SECOND_SIDE)
       playSound("qrc:/finished-setup.wav");
 
-    potentialSetup=currentNode.get().history().back();
+    potentialSetup=currentNode()->currentState;
     initSetup();
   }
   else {
     if (sound) {
-      if (currentMoveNode().previousNode==nullptr)
+      if (currentNode()->previousNode==nullptr)
         playSound("qrc:/finished-setup.wav");
       else if (animate)
         animateMove(false);
       else
-        playStepSounds(currentMoveNode().previousEdge->first,true);
+        playStepSounds(currentNode()->move,true);
     }
     potentialMove.clear();
     afterCurrentStep=potentialMove.end();
@@ -251,7 +270,7 @@ SquareIndex Board::closestAdjacentSquare(const QPoint& position) const
 
 bool Board::setupPlacementPhase() const
 {
-  return !customSetup && currentNode.get().inSetup() && currentSetupPiece>=0;
+  return !customSetup && currentNode()->inSetup() && currentSetupPiece>=0;
 }
 
 bool Board::isSetupSquare(const Side side,const SquareIndex square) const
@@ -458,7 +477,7 @@ void Board::finalizeSetup(const Placement& placement,const bool sound)
     potentialSetup.sideToMove=SECOND_SIDE;
     initSetup();
   }
-  currentNode.data.addSetup(placement);
+  currentNode()=Node::addSetup(currentNode(),placement);
 
   if (autoRotate)
     setViewpoint(sideToMove());
@@ -469,11 +488,11 @@ void Board::finalizeSetup(const Placement& placement,const bool sound)
 
 void Board::finalizeMove(const ExtendedSteps& move)
 {
-  currentNode.data.makeMove(move);
+  currentNode()=Node::makeMove(currentNode(),move);
   potentialMove.clear();
   afterCurrentStep=potentialMove.end();
   emit boardChanged();
-  if (currentNode.get().result().endCondition==NO_END && autoRotate)
+  if (currentNode()->result.endCondition==NO_END && autoRotate)
     setViewpoint(sideToMove());
   refreshHighlights(true);
   update();
@@ -522,7 +541,7 @@ void Board::mousePressEvent(QMouseEvent* event)
     case Qt::LeftButton:
       if (square!=NO_SQUARE && playable()) {
         const PieceTypeAndSide currentPiece=gameState().currentPieces[square];
-        if (customSetup ? currentPiece!=NO_PIECE : (currentNode.get().inSetup() ? isSide(currentPiece,sideToMove()) : gameState().legalOrigin(square))) {
+        if (customSetup ? currentPiece!=NO_PIECE : (currentNode()->inSetup() ? isSide(currentPiece,sideToMove()) : gameState().legalOrigin(square))) {
           fill(drag,square);
           dragSteps.clear();
           update();
@@ -626,10 +645,10 @@ void Board::mouseDoubleClickEvent(QMouseEvent* event)
       if ((eventSquare==NO_SQUARE || gameState().currentPieces[eventSquare]==NO_PIECE) && (!stepMode || found(highlighted,NO_SQUARE))) {
         if (customSetup) {
           if (potentialSetup.legalPosition()) {
-            MoveTree moveTree(potentialSetup);
-            if (moveTree.detectGameEnd().endCondition==NO_END) {
+            const auto node=std::make_shared<Node>(nullptr,ExtendedSteps(),potentialSetup);
+            if (!node->inSetup() && node->result.endCondition==NO_END) {
               customSetup=false;
-              currentNode.data.customSetup(moveTree);
+              currentNode()=node;
               if (autoRotate)
                 setViewpoint(sideToMove());
               emit boardChanged();
@@ -642,7 +661,7 @@ void Board::mouseDoubleClickEvent(QMouseEvent* event)
           else
             MessageBox(QMessageBox::Critical,tr("Illegal position"),tr("Unprotected piece on trap."),QMessageBox::NoButton,this).exec();
         }
-        else if (currentNode.get().inSetup()) {
+        else if (currentNode()->inSetup()) {
           if (currentSetupPiece<0) {
             const Placement placement=gameState().placement(sideToMove());
             emit sendSetup(placement,sideToMove());
@@ -651,7 +670,7 @@ void Board::mouseDoubleClickEvent(QMouseEvent* event)
         }
         else {
           const ExtendedSteps playedMove(potentialMove.cbegin(),afterCurrentStep);
-          switch (currentMoveNode().legalMove(gameState())) {
+          switch (currentNode()->legalMove(gameState())) {
             case LEGAL:
               emit sendMove(playedMove,sideToMove());
               playSound("qrc:/loud-step.wav");
@@ -718,7 +737,7 @@ void Board::paintEvent(QPaintEvent*)
   }
 
   const GameState& gameState_=displayedGameState();
-  const auto previousPieces=(setupPhase() || currentMoveNode().previousNode==nullptr ? nullptr : &currentMoveNode().previousNode->currentState.currentPieces);
+  const auto previousPieces=(setupPhase() || currentNode()->previousNode==nullptr ? nullptr : &currentNode()->previousNode->currentState.currentPieces);
 
   QPen qPen(Qt::SolidPattern,1);
   const QPoint mousePosition=mapFromGlobal(QCursor::pos());
@@ -759,7 +778,7 @@ void Board::paintEvent(QPaintEvent*)
       const QRect qRect=visualRectangle(file,rank);
       qPainter.drawRect(qRect);
       if (isTrapSquare) {
-        if (currentNode.get().result().endCondition!=NO_END)
+        if (currentNode()->result.endCondition!=NO_END)
           qPainter.setPen(neutralColor);
         qPainter.drawText(qRect,Qt::AlignCenter,toCoordinates(file,rank,'A').data());
       }
@@ -778,13 +797,13 @@ void Board::paintEvent(QPaintEvent*)
 
 void Board::animateMove(const bool showStart)
 {
-  if (setupPhase() || currentMoveNode().previousNode==nullptr) {
-    if (currentNode.get().currentPhase()!=GameTreeNode::FIRST_SETUP)
-      playSound("qrc:/finished-setup.wav");
-  }
+  if (currentNode()->previousNode==nullptr && currentNode()->currentState.empty())
+    return;
+  else if (currentNode()->move.empty())
+    playSound("qrc:/finished-setup.wav");
   else {
     qMediaPlaylist.clear();
-    const auto& previousMove=currentMoveNode().previousEdge->first;
+    const auto& previousMove=currentNode()->move;
     nextAnimatedStep=previousMove.begin();
     assert(nextAnimatedStep!=previousMove.end());
     if (showStart) {
@@ -800,7 +819,7 @@ void Board::animateNextStep()
 {
   if (qMediaPlayer.state()==QMediaPlayer::StoppedState)
     qMediaPlaylist.clear();
-  const auto lastStep=currentMoveNode().previousEdge->first.end();
+  const auto lastStep=currentNode()->move.end();
   if (!playCaptureSound(*nextAnimatedStep++))
     qMediaPlaylist.addMedia(QUrl(nextAnimatedStep==lastStep ? "qrc:/loud-step.wav" : "qrc:/soft-step.wav"));
   qMediaPlayer.play();

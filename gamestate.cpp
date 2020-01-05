@@ -19,6 +19,14 @@ bool GameState::operator==(const GameState& rhs) const
          followupOrigins==rhs.followupOrigins;
 }
 
+bool GameState::empty() const
+{
+  for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square))
+    if (currentPieces[square]!=NO_PIECE)
+      return false;
+  return true;
+}
+
 Placement GameState::placement(const Side side) const
 {
   Placement result;

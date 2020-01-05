@@ -51,7 +51,7 @@ GameList::GameList(Server* const server,const QString& labelText) :
     const auto& game=games[index.row()];
 
     bool emptySeat=false;
-    for (const auto player:game.players) {
+    for (const auto& player:game.players) {
       if (player.isEmpty())
         emptySeat=true;
       else if (player!=server->session.username())

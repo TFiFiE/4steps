@@ -33,15 +33,14 @@ SOURCES += \
     login.cpp \
     main.cpp \
     mainwindow.cpp \
-    movetree.cpp \
+    node.cpp \
     opengame.cpp \
     pieceicons.cpp \
     playerbar.cpp \
     popup.cpp \
     server.cpp \
     timecontrol.cpp \
-    timeestimator.cpp \
-    tree.cpp
+    timeestimator.cpp
 
 HEADERS += \
     arimaa_com.hpp \
@@ -62,7 +61,7 @@ HEADERS += \
     login.hpp \
     mainwindow.hpp \
     messagebox.hpp \
-    movetree.hpp \
+    node.hpp \
     opengame.hpp \
     pieceicons.hpp \
     playerbar.hpp \
@@ -70,8 +69,7 @@ HEADERS += \
     readonly.hpp \
     server.hpp \
     timecontrol.hpp \
-    timeestimator.hpp \
-    tree.hpp
+    timeestimator.hpp
 
 RESOURCES += \
     resources.qrc

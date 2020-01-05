@@ -10,6 +10,7 @@ public:
 
   explicit GameState();
   bool operator==(const GameState& rhs) const;
+  bool empty() const;
   Placement placement(const Side side) const;
   bool isSupported(const SquareIndex square,const Side side) const;
   bool isFrozen(const SquareIndex square) const;

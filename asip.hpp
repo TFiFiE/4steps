@@ -7,7 +7,7 @@ class QNetworkReply;
 #include <QNetworkRequest>
 #include <QReadWriteLock>
 class Server;
-#include "tree.hpp"
+#include "node.hpp"
 #include "timeestimator.hpp"
 
 class ASIP : public QObject {
@@ -75,7 +75,7 @@ public:
   bool gameStateAvailable() const;
   Status getStatus() const;
   Side sideToMove() const;
-  std::pair<GameTreeNode,size_t> getMoves() const;
+  std::pair<GameTree,size_t> getMoves(NodePtr root) const;
   std::array<QString,NUM_SIDES> getPlayers() const;
   Result getResult() const;
   std::array<std::array<qint64,3>,NUM_SIDES> getTimes() const;

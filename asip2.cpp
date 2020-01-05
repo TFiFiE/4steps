@@ -31,7 +31,7 @@ std::vector<QNetworkReply*> ASIP2::state()
         {"opengames",OPEN_GAMES},
         {"livegames",LIVE_GAMES},
         {"recentgames",RECENT_GAMES}};
-      for (const auto gameListAction:gameListActions)
+      for (const auto& gameListAction:gameListActions)
         emit sendGameList(std::get<1>(gameListAction),getGameList(stateData[std::get<0>(gameListAction)].toList()));
     }
     catch (const std::exception& exception) {
