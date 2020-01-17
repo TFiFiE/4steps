@@ -17,6 +17,11 @@ public:
   virtual bool event(QEvent* event) override;
   virtual bool eventFilter(QObject* watched,QEvent* event) override;
 private:
+  void addGameMenu(const bool controllable);
+  void addBoardMenu();
+  void addControlsMenu(const bool controllable);
+  void setWindowState();
+  void initLiveGame();
   static std::array<bool,NUM_SIDES> getControllableSides(const std::shared_ptr<ASIP> session);
   static std::vector<qint64> getTickTimes();
   void setDockWidgets(const bool southIsUp);

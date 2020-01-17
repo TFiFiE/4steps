@@ -28,6 +28,25 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   iconSets(this)
 {
   setCentralWidget(&board);
+
+  const auto controllableSides=getControllableSides(session);
+  const bool controllable=(controllableSides[FIRST_SIDE] || controllableSides[SECOND_SIDE]);
+  addGameMenu(controllable);
+  addBoardMenu();
+  addControlsMenu(controllable);
+
+  menuBar()->setCornerWidget(&cornerMessage);
+  connect(&board,&Board::boardChanged,this,&Game::updateCornerMessage);
+
+  setWindowState();
+  initLiveGame();
+
+  setAttribute(Qt::WA_DeleteOnClose);
+  show();
+}
+
+void Game::addGameMenu(const bool controllable)
+{
   const auto gameMenu=menuBar()->addMenu(tr("&Game"));
 
   forceUpdate.setEnabled(session!=nullptr);
@@ -36,8 +55,6 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
     connect(&forceUpdate,&QAction::triggered,session.get(),&ASIP::forceUpdate);
   gameMenu->addAction(&forceUpdate);
 
-  const auto controllableSides=getControllableSides(session);
-  const bool controllable=(controllableSides[FIRST_SIDE] || controllableSides[SECOND_SIDE]);
   resign.setEnabled(session!=nullptr && controllable);
   resign.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_R));
   connect(&resign,&QAction::triggered,[=]{
@@ -47,7 +64,10 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
       session->resign();
   });
   gameMenu->addAction(&resign);
+}
 
+void Game::addBoardMenu()
+{
   const auto boardMenu=menuBar()->addMenu(tr("&Board"));
 
   fullScreen.setShortcut(QKeySequence(Qt::Key_F));
@@ -91,7 +111,10 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   connect(&iconSets,&QActionGroup::triggered,&board,[this](QAction* const action) {
     board.setIconSet(static_cast<PieceIcons::Set>(iconSets.actions().indexOf(action)));
   });
+}
 
+void Game::addControlsMenu(const bool controllable)
+{
   const auto controlsMenu=menuBar()->addMenu(tr("&Controls"));
 
   stepMode.setEnabled(controllable);
@@ -100,10 +123,10 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   stepMode.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_S));
   connect(&stepMode,&QAction::toggled,&board,&Board::setStepMode);
   controlsMenu->addAction(&stepMode);
+}
 
-  menuBar()->setCornerWidget(&cornerMessage);
-  connect(&board,&Board::boardChanged,this,&Game::updateCornerMessage);
-
+void Game::setWindowState()
+{
   globals.settings.beginGroup("Game");
   const auto size=globals.settings.value("size").toSize();
   const auto state=globals.settings.value("state");
@@ -118,7 +141,10 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
     restoreState(state.toByteArray());
   else
     restoreState(saveState()); // QT BUG: https://bugreports.qt.io/browse/QTBUG-65592
+}
 
+void Game::initLiveGame()
+{
   if (session!=nullptr) {
     connect(session.get(),&ASIP::error,this,[this](const std::exception& exception) {
       MessageBox(QMessageBox::Critical,tr("Error from game server"),exception.what(),QMessageBox::NoButton,this).exec();
@@ -164,8 +190,6 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
       });
     }
   }
-  setAttribute(Qt::WA_DeleteOnClose);
-  show();
 }
 
 bool Game::event(QEvent* event)
