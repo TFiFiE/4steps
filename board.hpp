@@ -9,19 +9,28 @@ struct Globals;
 #include "readonly.hpp"
 #include "pieceicons.hpp"
 #include "gamestate.hpp"
+#include "potentialmove.hpp"
 
 class Board : public QWidget {
   Q_OBJECT
 public:
-  explicit Board(Globals& globals_,const Side viewpoint,const bool soundOn,const std::array<bool,NUM_SIDES>& controllableSides_={true,true},const bool customSetup_=false,QWidget* const parent=nullptr,const Qt::WindowFlags f=Qt::WindowFlags());
+  explicit Board(Globals& globals_,NodePtr currentNode_,const bool explore_,const Side viewpoint,const bool soundOn,const std::array<bool,NUM_SIDES>& controllableSides_={true,true},QWidget* const parent=nullptr,const Qt::WindowFlags f=Qt::WindowFlags());
+  bool customSetup() const;
   bool setupPhase() const;
+  bool setupPlacementPhase() const;
   Side sideToMove() const;
-  const NodePtr& currentNode() const;
-  NodePtr& currentNode();
   const GameState& gameState() const;
   const GameState& displayedGameState() const;
+  Placements currentPlacements() const;
+  std::string tentativeMoveString() const;
+  bool gameEnd() const;
   bool playable() const;
-  void receiveGameTree(const GameTree& gameTreeNode,const bool sound);
+  bool setNode(NodePtr newNode,const bool sound=false,bool keepState=false);
+  void proposeMove(const Node& child,const unsigned int playedOutSteps);
+  void proposeSetup(GameState gameState);
+  void doSteps(const ExtendedSteps& potentialMove,const bool sound,const int undoneSteps=0);
+  void undoSteps(const bool all);
+  void redoSteps(const bool all);
   void rotate();
   void setViewpoint(const Side side);
   void setAutoRotate(const bool on);
@@ -31,13 +40,14 @@ public:
   void setAnimate(const bool newAnimate);
   void setAnimationDelay(const int newAnimationDelay);
   void playSound(const QString& soundFile);
+  void setExploration(const bool on);
   void setControllable(const std::array<bool,NUM_SIDES>& controllableSides_);
 
-  readonly<Board,bool> southIsUp,stepMode,soundOn,animate;
+  readonly<Board,bool> explore,southIsUp,stepMode,soundOn,animate;
   readonly<Board,PieceIcons::Set> iconSet;
-  readonly<Board,GameTree> gameTree;
-  const NodePtr root;
+  readonly<Board,NodePtr> currentNode;
   readonly<Board,int> animationDelay;
+  readonly<Board,PotentialMove> potentialMove;
 private:
   int squareWidth() const;
   int squareHeight() const;
@@ -47,7 +57,6 @@ private:
   SquareIndex positionToSquare(const QPoint& position) const;
   static int closestAxisDirection(unsigned int value,const unsigned int size);
   SquareIndex closestAdjacentSquare(const QPoint& position) const;
-  bool setupPlacementPhase() const;
   bool isSetupSquare(const Side side,const SquareIndex square) const;
   bool validDrop() const;
   bool isAnimating() const;
@@ -62,20 +71,18 @@ private:
   bool singleSquareAction(const SquareIndex square);
   bool doubleSquareAction(const SquareIndex origin,const SquareIndex destination);
   bool doubleSquareSetupAction(const SquareIndex origin,const SquareIndex destination);
-  void doSteps(const ExtendedSteps& potentialMove);
-  void finalizeSetup(const Placement& placement,const bool sound);
+  void finalizeSetup(const Placements& placements);
   void finalizeMove(const ExtendedSteps& playedMove);
   void endDrag();
-  void undoSteps(const bool all);
-  void redoSteps(const bool all);
+  bool autoFinalize(const bool stepsTaken);
 
-  void mousePressEvent(QMouseEvent* event) override;
-  void mouseMoveEvent(QMouseEvent* event) override;
-  void mouseReleaseEvent(QMouseEvent* event) override;
-  void mouseDoubleClickEvent(QMouseEvent* event) override;
-  void wheelEvent(QWheelEvent* event) override;
-  void focusOutEvent(QFocusEvent*) override;
-  void paintEvent(QPaintEvent*) override;
+  virtual void mousePressEvent(QMouseEvent* event) override;
+  virtual void mouseMoveEvent(QMouseEvent* event) override;
+  virtual void mouseReleaseEvent(QMouseEvent* event) override;
+  virtual void mouseDoubleClickEvent(QMouseEvent* event) override;
+  virtual void wheelEvent(QWheelEvent* event) override;
+  virtual void focusOutEvent(QFocusEvent*) override;
+  virtual void paintEvent(QPaintEvent*) override;
 
   void animateMove(const bool showStart);
   void animateNextStep();
@@ -90,12 +97,9 @@ private:
   QMediaPlaylist qMediaPlaylist;
 
   GameState potentialSetup;
-  ExtendedSteps potentialMove;
-  ExtendedSteps::const_iterator afterCurrentStep;
   std::array<unsigned int,NUM_PIECE_TYPES-1> numSetupPieces;
   int currentSetupPiece;
   std::array<bool,NUM_SIDES> controllableSides;
-  bool customSetup;
   bool autoRotate;
   std::array<SquareIndex,2> drag;
   ExtendedSteps dragSteps;
@@ -105,8 +109,7 @@ signals:
   void gameStarted();
   void boardChanged();
   void boardRotated(const bool southIsUp);
-  void sendSetup(const Placement& placement,const Side side);
-  void sendMove(const ExtendedSteps& move,const Side side);
+  void sendNodeChange(const NodePtr& newNode,const NodePtr& oldNode);
 
   friend class Popup;
 };

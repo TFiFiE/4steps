@@ -27,15 +27,20 @@ bool GameState::empty() const
   return true;
 }
 
-Placement GameState::placement(const Side side) const
+Placements GameState::placements(const Side side) const
 {
-  Placement result;
+  Placements result;
   for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square)) {
     const PieceTypeAndSide pieceType=currentPieces[square];
     if (isSide(pieceType,side))
-      result.emplace(square,pieceType);
+      result.emplace(Placement{square,pieceType});
   }
   return result;
+}
+
+Placements GameState::playedPlacements() const
+{
+  return placements(otherSide(sideToMove));
 }
 
 bool GameState::isSupported(const SquareIndex square,const Side side) const
@@ -174,12 +179,12 @@ ExtendedSteps GameState::toExtendedSteps(const PieceSteps& pieceSteps) const
   return GameState(*this).takePieceSteps(pieceSteps);
 }
 
-void GameState::add(const Placement& placement)
+void GameState::add(const Placements& placements)
 {
-  for (const auto& pair:placement) {
-    PieceTypeAndSide& pieceOnSquare=currentPieces[pair.first];
+  for (const auto& pair:placements) {
+    PieceTypeAndSide& pieceOnSquare=currentPieces[pair.location];
     runtime_assert(pieceOnSquare==NO_PIECE,"Square already has a piece.");
-    pieceOnSquare=pair.second;
+    pieceOnSquare=pair.piece;
   }
 }
 

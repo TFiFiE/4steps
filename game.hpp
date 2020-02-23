@@ -4,9 +4,12 @@
 #include <memory>
 #include <QMainWindow>
 #include <QDockWidget>
+#include <QTreeView>
 #include <QTimer>
 #include <QAction>
+#include <QCheckBox>
 class ASIP;
+#include "treemodel.hpp"
 #include "board.hpp"
 #include "playerbar.hpp"
 
@@ -14,38 +17,58 @@ class Game : public QMainWindow {
   Q_OBJECT
 public:
   explicit Game(Globals& globals_,const Side viewpoint,QWidget* const parent=nullptr,const std::shared_ptr<ASIP> session_=std::shared_ptr<ASIP>(),const bool customSetup=false);
-  virtual bool event(QEvent* event) override;
-  virtual bool eventFilter(QObject* watched,QEvent* event) override;
 private:
   void addGameMenu(const bool controllable);
   void addBoardMenu();
   void addControlsMenu(const bool controllable);
+  void addDockMenu();
+  void addCornerWidget();
   void setWindowState();
   void initLiveGame();
+  void saveDockStates();
+  virtual bool event(QEvent* event) override;
+  virtual bool eventFilter(QObject* watched,QEvent* event) override;
   static std::array<bool,NUM_SIDES> getControllableSides(const std::shared_ptr<ASIP> session);
   static std::vector<qint64> getTickTimes();
-  void setDockWidgets(const bool southIsUp);
+  void setPlayerBars(const bool southIsUp);
   void synchronize(const bool hard);
   void updateTimes();
   qint64 updateCornerMessage();
   void soundTicker(const Side sideToMove,const qint64 timeLeft);
+  void setExploration(const bool on);
   bool processMoves(const std::pair<GameTree,size_t>& treeAndNumber,const Side role,const Result& result,const bool hardSynchronization);
+  void receiveGameTree(const GameTree& gameTreeNode,const bool sound);
+  void receiveNodeChange(const NodePtr& newNode);
+  void processVisibleNode(const NodePtr& node);
+  void synchronizeWithMoveCell(const QModelIndex& current);
+  void updateMoveList();
+  QPersistentModelIndex getCurrentIndex(const NodePtr& node) const;
+  void setCurrentIndex(const QModelIndex& index);
   void announceResult(const Result& result);
 
   Globals& globals;
   const std::shared_ptr<ASIP> session;
+  GameTree gameTree;
+  TreeModel treeModel;
+  NodePtr liveNode;
   Board board;
-  QDockWidget dockWidgets[NUM_SIDES];
+  enum {MOVE_LIST_INDEX=NUM_SIDES,NUM_DOCK_WIDGETS};
+  QDockWidget dockWidgets[NUM_DOCK_WIDGETS];
   bool dockWidgetResized;
   PlayerBar playerBars[NUM_SIDES];
+  QTreeView treeView;
   QTimer timer,ticker;
   size_t processedMoves;
   int nextTickTime;
   bool finished;
+  bool moveSynchronization;
 
-  QAction forceUpdate,resign,fullScreen,rotate,autoRotate,animate,sound,stepMode;
+  QAction forceUpdate,resign,fullScreen,rotate,autoRotate,animate,sound,stepMode,moveList;
+  QWidget cornerWidget;
+  QHBoxLayout cornerLayout;
+    QLabel cornerMessage;
+    QCheckBox explore;
   QActionGroup iconSets;
-  QLabel cornerMessage;
 };
 
 #endif // GAME_HPP

@@ -1,6 +1,7 @@
 #include <QMenuBar>
 #include <QApplication>
 #include <QScreen>
+#include <QHeaderView>
 #include "game.hpp"
 #include "globals.hpp"
 #include "mainwindow.hpp"
@@ -12,11 +13,15 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   QMainWindow(parent),
   globals(globals_),
   session(session_),
-  board(globals,viewpoint,session!=nullptr,{session==nullptr,session==nullptr},customSetup),
+  gameTree(customSetup ? GameTree() : Node::createTree()),
+  treeModel(gameTree.empty() ? nullptr : gameTree.front()),
+  liveNode(session==nullptr ? nullptr : treeModel.root),
+  board(globals,treeModel.root,session==nullptr,viewpoint,session!=nullptr,{session==nullptr,session==nullptr}),
   dockWidgetResized(false),
   processedMoves(0),
   nextTickTime(-1),
   finished(false),
+  moveSynchronization(true),
   forceUpdate("Force server &update"),
   resign(tr("&Resign")),
   fullScreen(tr("&Full screen")),
@@ -25,6 +30,8 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   animate(tr("Animate &moves")),
   sound(tr("&Sound")),
   stepMode(tr("&Step mode")),
+  moveList(tr("&Move list")),
+  explore(tr("&Explore")),
   iconSets(this)
 {
   setCentralWidget(&board);
@@ -34,11 +41,10 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   addGameMenu(controllable);
   addBoardMenu();
   addControlsMenu(controllable);
-
-  menuBar()->setCornerWidget(&cornerMessage);
-  connect(&board,&Board::boardChanged,this,&Game::updateCornerMessage);
-
+  addDockMenu();
+  addCornerWidget();
   setWindowState();
+  connect(&board,&Board::sendNodeChange,this,&Game::receiveNodeChange);
   initLiveGame();
 
   setAttribute(Qt::WA_DeleteOnClose);
@@ -125,6 +131,53 @@ void Game::addControlsMenu(const bool controllable)
   controlsMenu->addAction(&stepMode);
 }
 
+void Game::addDockMenu()
+{
+  const auto dockMenu=menuBar()->addMenu(tr("&Docks"));
+
+  treeView.setModel(&treeModel);
+  treeView.setHeaderHidden(true);
+  treeView.setAnimated(false);
+  treeView.header()->setMinimumSectionSize(0);
+  treeView.header()->setStretchLastSection(false);
+  treeView.header()->setSectionResizeMode(QHeaderView::ResizeToContents);
+  treeView.setIndentation(0);
+  treeView.setAlternatingRowColors(true);
+  treeView.setSelectionBehavior(QAbstractItemView::SelectItems);
+  connect(treeView.selectionModel(),&QItemSelectionModel::currentChanged,this,&Game::synchronizeWithMoveCell);
+  connect(&board,&Board::boardChanged,this,&Game::updateMoveList);
+  updateMoveList();
+
+  auto& dockWidget=dockWidgets[MOVE_LIST_INDEX];
+  dockWidget.setAllowedAreas(Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea);
+  dockWidget.setFeatures(QDockWidget::DockWidgetClosable|QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetFloatable);
+  addDockWidget(Qt::RightDockWidgetArea,&dockWidget);
+  dockWidget.setWidget(&treeView);
+  dockWidget.setObjectName("Move list");
+
+  moveList.setCheckable(true);
+  moveList.setChecked(true);
+  moveList.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_M));
+  connect(&moveList,&QAction::toggled,&dockWidget,&QDockWidget::setVisible);
+
+  dockMenu->addAction(&moveList);
+}
+
+void Game::addCornerWidget()
+{
+  cornerWidget.setLayout(&cornerLayout);
+
+  connect(&board,&Board::boardChanged,this,&Game::updateCornerMessage);
+  cornerLayout.addWidget(&cornerMessage);
+
+  explore.setChecked(board.explore);
+  setExploration(board.explore);
+  connect(&explore,&QCheckBox::toggled,this,&Game::setExploration);
+  cornerLayout.addWidget(&explore);
+
+  menuBar()->setCornerWidget(&cornerWidget);
+}
+
 void Game::setWindowState()
 {
   globals.settings.beginGroup("Game");
@@ -137,10 +190,14 @@ void Game::setWindowState()
     const auto fullScreen=qApp->primaryScreen()->availableGeometry().size();
     resize(fullScreen.width()/3,fullScreen.height()/2);
   }
-  if (state.isValid())
+  if (state.isValid()) {
     restoreState(state.toByteArray());
-  else
-    restoreState(saveState()); // QT BUG: https://bugreports.qt.io/browse/QTBUG-65592
+    for (auto& dockWidget:dockWidgets) {
+      dockWidget.setFloating(false);
+      dockWidget.installEventFilter(this);
+      connect(&dockWidget,&QDockWidget::dockLocationChanged,this,&Game::saveDockStates);
+    }
+  }
 }
 
 void Game::initLiveGame()
@@ -155,23 +212,11 @@ void Game::initLiveGame()
       dockWidget.setWindowTitle(side==FIRST_SIDE ? tr("Gold") : tr("Silver"));
       dockWidget.setFeatures(QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetVerticalTitleBar);
       dockWidget.setWidget(&playerBars[side]);
-      dockWidget.installEventFilter(this);
       dockWidget.setObjectName(dockWidget.windowTitle());
     }
-    setDockWidgets(board.southIsUp);
-    connect(&board,&Board::boardRotated,this,&Game::setDockWidgets);
+    setPlayerBars(board.southIsUp);
+    connect(&board,&Board::boardRotated,this,&Game::setPlayerBars);
 
-    connect(&board,&Board::sendSetup,this,[=](const Placement& placement) {
-      assert(placement==toPlacement(toString(placement)));
-      session->sendMove(QString::fromStdString(toString(placement)));
-      ++processedMoves;
-      nextTickTime=-1;
-    });
-    connect(&board,&Board::sendMove,this,[=](const ExtendedSteps& move) {
-      session->sendMove(QString::fromStdString(toString(move)));
-      ++processedMoves;
-      nextTickTime=-1;
-    });
     if (session->gameStateAvailable())
       synchronize(false);
     connect(session.get(),&ASIP::updated,this,&Game::synchronize);
@@ -192,6 +237,13 @@ void Game::initLiveGame()
   }
 }
 
+void Game::saveDockStates()
+{
+  globals.settings.beginGroup("Game");
+  globals.settings.setValue("state",saveState());
+  globals.settings.endGroup();
+}
+
 bool Game::event(QEvent* event)
 {
   switch (event->type()) {
@@ -202,11 +254,13 @@ bool Game::event(QEvent* event)
     break;
     case QEvent::MouseButtonRelease:
       if (dockWidgetResized) {
-        globals.settings.beginGroup("Game");
-        globals.settings.setValue("state",saveState());
-        globals.settings.endGroup();
+        saveDockStates();
         dockWidgetResized=false;
       }
+    break;
+    case QEvent::Wheel:
+      if (QCoreApplication::sendEvent(&board,event))
+        return true;
     break;
     default: break;
   }
@@ -215,10 +269,18 @@ bool Game::event(QEvent* event)
 
 bool Game::eventFilter(QObject* watched,QEvent* event)
 {
-  if (event->type()==QEvent::Resize)
-    for (const auto& dockWidget:dockWidgets)
-      if (watched==&dockWidget)
-        dockWidgetResized=true;
+  switch (event->type()) {
+    case QEvent::Resize:
+      for (const auto& dockWidget:dockWidgets)
+        if (watched==&dockWidget) {
+          dockWidgetResized=true;
+        }
+    break;
+    case QEvent::Close:
+      if (watched==&dockWidgets[MOVE_LIST_INDEX])
+        moveList.setChecked(false);
+    default: break;
+  }
   return QMainWindow::eventFilter(watched,event);
 }
 
@@ -251,7 +313,7 @@ std::vector<qint64> Game::getTickTimes()
   return tickTimes;
 }
 
-void Game::setDockWidgets(const bool southIsUp)
+void Game::setPlayerBars(const bool southIsUp)
 {
   for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side)) {
     auto& dockWidget=dockWidgets[side];
@@ -265,17 +327,25 @@ void Game::synchronize(const bool hard)
 {
   const auto status=session->getStatus();
   const auto role=session->role();
-  if (status==ASIP::UNSTARTED || status==ASIP::LIVE)
-    board.setControllable({FIRST_SIDE==role,SECOND_SIDE==role});
-  else
-    board.setControllable({false,false});
+  switch (status) {
+    case ASIP::OPEN:
+      board.setControllable({false,false});
+    break;
+    case ASIP::UNSTARTED:
+    case ASIP::LIVE:
+      board.setControllable({FIRST_SIDE==role,SECOND_SIDE==role});
+    break;
+    case ASIP::FINISHED:
+      board.setControllable({true,true});
+    break;
+  }
   const auto players=session->getPlayers();
   const auto sideToMove=(status==ASIP::LIVE ? session->sideToMove() : NO_SIDE);
   for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side)) {
     playerBars[side].player.setText(players[side]);
     playerBars[side].setActive(side==sideToMove);
   }
-  const auto moves=session->getMoves(board.root);
+  const auto moves=session->getMoves(treeModel.root);
   auto result=session->getResult();
   if (processMoves(moves,role,result,hard))
     nextTickTime=-1;
@@ -322,16 +392,14 @@ void Game::updateTimes()
 qint64 Game::updateCornerMessage()
 {
   auto nextChange=std::numeric_limits<qint64>::max();
-  if (board.playable() && !board.setupPhase())
-    cornerMessage.setText(tr("Steps left: ")+QString::number(board.gameState().stepsAvailable));
-  else if (session!=nullptr && session->getStatus()!=ASIP::FINISHED) {
+  if (session!=nullptr && session->getStatus()!=ASIP::FINISHED) {
     const auto timeSinceLastReply=session->timeSinceLastReply();
     cornerMessage.setText(tr("Last server response: ")+PlayerBar::timeDisplay(timeSinceLastReply));
     nextChange=1000-timeSinceLastReply%1000;
   }
   else
     cornerMessage.setText("");
-  menuBar()->setCornerWidget(&cornerMessage);
+  menuBar()->setCornerWidget(&cornerWidget);
   return nextChange;
 }
 
@@ -357,24 +425,179 @@ void Game::soundTicker(const Side sideToMove,const qint64 timeLeft)
     ticker.stop();
 }
 
+void Game::setExploration(const bool on)
+{
+  board.setExploration(on);
+  if (on)
+    treeModel.exclusive=QModelIndex();
+  else if (liveNode==nullptr)
+    treeModel.exclusive=treeView.currentIndex();
+  else {
+    const auto& index=treeModel.lastIndex(liveNode);
+    treeModel.exclusive=index;
+    const auto& currentNode=board.currentNode.get();
+    if (currentNode!=liveNode) {
+      const auto& child=liveNode->findClosestChild(currentNode);
+      board.setNode(liveNode);
+      if (child!=nullptr && session->role()==board.sideToMove())
+        board.proposeMove(*child.get(),child->move.size());
+    }
+  }
+  emit treeModel.layoutChanged();
+}
+
 bool Game::processMoves(const std::pair<GameTree,size_t>& treeAndNumber,const Side role,const Result& result,const bool hardSynchronization)
 {
   const auto& receivedTree=treeAndNumber.first;
   const size_t sessionMoves=treeAndNumber.second;
   const auto& serverNode=*receivedTree.front();
-  const int movesAhead=serverNode.numMovesBefore(board.currentNode().get());
+  const int movesAhead=serverNode.numMovesBefore(liveNode.get());
   if (movesAhead==0)
     return false;
   else if (movesAhead>0 && !hardSynchronization && sessionMoves+movesAhead==processedMoves) {
     if (result.endCondition==NO_END)
       return false;
     else
-      board.receiveGameTree(receivedTree,false);
+      receiveGameTree(receivedTree,false);
   }
   else
-    board.receiveGameTree(receivedTree,role!=otherSide(serverNode.currentState.sideToMove));
+    receiveGameTree(receivedTree,role!=otherSide(serverNode.currentState.sideToMove));
   processedMoves=sessionMoves;
   return true;
+}
+
+void Game::receiveGameTree(const GameTree& gameTreeNode,const bool sound)
+{
+  liveNode=gameTreeNode.front();
+  const int movesBehind=gameTree.front()->numMovesBefore(liveNode.get());
+  int insertPos;
+  if (movesBehind>=0) {
+    if (movesBehind>0)
+      gameTree.front()=liveNode;
+    insertPos=1;
+  }
+  else
+    insertPos=0;
+  gameTree.insert(gameTree.begin()+insertPos,gameTreeNode.begin()+insertPos,gameTreeNode.end());
+  gameTree.erase(unsorted_unique(gameTree.begin(),gameTree.end()),gameTree.end());
+
+  const auto oldNode=board.currentNode.get();
+  const bool changed=board.setNode(liveNode,sound,true);
+  explore.setChecked(false);
+  if (session->role()==board.sideToMove()) {
+    if (!changed)
+      board.undoSteps(true);
+    else if (const auto& child=liveNode->findClosestChild(oldNode))
+      board.proposeMove(*child.get(),0);
+  }
+  processVisibleNode(liveNode);
+}
+
+void Game::receiveNodeChange(const NodePtr& newNode)
+{
+  Node::addToTree(gameTree,newNode);
+
+  if (session!=nullptr) {
+    if (!board.explore) {
+      liveNode=newNode;
+      session->sendMove(QString::fromStdString(newNode->toString()));
+      ++processedMoves;
+      nextTickTime=-1;
+    }
+  }
+  if (treeModel.root==nullptr)
+    treeModel.root=Node::root(newNode);
+
+  processVisibleNode(newNode);
+}
+
+void Game::processVisibleNode(const NodePtr& node)
+{
+  const auto& ancestors=node->ancestors();
+  for (auto ancestor=ancestors.rbegin();ancestor!=ancestors.rend();++ancestor)
+    treeView.expand(treeModel.index(ancestor->lock(),0));
+  const auto& index=treeModel.lastIndex(node);
+  if (!board.explore)
+    treeModel.exclusive=index;
+  setCurrentIndex(index);
+  emit treeModel.layoutChanged();
+}
+
+void Game::synchronizeWithMoveCell(const QModelIndex& current)
+{
+  if (moveSynchronization) {
+    moveSynchronization=false;
+    const auto node=treeModel.getItem(current);
+    const auto column=current.column();
+    if (current.siblingAtColumn(column+1)==QModelIndex()) {
+      board.setNode(node);
+      if (!node->inSetup())
+        if (const auto& child=node->child(0)) {
+          const auto& move=child->move;
+          board.doSteps(move,false,move.size());
+        }
+    }
+    else {
+      board.setNode(node->previousNode);
+      board.proposeMove(*node.get(),column);
+    }
+    moveSynchronization=true;
+  }
+}
+
+void Game::updateMoveList()
+{
+  const auto& node=board.currentNode;
+  auto& dockWidget=dockWidgets[MOVE_LIST_INDEX];
+  std::string moveString;
+  if (node.get()==nullptr) {
+    for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side)) {
+      const auto& placementString=toString(board.gameState().placements(side));
+      if (!placementString.empty()) {
+        if (!moveString.empty())
+          moveString+=' ';
+        moveString+=placementString;
+      }
+    }
+  }
+  else
+    moveString=toPlyString(node->depth,*treeModel.root)+' '+board.tentativeMoveString();
+  dockWidget.setWindowTitle(QString::fromStdString(moveString));
+
+  if (moveSynchronization)
+    setCurrentIndex(getCurrentIndex(node));
+}
+
+QPersistentModelIndex Game::getCurrentIndex(const NodePtr& node) const
+{
+  if (node.get()==nullptr)
+    return QPersistentModelIndex();
+  else if (node->inSetup()) {
+    const auto& currentPlacements=board.currentPlacements();
+    if (!currentPlacements.empty())
+      if (const auto& child=node->findPartialMatchingChild(currentPlacements).first) {
+        const auto& childPlacements=child->currentState.playedPlacements();
+        const auto pair=mismatch(currentPlacements.begin(),currentPlacements.end(),childPlacements.begin());
+        return treeModel.index(child,pair.second==childPlacements.end() ? childPlacements.size()-numStartingPiecesPerType[0] : distance(childPlacements.begin(),pair.second));
+      }
+  }
+  else {
+    const auto& potentialMove=board.potentialMove.get();
+    const auto& currentSteps=potentialMove.current();
+    NodePtr child;
+    for (const auto& steps:{potentialMove.all(),currentSteps})
+      if (!steps.empty() && (child=node->findPartialMatchingChild(steps).first)!=nullptr)
+        return treeModel.index(child,currentSteps.size());
+  }
+  return treeModel.index(node,treeModel.columnCount(node->move.size())-1);
+}
+
+void Game::setCurrentIndex(const QModelIndex& index)
+{
+  moveSynchronization=false;
+  treeView.setCurrentIndex(index);
+  moveSynchronization=true;
+  treeView.scrollTo(index.siblingAtColumn(0));
 }
 
 void Game::announceResult(const Result& result)

@@ -23,6 +23,10 @@ public:
   {
     return data;
   }
+  Type operator->() const
+  {
+    return data;
+  }
 };
 
 #endif // READONLY_HPP

@@ -11,9 +11,9 @@ class Popup : public QWidget {
 public:
   explicit Popup(Board& board_,const SquareIndex affectedSquare_);
 private:
-  void paintEvent(QPaintEvent*) override;
-  void mouseMoveEvent(QMouseEvent* event) override;
-  void mouseReleaseEvent(QMouseEvent* event) override;
+  virtual void paintEvent(QPaintEvent*) override;
+  virtual void mouseMoveEvent(QMouseEvent* event) override;
+  virtual void mouseReleaseEvent(QMouseEvent* event) override;
 
   Board& board;
   const SquareIndex affectedSquare;

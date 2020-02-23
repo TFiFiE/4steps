@@ -11,7 +11,8 @@ public:
   explicit GameState();
   bool operator==(const GameState& rhs) const;
   bool empty() const;
-  Placement placement(const Side side) const;
+  Placements placements(const Side side) const;
+  Placements playedPlacements() const;
   bool isSupported(const SquareIndex square,const Side side) const;
   bool isFrozen(const SquareIndex square) const;
   bool floatingPiece(const SquareIndex square) const;
@@ -23,7 +24,7 @@ public:
   ExtendedSteps preferredRoute(const SquareIndex origin,const SquareIndex destination,const ExtendedSteps& preference=ExtendedSteps()) const;
   ExtendedSteps toExtendedSteps(const PieceSteps& pieceSteps) const;
 
-  void add(const Placement& placement);
+  void add(const Placements& placements);
   PieceTypeAndSide takeStep(const SquareIndex origin,const SquareIndex destination);
   ExtendedSteps takePieceSteps(const PieceSteps& pieceSteps);
   void switchTurn();

@@ -107,7 +107,6 @@ private:
   virtual QByteArray getRequestData(const std::vector<std::pair<QString,QString> >& items)=0;
   virtual Data getReplyData(const QByteArray& data)=0;
   static bool instantResponse(const QNetworkReply& networkReply);
-  static EndCondition toEndCondition(const char letter);
 
   const QNetworkRequest server;
   TimeEstimator timeEstimator;

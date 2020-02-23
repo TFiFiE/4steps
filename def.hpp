@@ -79,8 +79,15 @@ struct Result {
   bool operator!=(const Result& rhs) const {return !(*this==rhs);}
 };
 
+struct Placement {
+  SquareIndex location;
+  PieceTypeAndSide piece;
+  bool operator==(const Placement& rhs) const {return location==rhs.location && piece==rhs.piece;}
+  bool operator<(const Placement& rhs) const {return piece!=rhs.piece ? piece>rhs.piece : location<rhs.location;}
+};
+
+typedef std::set<Placement> Placements;
 typedef std::vector<SquareIndex> Squares;
-typedef std::set<std::pair<SquareIndex,PieceTypeAndSide> > Placement;
 
 class GameState;
 typedef std::tuple<SquareIndex,SquareIndex,PieceTypeAndSide,GameState> ExtendedStep;
@@ -110,6 +117,25 @@ inline void increment(T& t)
   t=static_cast<T>(t+1);
 }
 
+template<class Number>
+inline Number clipped(const Number number,const Number min,const Number max)
+{
+  if (number<min)
+    return min;
+  else if (number>max)
+    return max;
+  else
+    return number;
+}
+
+template<class Container>
+typename Container::value_type& safeAt(Container& container,const typename Container::size_type index)
+{
+  if (index>=container.size())
+    container.resize(index+1);
+  return container[index];
+}
+
 template<class Container,class Element>
 inline bool found(const Container& container,const Element element)
 {
@@ -120,6 +146,12 @@ template<int tupleIndex,class Container,class Element>
 inline bool found(const Container& container,const Element element)
 {
   return find_if(container.begin(),container.end(),[&](const typename Container::value_type& tuple){return std::get<tupleIndex>(tuple)==element;})!=container.end();
+}
+
+template<class Sequence,class Subsequence>
+inline bool startsWith(const Sequence& sequence,const Subsequence& subsequence)
+{
+  return sequence.size()>=subsequence.size() && std::equal(subsequence.begin(),subsequence.end(),sequence.begin());
 }
 
 template<class Container,class Element>

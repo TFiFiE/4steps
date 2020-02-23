@@ -40,7 +40,8 @@ SOURCES += \
     popup.cpp \
     server.cpp \
     timecontrol.cpp \
-    timeestimator.cpp
+    timeestimator.cpp \
+    treemodel.cpp
 
 HEADERS += \
     arimaa_com.hpp \
@@ -66,10 +67,12 @@ HEADERS += \
     pieceicons.hpp \
     playerbar.hpp \
     popup.hpp \
+    potentialmove.hpp \
     readonly.hpp \
     server.hpp \
     timecontrol.hpp \
-    timeestimator.hpp
+    timeestimator.hpp \
+    treemodel.hpp
 
 RESOURCES += \
     resources.qrc

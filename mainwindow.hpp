@@ -22,7 +22,7 @@ public:
   std::vector<Server*> servers;
 private:
   Globals& globals;
-  QAction emptyGame,customGame,logIn,quit;
+  QAction emptyGame,customGame,logIn,quit,chat;
   QLabel buildTime;
   std::vector<std::weak_ptr<ASIP> > games;
 };

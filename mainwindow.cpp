@@ -1,4 +1,5 @@
 #include <QMenuBar>
+#include <QDesktopServices>
 #include "mainwindow.hpp"
 #include "globals.hpp"
 #include "game.hpp"
@@ -12,6 +13,7 @@ MainWindow::MainWindow(Globals& globals_,QWidget* const parent) :
   customGame(tr("Set up &custom position")),
   logIn(tr("&Log in")),
   quit(tr("&Quit")),
+  chat(tr("Enter &chat (Discord server)")),
   buildTime(tr("Built: ")+__DATE__+QString(" ")+__TIME__)
 {
   setWindowTitle(tr("4steps - Arimaa client"));
@@ -32,6 +34,10 @@ MainWindow::MainWindow(Globals& globals_,QWidget* const parent) :
   quit.setShortcuts(QKeySequence::Quit);
   connect(&quit,&QAction::triggered,this,&MainWindow::close);
   menu->addAction(&quit);
+
+  const auto about=menuBar()->addMenu(tr("&About"));
+  connect(&chat,&QAction::triggered,this,[]{QDesktopServices::openUrl(QUrl("https://discord.gg/YCH3FSp"));});
+  about->addAction(&chat);
 
   setCentralWidget(&tabWidget);
   tabWidget.setTabsClosable(true);

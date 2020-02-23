@@ -61,11 +61,16 @@ inline std::string toString(const PieceTypeAndSide pieceTypeAndSide,const Square
   return pieceLetters[pieceTypeAndSide]+std::string(toCoordinates(square).data());
 }
 
-inline char toLetter(const Side side)
+inline std::string toString(const Placement& placement)
+{
+  return toString(placement.piece,placement.location);
+}
+
+inline char toLetter(const Side side,const bool newStyle=false)
 {
   switch (side) {
-    case  FIRST_SIDE: return 'w';
-    case SECOND_SIDE: return 'b';
+    case  FIRST_SIDE: return newStyle ? 'g' : 'w';
+    case SECOND_SIDE: return newStyle ? 's' : 'b';
     default: throw std::runtime_error("Not a valid side.");
   }
 }
@@ -78,6 +83,19 @@ inline Side toSide(const char input)
     return SECOND_SIDE;
   else
     return NO_SIDE;
+}
+
+inline std::string toPlyString(const int moveIndex)
+{
+  assert(moveIndex>=0);
+  std::stringstream ss;
+  ss<<(moveIndex/2)+1<<"gs"[moveIndex%2];
+  return ss.str();
+}
+
+inline std::string toPlyString(const int moveIndex,const Node& root)
+{
+  return toPlyString(moveIndex+(root.isGameStart() ? 0 : NUM_SIDES+root.currentState.sideToMove));
 }
 
 inline int toMoveIndex(const std::string& input)
@@ -94,17 +112,9 @@ inline int toMoveIndex(const std::string& input)
     return -1;
 }
 
-inline std::string toString(const Placement& placement)
+inline Placements toPlacements(const std::string& input)
 {
-  std::string result;
-  for (const auto& pair:placement)
-      result+=toString(pair.second,pair.first)+' ';
-  return result.substr(0,result.size()-1);
-}
-
-inline Placement toPlacement(const std::string& input)
-{
-  Placement result;
+  Placements result;
   std::stringstream ss;
   ss<<input;
   std::string word;
@@ -112,32 +122,45 @@ inline Placement toPlacement(const std::string& input)
     runtime_assert(word.size()==3,"Placement word does not have 3 letters.");
     const PieceTypeAndSide piece=toPieceTypeAndSide(word[0]);
     const SquareIndex square=toSquare(word[1],word[2]);
-    result.emplace(square,piece);
+    result.emplace(Placement{square,piece});
   }
   return result;
 }
 
-inline std::string toString(const ExtendedSteps& move)
+inline std::string toString(const ExtendedStep& step)
+{
+  const SquareIndex origin=std::get<ORIGIN>(step);
+  const SquareIndex destination=std::get<DESTINATION>(step);
+  const PieceTypeAndSide trappedPiece=std::get<TRAPPED_PIECE>(step);
+  PieceTypeAndSide movedPiece=std::get<RESULTING_STATE>(step).currentPieces[destination];
+  if (movedPiece==NO_PIECE) {
+    assert(isTrap(destination));
+    assert(trappedPiece!=NO_PIECE);
+    movedPiece=trappedPiece;
+  }
+  std::string result=toString(movedPiece,origin)+directionLetter(origin,destination);
+  if (trappedPiece==NO_PIECE)
+    return result;
+  else
+    return result+' '+toString(trappedPiece,adjacentTrap(origin))+'x';
+}
+
+template<class Iterator>
+inline std::string toString(const Iterator begin,const Iterator end)
 {
   std::string result;
-  for (const auto& step:move) {
-    const SquareIndex origin=std::get<ORIGIN>(step);
-    const SquareIndex destination=std::get<DESTINATION>(step);
-    const PieceTypeAndSide trappedPiece=std::get<TRAPPED_PIECE>(step);
-    PieceTypeAndSide movedPiece=std::get<RESULTING_STATE>(step).currentPieces[destination];
-    if (movedPiece==NO_PIECE) {
-      assert(isTrap(destination));
-      assert(trappedPiece!=NO_PIECE);
-      result+=toString(trappedPiece,origin)+directionLetter(origin,destination)+' '+
-              toString(trappedPiece,destination)+"x ";
-    }
-    else {
-      result+=toString(movedPiece,origin)+directionLetter(origin,destination)+' ';
-      if (trappedPiece!=NO_PIECE)
-        result+=toString(trappedPiece,adjacentTrap(origin))+"x ";
-    }
+  for (auto element=begin;element!=end;++element) {
+    if (element!=begin)
+      result+=' ';
+    result+=toString(*element);
   }
-  return result.substr(0,result.size()-1);
+  return result;
+}
+
+template<class Container>
+inline std::string toString(const Container& sequence)
+{
+  return toString(begin(sequence),end(sequence));
 }
 
 inline PieceSteps toMove(const std::string& input)
@@ -165,6 +188,7 @@ inline PieceSteps toMove(const std::string& input)
 
 inline std::pair<GameTree,size_t> toTree(const std::string& lines,NodePtr root)
 {
+  assert(root!=nullptr);
   assert(root->isGameStart());
   GameTree gameTree(1,std::move(root));
 
@@ -199,11 +223,47 @@ inline std::pair<GameTree,size_t> toTree(const std::string& lines,NodePtr root)
       gameTree.front()=gameTree.front()->previousNode;
     }
     else if (move.first<NUM_SIDES)
-      node=Node::addSetup(node,toPlacement(move.second));
+      node=Node::addSetup(node,toPlacements(move.second),false);
     else
-      node=Node::makeMove(node,toMove(move.second));
+      node=Node::makeMove(node,toMove(move.second),false);
   }
   return {gameTree,moves.size()};
+}
+
+inline EndCondition toEndCondition(const char letter)
+{
+  switch (letter) {
+    case 'g': return GOAL;
+    case 'm': return IMMOBILIZATION;
+    case 'e': return ELIMINATION;
+    case 't': return TIME_OUT;
+    case 'r': return RESIGNATION;
+    case 'i': return ILLEGAL_MOVE;
+    case 'f': return FORFEIT;
+    case 'a': return ABANDONMENT;
+    case 's': return SCORE;
+    case 'p': return REPETITION;
+    case 'n': return MUTUAL_ELIMINATION;
+    default : throw std::runtime_error("Unrecognized termination code: "+std::string(1,letter));
+  }
+}
+
+inline char toChar(const EndCondition endCondition)
+{
+  switch (endCondition) {
+    case GOAL:               return 'g';
+    case IMMOBILIZATION:     return 'm';
+    case ELIMINATION:        return 'e';
+    case TIME_OUT:           return 't';
+    case RESIGNATION:        return 'r';
+    case ILLEGAL_MOVE:       return 'i';
+    case FORFEIT:            return 'f';
+    case ABANDONMENT:        return 'a';
+    case SCORE:              return 's';
+    case REPETITION:         return 'p';
+    case MUTUAL_ELIMINATION: return 'n';
+    default: throw std::runtime_error("Not an end condition.");
+  }
 }
 
 #endif // IO_HPP

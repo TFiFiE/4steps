@@ -1,4 +1,4 @@
-﻿#include <QNetworkAccessManager>
+#include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include "asip.hpp"
 #include "io.hpp"
@@ -293,11 +293,11 @@ std::array<std::array<qint64,3>,NUM_SIDES> ASIP::getTimes() const
 void ASIP::sit()
 {
   QNetworkReply* sitReply=post(this,{{"action","sit"},dataPair("tid"),dataPair("grid")});
-  connect(sitReply,&QNetworkReply::finished,this,[=]() {
+  connect(sitReply,&QNetworkReply::finished,this,[=] {
     try {
       processReply(*sitReply);
       gameStateReply=post(this,{{"action","gamestate"},dataPair("sid")});
-      connect(gameStateReply,&QNetworkReply::finished,this,[=]() {
+      connect(gameStateReply,&QNetworkReply::finished,this,[=] {
         try {
           processReply(*gameStateReply);
           update(false);
@@ -319,7 +319,7 @@ void ASIP::forceUpdate()
     disconnect(gameStateReply,&QNetworkReply::finished,nullptr,nullptr);
     gameStateReply->deleteLater();
     gameStateReply=post(this,{{"action","gamestate"},dataPair("sid"),{"wait","0"},{"maxwait","0"}});
-    connect(gameStateReply,&QNetworkReply::finished,this,[=]() {
+    connect(gameStateReply,&QNetworkReply::finished,this,[=] {
       try {
         processReply(*gameStateReply);
         update(true);
@@ -375,7 +375,7 @@ void ASIP::update(const bool hardSynchronization)
   const auto oldChat=mostRecentData.value("chat").toString();
   readLocker.unlock();
   gameStateReply=post(this,{{"action","updategamestate"},dataPair("sid"),{"wait","1"},dataPair("lastchange"),dataPair("moveslength"),dataPair("chatlength")});
-  connect(gameStateReply,&QNetworkReply::finished,this,[=]() {
+  connect(gameStateReply,&QNetworkReply::finished,this,[=] {
     try {
       processReply(*gameStateReply);
       QWriteLocker writeLocker(&mostRecentData_mutex);
@@ -471,22 +471,4 @@ bool ASIP::instantResponse(const QNetworkReply& networkReply)
   return ((networkReply.property("action")!="gamestate" &&
            networkReply.property("action")!="updategamestate") ||
           networkReply.property("wait")!="1");
-}
-
-EndCondition ASIP::toEndCondition(const char letter)
-{
-  switch (letter) {
-    case 'g': return GOAL;
-    case 'm': return IMMOBILIZATION;
-    case 'e': return ELIMINATION;
-    case 't': return TIME_OUT;
-    case 'r': return RESIGNATION;
-    case 'i': return ILLEGAL_MOVE;
-    case 'f': return FORFEIT;
-    case 'a': return ABANDONMENT;
-    case 's': return SCORE;
-    case 'p': return REPETITION;
-    case 'n': return MUTUAL_ELIMINATION;
-    default : throw std::runtime_error("Unrecognized termination code: "+std::string(1,letter));
-  }
 }

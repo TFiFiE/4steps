@@ -1,5 +1,7 @@
 #include <QPainter>
 #include <QMouseEvent>
+#include <QApplication>
+#include <QScreen>
 #include "popup.hpp"
 #include "board.hpp"
 #include "globals.hpp"
@@ -42,6 +44,11 @@ Popup::Popup(Board& board_,const SquareIndex affectedSquare_) :
   auto newPos=QCursor::pos()-QPoint(0,board.squareHeight()*ROWS_PER_SIDE);
   if (left)
     newPos-=QPoint(board.squareWidth()*COLUMNS,0);
+
+  const auto topLeftRange=qApp->primaryScreen()->availableGeometry().size()-size();
+  newPos.rx()=clipped(newPos.x(),0,topLeftRange.width()-1);
+  newPos.ry()=clipped(newPos.y(),0,topLeftRange.height()-1);
+
   move(newPos);
   setAttribute(Qt::WA_DeleteOnClose);
   show();
@@ -102,10 +109,12 @@ void Popup::mouseReleaseEvent(QMouseEvent* event)
           board.potentialSetup.currentPieces[affectedSquare]=NO_PIECE;
         else
           board.potentialSetup.sideToMove=otherSide(board.potentialSetup.sideToMove);
+        emit board.boardChanged();
         board.update();
       }
       else if (!pieceTypeAndSideAtMax[piece]) {
         board.potentialSetup.currentPieces[affectedSquare]=piece;
+        emit board.boardChanged();
         board.update();
       }
     }

@@ -30,7 +30,7 @@ Login::Login(Globals& globals_,MainWindow& mainWindow_) :
   for (unsigned int protocolButtonIndex=0;protocolButtonIndex<protocolButtons.size();++protocolButtonIndex) {
     const auto protocolButton=protocolButtons[protocolButtonIndex].get();
     protocol.addWidget(protocolButton);
-    connect(protocolButton,&QRadioButton::clicked,[this,protocolButtonIndex](){
+    connect(protocolButton,&QRadioButton::clicked,[this,protocolButtonIndex]{
       if (gameroom.text().isEmpty() || (selectedProtocolButton>=0 && gameroom.text()==defaultGamerooms[selectedProtocolButton]))
         gameroom.setText(defaultGamerooms[protocolButtonIndex]);
       selectedProtocolButton=protocolButtonIndex;

@@ -13,7 +13,7 @@ class Server : public QWidget {
   Q_OBJECT
 public:
   explicit Server(Globals& globals_,ASIP& session_,MainWindow& mainWindow_);
-  ~Server() override;
+  virtual ~Server() override;
   void refreshPage() const;
   void enterGame(const ASIP::GameInfo& game,const Side role,const Side viewpoint);
   void addGame(QNetworkReply& networkReply,const Side viewpoint,const bool guaranteedUnique=false) const;
@@ -21,7 +21,7 @@ public:
   ASIP& session;
   MainWindow& mainWindow;
 private:
-  void resizeEvent(QResizeEvent* event) override;
+  virtual void resizeEvent(QResizeEvent* event) override;
 
   Globals& globals;
 

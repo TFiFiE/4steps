@@ -1,8 +1,10 @@
 #include "node.hpp"
+#include "io.hpp"
 
 Node::Node(NodePtr previousNode_,const ExtendedSteps& move_,const GameState& currentState_) :
   previousNode(std::move(previousNode_)),
   move(move_),
+  depth(previousNode==nullptr ? 0 : previousNode->depth+1),
   currentState(currentState_),
   result(detectGameEnd())
 {
@@ -18,6 +20,28 @@ bool Node::inSetup() const
   return previousNode==nullptr ? currentState.empty() : (currentState.sideToMove==SECOND_SIDE && move.empty());
 }
 
+std::string Node::toString() const
+{
+  if (move.empty())
+    return ::toString(currentState.playedPlacements());
+  else
+    return ::toString(move);
+}
+
+std::vector<std::weak_ptr<Node> > Node::ancestors() const
+{
+  std::vector<std::weak_ptr<Node> > result;
+  for (auto nodePtr=&previousNode;;) {
+    const auto& node=*nodePtr;
+    if (node==nullptr)
+      return result;
+    else {
+      result.emplace_back(node);
+      nodePtr=&node->previousNode;
+    }
+  }
+}
+
 int Node::numMovesBefore(const Node* descendant) const
 {
   for (int numGenerations=0;descendant!=nullptr;++numGenerations) {
@@ -26,6 +50,20 @@ int Node::numMovesBefore(const Node* descendant) const
     descendant=descendant->previousNode.get();
   }
   return -1;
+}
+
+NodePtr Node::findClosestChild(const NodePtr& descendant) const
+{
+  for (auto nodePtr=&descendant;;) {
+    const auto& node=*nodePtr;
+    if (node==nullptr)
+      return nullptr;
+    const auto& previousNode=node->previousNode;
+    if (this==previousNode.get())
+      return node;
+    else
+      nodePtr=&previousNode;
+  }
 }
 
 MoveLegality Node::legalMove(const GameState& resultingState) const
@@ -100,60 +138,142 @@ Result Node::detectGameEnd() const
     return {playedSide,IMMOBILIZATION};
 }
 
-NodePtr Node::findChild(const GameState& gameState)
+int Node::childIndex() const
 {
-  for (auto child=children.begin();child!=children.end();) {
-    if (const auto lockedChild=child->lock()) {
-      if (gameState==lockedChild->currentState)
-        return lockedChild;
-    }
-    if (child->expired())
-      child=children.erase(child);
-    else
-      ++child;
-  }
-  return nullptr;
+  if (previousNode==nullptr)
+    return -1;
+  else
+    return previousNode->findChild([this](const NodePtr& child,const int){return this==child.get();}).second;
 }
 
-NodePtr Node::addChild(const NodePtr& node,const ExtendedSteps& move,const GameState& gameState)
+NodePtr Node::child(const int index) const
+{
+  return findChild([index](const NodePtr&,const int rhs){return index==rhs;}).first;
+}
+
+bool Node::hasChild() const
+{
+  return findChild([](const NodePtr&,const int){return true;}).first!=nullptr;
+}
+
+int Node::numChildren() const
+{
+  return findChild([](const NodePtr&,const int){return false;}).second;
+}
+
+int Node::maxChildSteps() const
+{
+  size_t result=0;
+  findChild([&result](const NodePtr& child,const int) {
+    result=std::max(result,child->move.size());
+    return false;
+  });
+  return result;
+}
+
+std::pair<NodePtr,int> Node::findPartialMatchingChild(const Placements& subset) const
+{
+  return findChild([&](const NodePtr& child,const int) {
+    const auto& set=child->currentState.playedPlacements();
+    return includes(set.begin(),set.end(),subset.begin(),subset.end());
+  });
+}
+
+std::pair<NodePtr,int> Node::findPartialMatchingChild(const ExtendedSteps& steps) const
+{
+  return findChild([&](const NodePtr& child,const int) {
+    return startsWith(child->move,steps);
+  });
+}
+
+std::pair<NodePtr,int> Node::findMatchingChild(const Placements& subset) const
+{
+  return findChild([&](const NodePtr& child,const int) {
+    return subset==child->currentState.playedPlacements();
+  });
+}
+
+std::pair<NodePtr,int> Node::findMatchingChild(const ExtendedSteps& move) const
+{
+  return findChild([&](const NodePtr& child,const int) {
+    return move==child->move;
+  });
+}
+
+template<class Predicate>
+std::pair<NodePtr,int> Node::findChild(Predicate predicate) const
+{
+  const std::lock_guard<std::mutex> lock(children_mutex);
+  return findChild_(predicate);
+}
+
+template<class Predicate>
+std::pair<NodePtr,int> Node::findChild_(Predicate predicate) const
+{
+  int index=0;
+  for (auto child=children.begin();child!=children.end();) {
+    if (const auto& lockedChild=child->lock()) {
+      if (predicate(lockedChild,index))
+        return {std::move(lockedChild),index};
+      ++child;
+      ++index;
+    }
+    else
+      child=children.erase(child);
+  }
+  return {nullptr,index};
+}
+
+NodePtr Node::addChild(const NodePtr& node,const ExtendedSteps& move,const GameState& gameState,const bool after)
 {
   const std::lock_guard<std::mutex> lock(node->children_mutex);
-  const auto oldChild=node->findChild(gameState);
+  const auto oldChild=node->findChild_([&gameState](const NodePtr& child,const int){return gameState==child->currentState;}).first;
   if (oldChild==nullptr) {
+    auto& children=node->children;
     const auto newChild=std::make_shared<Node>(node,move,gameState);
-    node->children.emplace_back(newChild);
+    if (after)
+      children.emplace_back(newChild);
+    else
+      children.emplace(children.begin(),newChild);
     return newChild;
   }
-  else
+  else {
+    oldChild->move=move;
     return oldChild;
+  }
 }
 
-NodePtr Node::addSetup(const NodePtr& node,const Placement& placement)
+NodePtr Node::addSetup(const NodePtr& node,const Placements& placements,const bool after)
 {
   assert(node->inSetup());
   GameState gameState=node->currentState;
-  gameState.add(placement);
+  gameState.add(placements);
   gameState.switchTurn();
-  return addChild(node,ExtendedSteps(),gameState);
+  return addChild(node,ExtendedSteps(),gameState,after);
 }
 
-NodePtr Node::makeMove(const NodePtr& node,const ExtendedSteps& move)
+NodePtr Node::makeMove(const NodePtr& node,const ExtendedSteps& move,const bool after)
 {
   assert(!node->inSetup());
   GameState gameState(std::get<RESULTING_STATE>(move.back()));
   gameState.switchTurn();
-  return addChild(node,move,gameState);
+  return addChild(node,move,gameState,after);
 }
 
-NodePtr Node::makeMove(const NodePtr& node,const PieceSteps& move)
+NodePtr Node::makeMove(const NodePtr& node,const PieceSteps& move,const bool after)
 {
-  return makeMove(node,node->currentState.toExtendedSteps(move));
+  return makeMove(node,node->currentState.toExtendedSteps(move),after);
 }
 
-NodePtr Node::root(NodePtr node)
+NodePtr Node::root(const NodePtr& node)
 {
   assert(node!=nullptr);
-  while (node->previousNode!=nullptr)
-    node=node->previousNode;
-  return node;
+  for (auto nodePtr=&node;;) {
+    const auto& node=*nodePtr;
+    const auto& previousNode=node->previousNode;
+    if (previousNode==nullptr)
+      return node;
+    else
+      nodePtr=&previousNode;
+  }
 }
