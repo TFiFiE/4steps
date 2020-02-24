@@ -169,14 +169,13 @@ void Board::undoSteps(const bool all)
   if (explore && !updated && currentNode->previousNode!=nullptr) {
     const auto oldNode=currentNode;
     setNode(currentNode->previousNode);
-    if (currentNode->inSetup()) {
-      if (!all)
+    if (!all) {
+      if (currentNode->inSetup())
         proposeSetup(oldNode->currentState);
-    }
-    else {
-      const auto& move=oldNode->move;
-      if (!all)
+      else {
+        const auto& move=oldNode->move;
         doSteps(move,false,move.size()==MAX_STEPS_PER_MOVE ? 1 : 0);
+      }
     }
     updated=true;
   }

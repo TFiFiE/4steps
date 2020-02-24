@@ -32,6 +32,7 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   stepMode(tr("&Step mode")),
   moveList(tr("&Move list")),
   explore(tr("&Explore")),
+  current(tr("&Current")),
   iconSets(this)
 {
   setCentralWidget(&board);
@@ -174,6 +175,21 @@ void Game::addCornerWidget()
   setExploration(board.explore);
   connect(&explore,&QCheckBox::toggled,this,&Game::setExploration);
   cornerLayout.addWidget(&explore);
+
+  connect(&current,&QPushButton::clicked,this,[this] {
+    const auto& currentNode=board.currentNode.get();
+    if (currentNode==liveNode) {
+      if (!board.potentialMove.get().empty())
+        board.undoSteps(true);
+    }
+    else {
+      const auto& child=liveNode->findClosestChild(currentNode);
+      board.setNode(liveNode);
+      if (child!=nullptr)
+        board.proposeMove(*child.get(),0);
+    }
+  });
+  cornerLayout.addWidget(&current);
 
   menuBar()->setCornerWidget(&cornerWidget);
 }
@@ -444,6 +460,7 @@ void Game::setExploration(const bool on)
     }
   }
   emit treeModel.layoutChanged();
+  current.setEnabled(on && liveNode!=nullptr);
 }
 
 bool Game::processMoves(const std::pair<GameTree,size_t>& treeAndNumber,const Side role,const Result& result,const bool hardSynchronization)

@@ -8,6 +8,7 @@
 #include <QTimer>
 #include <QAction>
 #include <QCheckBox>
+#include <QPushButton>
 class ASIP;
 #include "treemodel.hpp"
 #include "board.hpp"
@@ -68,6 +69,7 @@ private:
   QHBoxLayout cornerLayout;
     QLabel cornerMessage;
     QCheckBox explore;
+    QPushButton current;
   QActionGroup iconSets;
 };
 
