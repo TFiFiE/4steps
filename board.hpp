@@ -39,11 +39,12 @@ public:
   void setIconSet(const PieceIcons::Set newIconSet);
   void setAnimate(const bool newAnimate);
   void setAnimationDelay(const int newAnimationDelay);
+  void setConfirm(const bool newConfirm);
   void playSound(const QString& soundFile);
   void setExploration(const bool on);
   void setControllable(const std::array<bool,NUM_SIDES>& controllableSides_);
 
-  readonly<Board,bool> explore,southIsUp,stepMode,soundOn,animate;
+  readonly<Board,bool> explore,southIsUp,stepMode,soundOn,animate,confirm;
   readonly<Board,PieceIcons::Set> iconSet;
   readonly<Board,NodePtr> currentNode;
   readonly<Board,int> animationDelay;
@@ -75,6 +76,7 @@ private:
   void finalizeMove(const ExtendedSteps& playedMove);
   void endDrag();
   bool autoFinalize(const bool stepsTaken);
+  bool confirmMove();
 
   virtual void mousePressEvent(QMouseEvent* event) override;
   virtual void mouseMoveEvent(QMouseEvent* event) override;

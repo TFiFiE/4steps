@@ -30,6 +30,7 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   animate(tr("Animate &moves")),
   sound(tr("&Sound")),
   stepMode(tr("&Step mode")),
+  confirm(tr("&Confirm move")),
   moveList(tr("&Move list")),
   explore(tr("&Explore")),
   current(tr("&Current")),
@@ -130,6 +131,13 @@ void Game::addControlsMenu(const bool controllable)
   stepMode.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_S));
   connect(&stepMode,&QAction::toggled,&board,&Board::setStepMode);
   controlsMenu->addAction(&stepMode);
+
+  confirm.setEnabled(session!=nullptr);
+  confirm.setCheckable(true);
+  confirm.setChecked(board.confirm);
+  confirm.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_C));
+  connect(&confirm,&QAction::toggled,&board,&Board::setConfirm);
+  controlsMenu->addAction(&confirm);
 }
 
 void Game::addDockMenu()

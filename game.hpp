@@ -64,7 +64,7 @@ private:
   bool finished;
   bool moveSynchronization;
 
-  QAction forceUpdate,resign,fullScreen,rotate,autoRotate,animate,sound,stepMode,moveList;
+  QAction forceUpdate,resign,fullScreen,rotate,autoRotate,animate,sound,stepMode,confirm,moveList;
   QWidget cornerWidget;
   QHBoxLayout cornerLayout;
     QLabel cornerMessage;

@@ -27,12 +27,14 @@ Board::Board(Globals& globals_,NodePtr currentNode_,const bool explore_,const Si
   const auto iconSet=static_cast<PieceIcons::Set>(globals.settings.value("icon_set",PieceIcons::VECTOR).toInt());
   const auto animate=globals.settings.value("animate",true).toBool();
   const auto animationDelay=globals.settings.value("animation_delay",375).toInt();
+  const auto confirm=globals.settings.value("confirm",true).toBool();
   globals.settings.endGroup();
 
   setStepMode(stepMode);
   setIconSet(iconSet);
   setAnimate(animate);
   setAnimationDelay(animationDelay);
+  setConfirm(confirm);
 
   connect(&animationTimer,&QTimer::timeout,this,&Board::animateNextStep);
 }
@@ -249,6 +251,11 @@ void Board::setAnimationDelay(const int newAnimationDelay)
 {
   if (setSetting(animationDelay,newAnimationDelay,"animation_delay"))
     animationTimer.setInterval(animationDelay);
+}
+
+void Board::setConfirm(const bool newConfirm)
+{
+  setSetting(confirm,newConfirm,"confirm");
 }
 
 void Board::playSound(const QString& soundFile)
@@ -604,6 +611,14 @@ bool Board::autoFinalize(const bool stepsTaken)
     return false;
 }
 
+bool Board::confirmMove()
+{
+  if (confirm && !explore && found(controllableSides,false))
+    return MessageBox(QMessageBox::Question,tr("Confirm move"),tr("Do you want to submit this move?"),QMessageBox::Yes|QMessageBox::No,this).exec()==QMessageBox::Yes;
+  else
+    return true;
+}
+
 void Board::mousePressEvent(QMouseEvent* event)
 {
   disableAnimation();
@@ -733,7 +748,7 @@ void Board::mouseDoubleClickEvent(QMouseEvent* event)
             MessageBox(QMessageBox::Critical,tr("Illegal position"),tr("Unprotected piece on trap."),QMessageBox::NoButton,this).exec();
         }
         else if (currentNode->inSetup()) {
-          if (currentSetupPiece<0) {
+          if (currentSetupPiece<0 && confirmMove()) {
             if (!explore)
               playSound("qrc:/finished-setup.wav");
             finalizeSetup(currentPlacements());
@@ -743,9 +758,11 @@ void Board::mouseDoubleClickEvent(QMouseEvent* event)
           const auto& playedMove=potentialMove.get().current();
           switch (currentNode->legalMove(gameState())) {
             case LEGAL:
-              if (!explore)
-                playSound("qrc:/loud-step.wav");
-              finalizeMove(playedMove);
+              if (confirmMove()) {
+                if (!explore)
+                  playSound("qrc:/loud-step.wav");
+                finalizeMove(playedMove);
+              }
             break;
             case ILLEGAL_PUSH_INCOMPLETION:
               playSound("qrc:/illegal-move.wav");
