@@ -114,6 +114,7 @@ signals:
   void sendNodeChange(const NodePtr& newNode,const NodePtr& oldNode);
 
   friend class Popup;
+  friend class OffBoard;
 };
 
 #endif // BOARD_HPP

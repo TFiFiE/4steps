@@ -34,6 +34,7 @@ SOURCES += \
     main.cpp \
     mainwindow.cpp \
     node.cpp \
+    offboard.cpp \
     opengame.cpp \
     pieceicons.cpp \
     playerbar.cpp \
@@ -63,6 +64,7 @@ HEADERS += \
     mainwindow.hpp \
     messagebox.hpp \
     node.hpp \
+    offboard.hpp \
     opengame.hpp \
     pieceicons.hpp \
     playerbar.hpp \

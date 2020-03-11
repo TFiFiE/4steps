@@ -3,6 +3,7 @@
 #include <QMenu>
 #include "gamelist.hpp"
 #include "server.hpp"
+#include "io.hpp"
 #include "messagebox.hpp"
 
 GameList::GameList(Server* const server,const QString& labelText) :
@@ -12,7 +13,7 @@ GameList::GameList(Server* const server,const QString& labelText) :
   addWidget(&lastUpdated,0,2,Qt::AlignRight);
 
   QStringList m_TableHeader;
-  m_TableHeader<<tr("Gold")<<tr("Silver")<<tr("Time control");
+  m_TableHeader<<sideWord(FIRST_SIDE)<<sideWord(SECOND_SIDE)<<tr("Time control");
   tableWidget.setColumnCount(3);
   tableWidget.setHorizontalHeaderLabels(m_TableHeader);
   tableWidget.horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);

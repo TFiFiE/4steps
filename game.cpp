@@ -7,6 +7,7 @@
 #include "mainwindow.hpp"
 #include "asip.hpp"
 #include "messagebox.hpp"
+#include "offboard.hpp"
 #include "io.hpp"
 
 Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const std::shared_ptr<ASIP> session_,const bool customSetup) :
@@ -18,6 +19,7 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   liveNode(session==nullptr ? nullptr : treeModel.root),
   board(globals,treeModel.root,session==nullptr,viewpoint,session!=nullptr,{session==nullptr,session==nullptr}),
   dockWidgetResized(false),
+  galleries{{{board,FIRST_SIDE},{board,SECOND_SIDE}}},
   processedMoves(0),
   nextTickTime(-1),
   finished(false),
@@ -31,12 +33,14 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   sound(tr("&Sound")),
   stepMode(tr("&Step mode")),
   confirm(tr("&Confirm move")),
+  offBoard(tr("&Pieces off board")),
   moveList(tr("&Move list")),
   explore(tr("&Explore")),
   current(tr("&Current")),
   iconSets(this)
 {
   setCentralWidget(&board);
+  setDockOptions(QMainWindow::AllowNestedDocks);
 
   const auto controllableSides=getControllableSides(session);
   const bool controllable=(controllableSides[FIRST_SIDE] || controllableSides[SECOND_SIDE]);
@@ -51,6 +55,15 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
 
   setAttribute(Qt::WA_DeleteOnClose);
   show();
+}
+
+void Game::addDockWidget(const Qt::DockWidgetArea area,QDockWidget& dockWidget,const Qt::Orientation orientation,const bool before)
+{
+  QMainWindow::addDockWidget(area,&dockWidget,orientation);
+  if (before)
+    for (const auto& child:findChildren<QDockWidget*>())
+      if (dockWidgetArea(child)==area && child!=&dockWidget)
+        QMainWindow::addDockWidget(area,child,orientation);
 }
 
 void Game::addGameMenu(const bool controllable)
@@ -118,6 +131,8 @@ void Game::addBoardMenu()
   iconSets.actions()[board.iconSet]->setChecked(true);
   connect(&iconSets,&QActionGroup::triggered,&board,[this](QAction* const action) {
     board.setIconSet(static_cast<PieceIcons::Set>(iconSets.actions().indexOf(action)));
+    for (auto& gallery:galleries)
+      gallery.update();
   });
 }
 
@@ -157,10 +172,25 @@ void Game::addDockMenu()
   connect(&board,&Board::boardChanged,this,&Game::updateMoveList);
   updateMoveList();
 
+  for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side)) {
+    auto& dockWidget=dockWidgets[FIRST_GALLERY_INDEX+side];
+    dockWidget.setWindowTitle(tr("%1 pieces off board").arg(sideWord(side)));
+    dockWidget.setWidget(&galleries[side]);
+    dockWidget.setObjectName(dockWidget.windowTitle());
+    const auto dockWidgetArea=((side==FIRST_SIDE)==board.southIsUp ? Qt::TopDockWidgetArea : Qt::BottomDockWidgetArea);
+    addDockWidget(dockWidgetArea,dockWidget,Qt::Vertical,dockWidgetArea==Qt::BottomDockWidgetArea);
+    connect(&offBoard,&QAction::toggled,&dockWidget,&QDockWidget::setVisible);
+  }
+  connect(&board,&Board::boardRotated,this,&Game::flipGalleries);
+  offBoard.setCheckable(true);
+  offBoard.setChecked(true);
+  offBoard.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_P));
+  dockMenu->addAction(&offBoard);
+
   auto& dockWidget=dockWidgets[MOVE_LIST_INDEX];
   dockWidget.setAllowedAreas(Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea);
   dockWidget.setFeatures(QDockWidget::DockWidgetClosable|QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetFloatable);
-  addDockWidget(Qt::RightDockWidgetArea,&dockWidget);
+  addDockWidget(Qt::RightDockWidgetArea,dockWidget,Qt::Horizontal,false);
   dockWidget.setWidget(&treeView);
   dockWidget.setObjectName("Move list");
 
@@ -207,6 +237,7 @@ void Game::setWindowState()
   globals.settings.beginGroup("Game");
   const auto size=globals.settings.value("size").toSize();
   const auto state=globals.settings.value("state");
+  const auto orientation=globals.settings.value("orientation");
   globals.settings.endGroup();
   if (size.isValid())
     resize(size);
@@ -214,14 +245,15 @@ void Game::setWindowState()
     const auto fullScreen=qApp->primaryScreen()->availableGeometry().size();
     resize(fullScreen.width()/3,fullScreen.height()/2);
   }
-  if (state.isValid()) {
+  if (state.isValid())
     restoreState(state.toByteArray());
-    for (auto& dockWidget:dockWidgets) {
-      dockWidget.setFloating(false);
-      dockWidget.installEventFilter(this);
-      connect(&dockWidget,&QDockWidget::dockLocationChanged,this,&Game::saveDockStates);
-    }
+  for (auto& dockWidget:dockWidgets) {
+    dockWidget.setFloating(false);
+    dockWidget.installEventFilter(this);
+    connect(&dockWidget,&QDockWidget::dockLocationChanged,this,&Game::saveDockStates);
   }
+  if (orientation!=board.southIsUp.get())
+    flipGalleries();
 }
 
 void Game::initLiveGame()
@@ -233,7 +265,7 @@ void Game::initLiveGame()
     connect(&board,&Board::gameStarted,session.get(),&ASIP::start);
     for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side)) {
       auto& dockWidget=dockWidgets[side];
-      dockWidget.setWindowTitle(side==FIRST_SIDE ? tr("Gold") : tr("Silver"));
+      dockWidget.setWindowTitle(sideWord(side));
       dockWidget.setFeatures(QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetVerticalTitleBar);
       dockWidget.setWidget(&playerBars[side]);
       dockWidget.setObjectName(dockWidget.windowTitle());
@@ -265,6 +297,7 @@ void Game::saveDockStates()
 {
   globals.settings.beginGroup("Game");
   globals.settings.setValue("state",saveState());
+  globals.settings.setValue("orientation",board.southIsUp.get());
   globals.settings.endGroup();
 }
 
@@ -298,11 +331,20 @@ bool Game::eventFilter(QObject* watched,QEvent* event)
       for (const auto& dockWidget:dockWidgets)
         if (watched==&dockWidget) {
           dockWidgetResized=true;
+          break;
         }
     break;
     case QEvent::Close:
       if (watched==&dockWidgets[MOVE_LIST_INDEX])
         moveList.setChecked(false);
+      else
+        for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side))
+          if (watched==&dockWidgets[FIRST_GALLERY_INDEX+side]) {
+            dockWidgets[FIRST_GALLERY_INDEX+otherSide(side)].hide();
+            offBoard.setChecked(false);
+            break;
+          }
+    break;
     default: break;
   }
   return QMainWindow::eventFilter(watched,event);
@@ -343,7 +385,20 @@ void Game::setPlayerBars(const bool southIsUp)
     auto& dockWidget=dockWidgets[side];
     const auto dockWidgetArea=((side==FIRST_SIDE)==southIsUp ? Qt::TopDockWidgetArea : Qt::BottomDockWidgetArea);
     dockWidget.setAllowedAreas(dockWidgetArea);
-    addDockWidget(dockWidgetArea,&dockWidget);
+    addDockWidget(dockWidgetArea,dockWidget,Qt::Vertical,dockWidgetArea==Qt::TopDockWidgetArea);
+  }
+}
+
+void Game::flipGalleries()
+{
+  for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side)) {
+    auto& dockWidget=dockWidgets[FIRST_GALLERY_INDEX+side];
+    const auto area=dockWidgetArea(&dockWidget);
+    const auto flippableDockWidgetAreas=Qt::TopDockWidgetArea|Qt::BottomDockWidgetArea;
+    if ((area&flippableDockWidgetAreas)!=0) {
+      const auto newArea=(area==Qt::TopDockWidgetArea ? Qt::BottomDockWidgetArea : Qt::TopDockWidgetArea);
+      addDockWidget(newArea,dockWidget,Qt::Vertical,newArea==Qt::TopDockWidgetArea);
+    }
   }
 }
 
@@ -632,22 +687,22 @@ void Game::announceResult(const Result& result)
   else
     board.playSound("qrc:/game-win.wav");
 
-  const QString winner=(result.winner==FIRST_SIDE ? tr("Gold") : tr("Silver"));
-  const QString  loser=(result.winner==FIRST_SIDE ? tr("Silver") : tr("Gold"));
-  const QString title=(result.winner==NO_SIDE ? tr("No winner") : winner+tr(" wins!"));
+  const QString winner=sideWord(result.winner);
+  const QString loser=sideWord(otherSide(result.winner));
+  const QString title=(result.winner==NO_SIDE ? tr("No winner") : tr("%1 wins!").arg(winner));
 
   QString message;
   switch (result.endCondition) {
-    case GOAL:               message=winner+tr(" rabbit reached final row."); break;
-    case IMMOBILIZATION:     message=loser+tr(" has no legal moves."); break;
-    case ELIMINATION:        message=tr("All ")+loser+tr(" rabbits eliminated."); break;
-    case TIME_OUT:           message=loser+tr(" ran out of time."); break;
-    case RESIGNATION:        message=loser+tr(" resigned."); break;
-    case ILLEGAL_MOVE:       message=loser+tr(" played an illegal move."); break;
-    case FORFEIT:            message=loser+tr(" forfeited."); break;
+    case GOAL:               message=tr("%1 rabbit reached final row.").arg(winner); break;
+    case IMMOBILIZATION:     message=tr("%1 has no legal moves.").arg(loser); break;
+    case ELIMINATION:        message=tr("All %1 rabbits eliminated.").arg(loser); break;
+    case TIME_OUT:           message=tr("%1 ran out of time.").arg(loser); break;
+    case RESIGNATION:        message=tr("%1 resigned.").arg(loser); break;
+    case ILLEGAL_MOVE:       message=tr("%1 played an illegal move.").arg(loser); break;
+    case FORFEIT:            message=tr("%1 forfeited.").arg(loser); break;
     case ABANDONMENT:        message=tr("Neither player present when time ran out.\nGame abandoned."); break;
-    case SCORE:              message=tr("Global time limit ran out.\n")+winner+tr(" wins by score."); break;
-    case REPETITION:         message=loser+tr(" repeated board and side to move too many times."); break;
+    case SCORE:              message=tr("Global time limit ran out.\n%1 wins by score.").arg(winner); break;
+    case REPETITION:         message=tr("%1 repeated board and side to move too many times.").arg(loser); break;
     case MUTUAL_ELIMINATION: message=tr("All rabbits eliminated."); break;
     default: assert(false);
   }

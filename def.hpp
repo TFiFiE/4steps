@@ -1,10 +1,11 @@
 #ifndef DEF_HPP
 #define DEF_HPP
 
-#include <vector>
 #include <set>
+#include <vector>
 #include <tuple>
 #include <memory>
+#include <array>
 #include <cassert>
 #include <QString>
 #include <QDialog>
@@ -102,7 +103,7 @@ struct Node;
 typedef std::shared_ptr<Node> NodePtr;
 typedef std::vector<NodePtr> GameTree;
 
-const unsigned int numStartingPiecesPerType[]={8,2,2,2,1,1};
+const std::array<unsigned int,NUM_PIECE_TYPES> numStartingPiecesPerType={8,2,2,2,1,1};
 
 template<class Integer>
 Integer floorDiv(const Integer dividend,const Integer divisor)

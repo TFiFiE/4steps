@@ -13,12 +13,14 @@ class ASIP;
 #include "treemodel.hpp"
 #include "board.hpp"
 #include "playerbar.hpp"
+#include "offboard.hpp"
 
 class Game : public QMainWindow {
   Q_OBJECT
 public:
   explicit Game(Globals& globals_,const Side viewpoint,QWidget* const parent=nullptr,const std::shared_ptr<ASIP> session_=std::shared_ptr<ASIP>(),const bool customSetup=false);
 private:
+  void addDockWidget(const Qt::DockWidgetArea area,QDockWidget& dockWidget,const Qt::Orientation orientation,const bool before);
   void addGameMenu(const bool controllable);
   void addBoardMenu();
   void addControlsMenu(const bool controllable);
@@ -32,6 +34,7 @@ private:
   static std::array<bool,NUM_SIDES> getControllableSides(const std::shared_ptr<ASIP> session);
   static std::vector<qint64> getTickTimes();
   void setPlayerBars(const bool southIsUp);
+  void flipGalleries();
   void synchronize(const bool hard);
   void updateTimes();
   qint64 updateCornerMessage();
@@ -53,10 +56,11 @@ private:
   TreeModel treeModel;
   NodePtr liveNode;
   Board board;
-  enum {MOVE_LIST_INDEX=NUM_SIDES,NUM_DOCK_WIDGETS};
+  enum {FIRST_GALLERY_INDEX=NUM_SIDES,MOVE_LIST_INDEX=2*NUM_SIDES,NUM_DOCK_WIDGETS};
   QDockWidget dockWidgets[NUM_DOCK_WIDGETS];
   bool dockWidgetResized;
   PlayerBar playerBars[NUM_SIDES];
+  std::array<OffBoard,NUM_SIDES> galleries;
   QTreeView treeView;
   QTimer timer,ticker;
   size_t processedMoves;
@@ -64,7 +68,7 @@ private:
   bool finished;
   bool moveSynchronization;
 
-  QAction forceUpdate,resign,fullScreen,rotate,autoRotate,animate,sound,stepMode,confirm,moveList;
+  QAction forceUpdate,resign,fullScreen,rotate,autoRotate,animate,sound,stepMode,confirm,offBoard,moveList;
   QWidget cornerWidget;
   QHBoxLayout cornerLayout;
     QLabel cornerMessage;

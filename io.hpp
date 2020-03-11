@@ -2,9 +2,16 @@
 #define IO_HPP
 
 #include <sstream>
+#include <QCoreApplication>
 #include "node.hpp"
 
 const char pieceLetters[]="RrCcDdHhMmEe ";
+
+inline QString sideWord(const Side side)
+{
+  return side==FIRST_SIDE ? QCoreApplication::translate("","Gold") :
+                            QCoreApplication::translate("","Silver");
+}
 
 inline PieceTypeAndSide toPieceTypeAndSide(const char pieceLetter)
 {
