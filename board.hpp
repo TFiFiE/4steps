@@ -25,6 +25,7 @@ public:
   std::string tentativeMoveString() const;
   bool gameEnd() const;
   bool playable() const;
+
   bool setNode(NodePtr newNode,const bool sound=false,bool keepState=false);
   void proposeMove(const Node& child,const unsigned int playedOutSteps);
   void proposeSetup(GameState gameState);

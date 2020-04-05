@@ -117,6 +117,7 @@ bool Board::setNode(NodePtr newNode,const bool sound,bool keepState)
       playStepSounds(currentNode->move,true);
   }
   if (!keepState) {
+    endDrag();
     if (setupPhase()) {
       potentialSetup=currentNode->currentState;
       initSetup();
@@ -144,11 +145,11 @@ void Board::proposeMove(const Node& child,const unsigned int playedOutSteps)
 
 void Board::proposeSetup(GameState gameState)
 {
+  endDrag();
   potentialSetup=std::move(gameState);
   currentSetupPiece=-1;
   emit boardChanged();
   refreshHighlights(true);
-  update();
 }
 
 void Board::doSteps(const ExtendedSteps& steps,const bool sound,const int undoneSteps)
@@ -158,7 +159,10 @@ void Board::doSteps(const ExtendedSteps& steps,const bool sound,const int undone
     potentialMove.data.shiftEnd(-undoneSteps);
     if (sound && !explore)
       playStepSounds(steps,false);
-    if (!autoFinalize(true)) {
+    const bool updated=(int(steps.size())!=undoneSteps);
+    if (updated)
+      endDrag();
+    if (!autoFinalize(true) && updated) {
       emit boardChanged();
       refreshHighlights(true);
     }
@@ -182,19 +186,20 @@ void Board::undoSteps(const bool all)
     updated=true;
   }
   if (updated) {
+    endDrag();
     emit boardChanged();
     refreshHighlights(true);
-    update();
   }
 }
 
 void Board::redoSteps(const bool all)
 {
   const bool updated=potentialMove.data.shiftEnd(true,all);
+  if (updated)
+    endDrag();
   if (!autoFinalize(updated) && updated) {
     emit boardChanged();
     refreshHighlights(true);
-    update();
   }
 }
 
@@ -270,13 +275,18 @@ void Board::setExploration(const bool on)
   explore=on;
   if (on)
     autoFinalize(false);
+  else if (!playable())
+    endDrag();
   update();
 }
 
 void Board::setControllable(const std::array<bool,NUM_SIDES>& controllableSides_)
 {
   controllableSides=controllableSides_;
-  update();
+  if (playable())
+    update();
+  else
+    endDrag();
 }
 
 int Board::squareWidth() const
