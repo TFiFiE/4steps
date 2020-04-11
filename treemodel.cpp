@@ -116,44 +116,48 @@ QModelIndex TreeModel::parent(const QModelIndex& index) const
 
 QVariant TreeModel::data(const QModelIndex& index,const int role) const
 {
-  if (index.isValid() && role==Qt::DisplayRole) {
+  if (index.isValid()) {
     const auto& node=getItem(index);
     if (node==nullptr)
       return QVariant();
-    const unsigned int column=index.column();
-    if (column==0) {
-      const auto moveNumber=QString::fromStdString(toPlyString(node->depth-1,*root));
-      const auto numChildren=rowCount(index);
-      switch (numChildren) {
-        case 0: return moveNumber;
-        case 1: return moveNumber+" *";
-        default: return moveNumber+" ("+QString::number(numChildren)+')';
+    if (role==Qt::DisplayRole) {
+      const unsigned int column=index.column();
+      if (column==0) {
+        const auto moveNumber=QString::fromStdString(toPlyString(node->depth-1,*root));
+        const auto numChildren=rowCount(index);
+        switch (numChildren) {
+          case 0: return moveNumber;
+          case 1: return moveNumber+" *";
+          default: return moveNumber+" ("+QString::number(numChildren)+')';
+        }
       }
-    }
-    const auto& move=node->move;
-    const unsigned int moveIndex=column-1;
-    if (move.empty()) {
-      const auto& placements=node->currentState.playedPlacements();
-      assert(placements.size()==NUM_FILES*2);
-      const auto begin=next(placements.cbegin(),moveIndex);
-      return QString::fromStdString(toString(begin,next(begin)));
-    }
-    else {
-      assert(moveIndex<MAX_STEPS_PER_MOVE);
-      QString step;
-      if (moveIndex<move.size()) {
-        step=QString::fromStdString(toString(move[moveIndex]));
-        if (moveIndex<MAX_STEPS_PER_MOVE-1)
-          return step;
+      const auto& move=node->move;
+      const unsigned int moveIndex=column-1;
+      if (move.empty()) {
+        const auto& placements=node->currentState.playedPlacements();
+        assert(placements.size()==NUM_FILES*2);
+        const auto begin=next(placements.cbegin(),moveIndex);
+        return QString::fromStdString(toString(begin,next(begin)));
       }
-      else if (moveIndex==move.size())
-        step="pass";
+      else {
+        assert(moveIndex<MAX_STEPS_PER_MOVE);
+        QString step;
+        if (moveIndex<move.size()) {
+          step=QString::fromStdString(toString(move[moveIndex]));
+          if (moveIndex<MAX_STEPS_PER_MOVE-1)
+            return step;
+        }
+        else if (moveIndex==move.size())
+          step="pass";
 
-      const auto result=node->result;
-      if (node->result.endCondition!=NO_END)
-        step+=QString(' ')+(result.winner==node->currentState.sideToMove ? '-' : '+')+toupper(toChar(result.endCondition));
-      return step;
+        const auto result=node->result;
+        if (node->result.endCondition!=NO_END)
+          step+=QString(' ')+(result.winner==node->currentState.sideToMove ? '-' : '+')+toupper(toChar(result.endCondition));
+        return step;
+      }
     }
+    else if (role==Qt::BackgroundRole)
+      return node->cumulativeChildIndex()%2==0 ? QPalette().base() : QPalette().alternateBase();
   }
   return QVariant();
 }

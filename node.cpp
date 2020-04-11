@@ -146,6 +146,11 @@ int Node::childIndex() const
     return previousNode->findChild([this](const NodePtr& child,const int){return this==child.get();}).second;
 }
 
+int Node::cumulativeChildIndex() const
+{
+  return previousNode==nullptr ? 0 : childIndex()+previousNode->cumulativeChildIndex();
+}
+
 NodePtr Node::child(const int index) const
 {
   return findChild([index](const NodePtr&,const int rhs){return index==rhs;}).first;

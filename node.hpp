@@ -25,6 +25,7 @@ struct Node {
   bool hasLegalMoves(const GameState& startingState) const;
   Result detectGameEnd() const;
   int childIndex() const;
+  int cumulativeChildIndex() const;
   NodePtr child(const int index) const;
   bool hasChild() const;
   int numChildren() const;

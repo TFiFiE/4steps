@@ -166,7 +166,6 @@ void Game::addDockMenu()
   treeView.header()->setStretchLastSection(false);
   treeView.header()->setSectionResizeMode(QHeaderView::ResizeToContents);
   treeView.setIndentation(0);
-  treeView.setAlternatingRowColors(true);
   treeView.setSelectionBehavior(QAbstractItemView::SelectItems);
   connect(treeView.selectionModel(),&QItemSelectionModel::currentChanged,this,&Game::synchronizeWithMoveCell);
   connect(&board,&Board::boardChanged,this,&Game::updateMoveList);
