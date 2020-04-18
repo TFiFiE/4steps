@@ -261,7 +261,6 @@ void Game::initLiveGame()
     connect(session.get(),&ASIP::error,this,[this](const std::exception& exception) {
       MessageBox(QMessageBox::Critical,tr("Error from game server"),exception.what(),QMessageBox::NoButton,this).exec();
     });
-    connect(&board,&Board::gameStarted,session.get(),&ASIP::start);
     for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side)) {
       auto& dockWidget=dockWidgets[side];
       dockWidget.setWindowTitle(sideWord(side));
@@ -282,6 +281,8 @@ void Game::initLiveGame()
     });
     connect(&timer,&QTimer::timeout,this,&Game::updateTimes);
     if (session->role()!=NO_SIDE) {
+      connect(&board,&Board::gameStarted,session.get(),&ASIP::start);
+
       ticker.setSingleShot(true);
       connect(&ticker,&QTimer::timeout,this,[&]{
         board.playSound("qrc:/clock-tick.wav");
