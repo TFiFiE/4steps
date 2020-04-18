@@ -275,8 +275,10 @@ void Board::setExploration(const bool on)
   explore=on;
   if (on)
     autoFinalize(false);
-  else if (!playable())
+  else if (!playable()) {
     endDrag();
+    undoSteps(true);
+  }
   update();
 }
 
