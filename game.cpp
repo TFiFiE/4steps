@@ -42,6 +42,7 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   setCentralWidget(&board);
   setDockOptions(QMainWindow::AllowNestedDocks);
 
+  setWindowState();
   const auto controllableSides=getControllableSides(session);
   const bool controllable=(controllableSides[FIRST_SIDE] || controllableSides[SECOND_SIDE]);
   addGameMenu(controllable);
@@ -49,7 +50,6 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   addControlsMenu(controllable);
   addDockMenu();
   addCornerWidget();
-  setWindowState();
   connect(&board,&Board::sendNodeChange,this,&Game::receiveNodeChange);
   initLiveGame();
 
@@ -64,6 +64,30 @@ void Game::addDockWidget(const Qt::DockWidgetArea area,QDockWidget& dockWidget,c
     for (const auto& child:findChildren<QDockWidget*>())
       if (dockWidgetArea(child)==area && child!=&dockWidget)
         QMainWindow::addDockWidget(area,child,orientation);
+}
+
+void Game::setWindowState()
+{
+  globals.settings.beginGroup("Game");
+  const auto size=globals.settings.value("size").toSize();
+  const auto state=globals.settings.value("state");
+  const auto orientation=globals.settings.value("orientation");
+  globals.settings.endGroup();
+  if (size.isValid())
+    resize(size);
+  else {
+    const auto fullScreen=qApp->primaryScreen()->availableGeometry().size();
+    resize(fullScreen.width()/3,fullScreen.height()/2);
+  }
+  if (state.isValid())
+    restoreState(state.toByteArray());
+  for (auto& dockWidget:dockWidgets) {
+    dockWidget.setFloating(false);
+    dockWidget.installEventFilter(this);
+    connect(&dockWidget,&QDockWidget::dockLocationChanged,this,&Game::saveDockStates);
+  }
+  if (orientation!=board.southIsUp.get())
+    flipGalleries();
 }
 
 void Game::addGameMenu(const bool controllable)
@@ -173,12 +197,13 @@ void Game::addDockMenu()
 
   for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side)) {
     auto& dockWidget=dockWidgets[FIRST_GALLERY_INDEX+side];
-    dockWidget.setWindowTitle(tr("%1 pieces off board").arg(sideWord(side)));
+    dockWidget.setObjectName(tr("%1 pieces off board").arg(sideWord(side)));
+    dockWidget.setWindowTitle(dockWidget.objectName());
     dockWidget.setWidget(&galleries[side]);
-    dockWidget.setObjectName(dockWidget.windowTitle());
     const auto dockWidgetArea=((side==FIRST_SIDE)==board.southIsUp ? Qt::TopDockWidgetArea : Qt::BottomDockWidgetArea);
     addDockWidget(dockWidgetArea,dockWidget,Qt::Vertical,dockWidgetArea==Qt::BottomDockWidgetArea);
-    connect(&offBoard,&QAction::toggled,&dockWidget,&QDockWidget::setVisible);
+    connect(&offBoard,&QAction::triggered,&dockWidget,&QDockWidget::setVisible);
+    connect(&dockWidget,&QDockWidget::visibilityChanged,&offBoard,&QAction::setChecked);
   }
   connect(&board,&Board::boardRotated,this,&Game::flipGalleries);
   offBoard.setCheckable(true);
@@ -187,16 +212,17 @@ void Game::addDockMenu()
   dockMenu->addAction(&offBoard);
 
   auto& dockWidget=dockWidgets[MOVE_LIST_INDEX];
+  dockWidget.setObjectName("Move list");
   dockWidget.setAllowedAreas(Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea);
   dockWidget.setFeatures(QDockWidget::DockWidgetClosable|QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetFloatable);
   addDockWidget(Qt::RightDockWidgetArea,dockWidget,Qt::Horizontal,false);
   dockWidget.setWidget(&treeView);
-  dockWidget.setObjectName("Move list");
 
   moveList.setCheckable(true);
   moveList.setChecked(true);
   moveList.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_M));
-  connect(&moveList,&QAction::toggled,&dockWidget,&QDockWidget::setVisible);
+  connect(&moveList,&QAction::triggered,&dockWidget,&QDockWidget::setVisible);
+  connect(&dockWidget,&QDockWidget::visibilityChanged,&moveList,&QAction::setChecked);
 
   dockMenu->addAction(&moveList);
 }
@@ -231,30 +257,6 @@ void Game::addCornerWidget()
   menuBar()->setCornerWidget(&cornerWidget);
 }
 
-void Game::setWindowState()
-{
-  globals.settings.beginGroup("Game");
-  const auto size=globals.settings.value("size").toSize();
-  const auto state=globals.settings.value("state");
-  const auto orientation=globals.settings.value("orientation");
-  globals.settings.endGroup();
-  if (size.isValid())
-    resize(size);
-  else {
-    const auto fullScreen=qApp->primaryScreen()->availableGeometry().size();
-    resize(fullScreen.width()/3,fullScreen.height()/2);
-  }
-  if (state.isValid())
-    restoreState(state.toByteArray());
-  for (auto& dockWidget:dockWidgets) {
-    dockWidget.setFloating(false);
-    dockWidget.installEventFilter(this);
-    connect(&dockWidget,&QDockWidget::dockLocationChanged,this,&Game::saveDockStates);
-  }
-  if (orientation!=board.southIsUp.get())
-    flipGalleries();
-}
-
 void Game::initLiveGame()
 {
   if (session!=nullptr) {
@@ -263,10 +265,10 @@ void Game::initLiveGame()
     });
     for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side)) {
       auto& dockWidget=dockWidgets[side];
-      dockWidget.setWindowTitle(sideWord(side));
+      dockWidget.setObjectName(sideWord(side));
+      dockWidget.setWindowTitle(dockWidget.objectName());
       dockWidget.setFeatures(QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetFloatable|QDockWidget::DockWidgetVerticalTitleBar);
       dockWidget.setWidget(&playerBars[side]);
-      dockWidget.setObjectName(dockWidget.windowTitle());
     }
     setPlayerBars(board.southIsUp);
     connect(&board,&Board::boardRotated,this,&Game::setPlayerBars);
@@ -333,17 +335,6 @@ bool Game::eventFilter(QObject* watched,QEvent* event)
           dockWidgetResized=true;
           break;
         }
-    break;
-    case QEvent::Close:
-      if (watched==&dockWidgets[MOVE_LIST_INDEX])
-        moveList.setChecked(false);
-      else
-        for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side))
-          if (watched==&dockWidgets[FIRST_GALLERY_INDEX+side]) {
-            dockWidgets[FIRST_GALLERY_INDEX+otherSide(side)].hide();
-            offBoard.setChecked(false);
-            break;
-          }
     break;
     default: break;
   }

@@ -21,12 +21,12 @@ public:
   explicit Game(Globals& globals_,const Side viewpoint,QWidget* const parent=nullptr,const std::shared_ptr<ASIP> session_=std::shared_ptr<ASIP>(),const bool customSetup=false);
 private:
   void addDockWidget(const Qt::DockWidgetArea area,QDockWidget& dockWidget,const Qt::Orientation orientation,const bool before);
+  void setWindowState();
   void addGameMenu(const bool controllable);
   void addBoardMenu();
   void addControlsMenu(const bool controllable);
   void addDockMenu();
   void addCornerWidget();
-  void setWindowState();
   void initLiveGame();
   void saveDockStates();
   virtual bool event(QEvent* event) override;
