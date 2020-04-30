@@ -20,6 +20,7 @@ struct Node {
   std::string toString() const;
   std::vector<std::weak_ptr<Node> > ancestors() const;
   int numMovesBefore(const Node* descendant) const;
+  bool isAncestorOfOrSameAs(const Node* descendant) const;
   NodePtr findClosestChild(const NodePtr& descendant) const;
   MoveLegality legalMove(const GameState& resultingState) const;
   bool hasLegalMoves(const GameState& startingState) const;
@@ -42,6 +43,7 @@ public:
   static NodePtr addSetup(const NodePtr& node,const Placements& placements,const bool after);
   static NodePtr makeMove(const NodePtr& node,const ExtendedSteps& move,const bool after);
   static NodePtr makeMove(const NodePtr& node,const PieceSteps& move,const bool after);
+  void swapChildren(const Node& firstChild,const int siblingOffset) const;
   static NodePtr root(const NodePtr& node);
 
   static GameTree createTree()
@@ -50,16 +52,36 @@ public:
   }
 
   template<class Container>
-  static void addToTree(Container& gameTree,const NodePtr& node)
+  static NodePtr addToTree(Container& gameTree,const NodePtr& node)
   {
     for (auto& existing:gameTree)
-      if (node->numMovesBefore(existing.get())>=0)
-        return;
-      else if (existing->numMovesBefore(node.get())>=0) {
+      if (node->isAncestorOfOrSameAs(existing.get()))
+        return node;
+      else if (existing->isAncestorOfOrSameAs(node.get())) {
         existing=node;
-        return;
+        return node;
       }
-    gameTree.emplace(gameTree.end(),node);
+    return *gameTree.emplace(gameTree.end(),node);
+  }
+
+  template<class Container>
+  static NodePtr deleteFromTree(Container& gameTree,const NodePtr& node)
+  {
+    bool changed=false;
+    for (auto existing=gameTree.begin();existing!=gameTree.end();) {
+      if (node->isAncestorOfOrSameAs(existing->get())) {
+        existing=gameTree.erase(existing);
+        changed=true;
+      }
+      else
+        ++existing;
+    }
+    if (changed) {
+      const auto& parent=node->previousNode;
+      if (parent!=nullptr)
+        return addToTree(gameTree,parent);
+    }
+    return nullptr;
   }
 };
 

@@ -8,6 +8,11 @@ TreeModel::TreeModel(NodePtr root_,QObject* const parent) :
 {
 }
 
+void TreeModel::reset() const
+{
+  rawToIndices.clear();
+}
+
 std::vector<QPersistentModelIndex> TreeModel::indices(const NodePtr& node) const
 {
   if (node==nullptr)
@@ -31,10 +36,12 @@ QPersistentModelIndex TreeModel::index(const NodePtr& node,const int column) con
   if (node==nullptr)
     return QPersistentModelIndex();
   const auto& pair=rawToIndices.find(node.get());
-  if (pair==rawToIndices.end())
-    return createIndex(node->childIndex(),column,node);
-  else
-    return pair->second[column];
+  if (pair!=rawToIndices.end() && column<int(pair->second.size())) {
+    const auto result=pair->second[column];
+    if (result.isValid())
+      return result;
+  }
+  return createIndex(node->childIndex(),column,node);
 }
 
 QPersistentModelIndex TreeModel::lastIndex(const NodePtr& node) const

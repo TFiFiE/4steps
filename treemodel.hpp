@@ -12,6 +12,7 @@ class TreeModel : public QAbstractItemModel {
 public:
   TreeModel(NodePtr root,QObject* const parent=nullptr);
 
+  void reset() const;
   std::vector<QPersistentModelIndex> indices(const NodePtr& node) const;
   QPersistentModelIndex index(const NodePtr& node,const int column) const;
   QPersistentModelIndex lastIndex(const NodePtr& node) const;

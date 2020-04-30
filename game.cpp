@@ -2,6 +2,8 @@
 #include <QApplication>
 #include <QScreen>
 #include <QHeaderView>
+#include <QClipboard>
+#include <QMouseEvent>
 #include "game.hpp"
 #include "globals.hpp"
 #include "mainwindow.hpp"
@@ -193,6 +195,9 @@ void Game::addDockMenu()
   treeView.header()->setSectionResizeMode(QHeaderView::ResizeToContents);
   treeView.setIndentation(0);
   treeView.setSelectionBehavior(QAbstractItemView::SelectItems);
+  treeView.viewport()->installEventFilter(this);
+  treeView.setContextMenuPolicy(Qt::CustomContextMenu);
+  connect(&treeView,&QTreeView::customContextMenuRequested,this,&Game::moveContextMenu);
   connect(treeView.selectionModel(),&QItemSelectionModel::currentChanged,this,&Game::synchronizeWithMoveCell);
   connect(&board,&Board::boardChanged,this,&Game::updateMoveList);
   updateMoveList();
@@ -229,6 +234,72 @@ void Game::addDockMenu()
   connect(&dockWidget,&QDockWidget::visibilityChanged,&moveList,&QAction::setChecked);
 
   dockMenu->addAction(&moveList);
+}
+
+void Game::moveContextMenu(const QPoint pos)
+{
+  const QModelIndex index=treeView.indexAt(pos);
+  if (!index.isValid())
+    return;
+  const auto node=treeModel.getItem(index);
+  const std::weak_ptr<Node> weakNode=node;
+  auto menu=new QMenu(&treeView);
+  menu->setAttribute(Qt::WA_DeleteOnClose);
+
+  const auto copyMove=new QAction(tr("Copy move to clipboard"),menu);
+  const auto nodeString=QString::fromStdString(node->toString());
+  connect(copyMove,&QAction::triggered,this,[nodeString] {
+    QGuiApplication::clipboard()->setText(nodeString);
+  });
+  menu->addAction(copyMove);
+
+  const auto childIndex=node->childIndex();
+  for (unsigned int direction=0;direction<2;++direction) {
+    const auto shiftDirection=new QAction(direction==0 ? tr("Shift up") : tr("Shift down"),menu);
+    if (childIndex>=0 && (direction==0 ? childIndex>0 : childIndex<node->previousNode->numChildren()-1)) {
+      connect(shiftDirection,&QAction::triggered,this,[this,weakNode,direction] {
+        if (const auto& node=weakNode.lock()) {
+          node->previousNode->swapChildren(*node.get(),direction==0 ? -1 : 1);
+          treeModel.reset();
+          treeView.setCurrentIndex(getCurrentIndex(board.currentNode));
+          emit treeModel.layoutChanged();
+        }
+      });
+    }
+    else
+      shiftDirection->setEnabled(false);
+    menu->addAction(shiftDirection);
+  }
+
+  const auto deleteMove=new QAction(tr("Delete move"),menu);
+  if (liveNode==nullptr || !node->isAncestorOfOrSameAs(liveNode.get())) {
+    connect(deleteMove,&QAction::triggered,this,[this,weakNode] {
+      if (auto node=weakNode.lock()) {
+        const bool changeNode=node->isAncestorOfOrSameAs(board.currentNode.get().get());
+        const auto parent=Node::deleteFromTree(gameTree,node);
+        node.reset();
+        treeModel.reset();
+        if (parent!=nullptr) {
+          if (changeNode) {
+            board.setNode(parent);
+            if (!parent->inSetup())
+              if (const auto& child=parent->child(0)) {
+                const auto& move=child->move;
+                board.doSteps(move,false,move.size());
+              }
+          }
+          else
+            treeView.setCurrentIndex(getCurrentIndex(board.currentNode));
+          emit treeModel.layoutChanged();
+        }
+      }
+    });
+  }
+  else
+    deleteMove->setEnabled(false);
+  menu->addAction(deleteMove);
+
+  menu->popup(treeView.viewport()->mapToGlobal(pos));
 }
 
 void Game::addCornerWidget()
@@ -333,6 +404,11 @@ bool Game::event(QEvent* event)
 bool Game::eventFilter(QObject* watched,QEvent* event)
 {
   switch (event->type()) {
+    case QEvent::MouseButtonPress:
+    case QEvent::MouseButtonDblClick:
+      if (watched==treeView.viewport() && static_cast<QMouseEvent*>(event)->button()==Qt::RightButton)
+        return true;
+    break;
     case QEvent::Resize:
       for (const auto& dockWidget:dockWidgets)
         if (watched==&dockWidget) {

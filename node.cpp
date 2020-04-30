@@ -52,6 +52,11 @@ int Node::numMovesBefore(const Node* descendant) const
   return -1;
 }
 
+bool Node::isAncestorOfOrSameAs(const Node* descendant) const
+{
+  return numMovesBefore(descendant)>=0;
+}
+
 NodePtr Node::findClosestChild(const NodePtr& descendant) const
 {
   for (auto nodePtr=&descendant;;) {
@@ -268,6 +273,21 @@ NodePtr Node::makeMove(const NodePtr& node,const ExtendedSteps& move,const bool 
 NodePtr Node::makeMove(const NodePtr& node,const PieceSteps& move,const bool after)
 {
   return makeMove(node,node->currentState.toExtendedSteps(move),after);
+}
+
+void Node::swapChildren(const Node& firstChild,const int siblingOffset) const
+{
+  for (auto child=children.begin();child!=children.end();) {
+    if (const auto& lockedChild=child->lock()) {
+      if (lockedChild.get()==&firstChild) {
+        iter_swap(child,next(child,siblingOffset));
+        return;
+      }
+      ++child;
+    }
+    else
+      child=children.erase(child);
+  }
 }
 
 NodePtr Node::root(const NodePtr& node)

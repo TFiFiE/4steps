@@ -26,6 +26,7 @@ private:
   void addBoardMenu();
   void addControlsMenu(const bool controllable);
   void addDockMenu();
+  void moveContextMenu(const QPoint pos);
   void addCornerWidget();
   void initLiveGame();
   void saveDockStates();
