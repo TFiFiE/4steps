@@ -10,6 +10,7 @@
 #include "offboard.hpp"
 #include "io.hpp"
 
+using namespace std;
 Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const std::shared_ptr<ASIP> session_,const bool customSetup) :
   QMainWindow(parent),
   globals(globals_),
@@ -33,8 +34,9 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   sound(tr("&Sound")),
   stepMode(tr("&Step mode")),
   confirm(tr("&Confirm move")),
-  offBoard(tr("&Pieces off board")),
   moveList(tr("&Move list")),
+  offBoards{make_unique<QAction>(tr("&Gold pieces off board")),
+            make_unique<QAction>(tr("&Silver pieces off board"))},
   explore(tr("&Explore")),
   current(tr("&Current")),
   iconSets(this)
@@ -202,14 +204,16 @@ void Game::addDockMenu()
     dockWidget.setWidget(&galleries[side]);
     const auto dockWidgetArea=((side==FIRST_SIDE)==board.southIsUp ? Qt::TopDockWidgetArea : Qt::BottomDockWidgetArea);
     addDockWidget(dockWidgetArea,dockWidget,Qt::Vertical,dockWidgetArea==Qt::BottomDockWidgetArea);
-    connect(&offBoard,&QAction::triggered,&dockWidget,&QDockWidget::setVisible);
-    connect(&dockWidget,&QDockWidget::visibilityChanged,&offBoard,&QAction::setChecked);
+
+    const auto offBoard=offBoards[side].get();
+    connect(offBoard,&QAction::triggered,&dockWidget,&QDockWidget::setVisible);
+    connect(&dockWidget,&QDockWidget::visibilityChanged,offBoard,&QAction::setChecked);
+    offBoard->setCheckable(true);
+    offBoard->setChecked(true);
+    offBoard->setShortcut(QKeySequence(Qt::CTRL+(side==FIRST_SIDE ? Qt::Key_1 : Qt::Key_2)));
+    dockMenu->addAction(offBoard);
   }
   connect(&board,&Board::boardRotated,this,&Game::flipGalleries);
-  offBoard.setCheckable(true);
-  offBoard.setChecked(true);
-  offBoard.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_P));
-  dockMenu->addAction(&offBoard);
 
   auto& dockWidget=dockWidgets[MOVE_LIST_INDEX];
   dockWidget.setObjectName("Move list");
