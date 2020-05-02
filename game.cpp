@@ -261,7 +261,7 @@ void Game::moveContextMenu(const QPoint pos)
         if (const auto& node=weakNode.lock()) {
           node->previousNode->swapChildren(*node.get(),direction==0 ? -1 : 1);
           treeModel.reset();
-          treeView.setCurrentIndex(getCurrentIndex(board.currentNode));
+          treeView.setCurrentIndex(getCurrentIndex());
           emit treeModel.layoutChanged();
         }
       });
@@ -289,7 +289,7 @@ void Game::moveContextMenu(const QPoint pos)
               }
           }
           else
-            treeView.setCurrentIndex(getCurrentIndex(board.currentNode));
+            treeView.setCurrentIndex(getCurrentIndex());
           emit treeModel.layoutChanged();
         }
       }
@@ -716,20 +716,29 @@ void Game::updateMoveList()
   dockWidget.setWindowTitle(QString::fromStdString(moveString));
 
   if (moveSynchronization)
-    setCurrentIndex(getCurrentIndex(node));
+    setCurrentIndex(getCurrentIndex());
 }
 
-QPersistentModelIndex Game::getCurrentIndex(const NodePtr& node) const
+QPersistentModelIndex Game::getCurrentIndex() const
 {
-  if (node.get()==nullptr)
+  if (board.currentNode.get()==nullptr)
     return QPersistentModelIndex();
-  else if (node->inSetup()) {
+  else {
+    const auto nodeAndColumn=getNodeAndColumn();
+    return treeModel.index(nodeAndColumn.first,nodeAndColumn.second);
+  }
+}
+
+std::pair<NodePtr,int> Game::getNodeAndColumn() const
+{
+  const auto& node=board.currentNode;
+  if (node->inSetup()) {
     const auto& currentPlacements=board.currentPlacements();
     if (!currentPlacements.empty())
       if (const auto& child=node->findPartialMatchingChild(currentPlacements).first) {
         const auto& childPlacements=child->currentState.playedPlacements();
         const auto pair=mismatch(currentPlacements.begin(),currentPlacements.end(),childPlacements.begin());
-        return treeModel.index(child,pair.second==childPlacements.end() ? childPlacements.size()-numStartingPiecesPerType[0] : distance(childPlacements.begin(),pair.second));
+        return {child,pair.second==childPlacements.end() ? childPlacements.size()-numStartingPiecesPerType[0] : distance(childPlacements.begin(),pair.second)};
       }
   }
   else {
@@ -738,9 +747,9 @@ QPersistentModelIndex Game::getCurrentIndex(const NodePtr& node) const
     NodePtr child;
     for (const auto& steps:{potentialMove.all(),currentSteps})
       if (!steps.empty() && (child=node->findPartialMatchingChild(steps).first)!=nullptr)
-        return treeModel.index(child,currentSteps.size());
+        return {child,currentSteps.size()};
   }
-  return treeModel.index(node,treeModel.columnCount(node->move.size())-1);
+  return {node,treeModel.columnCount(node->move.size())-1};
 }
 
 void Game::setCurrentIndex(const QModelIndex& index)

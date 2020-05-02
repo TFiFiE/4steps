@@ -47,7 +47,8 @@ private:
   void processVisibleNode(const NodePtr& node);
   void synchronizeWithMoveCell(const QModelIndex& current);
   void updateMoveList();
-  QPersistentModelIndex getCurrentIndex(const NodePtr& node) const;
+  QPersistentModelIndex getCurrentIndex() const;
+  std::pair<NodePtr,int> getNodeAndColumn() const;
   void setCurrentIndex(const QModelIndex& index);
   void announceResult(const Result& result);
 
