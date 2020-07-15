@@ -130,7 +130,7 @@ QVariant TreeModel::data(const QModelIndex& index,const int role) const
     if (role==Qt::DisplayRole) {
       const unsigned int column=index.column();
       if (column==0) {
-        const auto moveNumber=QString::fromStdString(toPlyString(node->depth-1,*root));
+        const auto moveNumber=QString::fromStdString(node->toPlyString(*root));
         const auto numChildren=rowCount(index);
         switch (numChildren) {
           case 0: return moveNumber;

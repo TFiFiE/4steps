@@ -10,6 +10,11 @@ Node::Node(NodePtr previousNode_,const ExtendedSteps& move_,const GameState& cur
 {
 }
 
+const Node& Node::root() const
+{
+  return previousNode==nullptr ? *this : *root(previousNode).get();
+}
+
 bool Node::isGameStart() const
 {
   return previousNode==nullptr && move.empty() && currentState.sideToMove==FIRST_SIDE && currentState.empty();
@@ -20,6 +25,16 @@ bool Node::inSetup() const
   return previousNode==nullptr ? currentState.empty() : (currentState.sideToMove==SECOND_SIDE && move.empty());
 }
 
+std::string Node::toPlyString() const
+{
+  return toPlyString(root());
+}
+
+std::string Node::toPlyString(const Node& root) const
+{
+  return depth==0 ? "" : ::toPlyString(depth-1,root);
+}
+
 std::string Node::toString() const
 {
   if (move.empty())
@@ -28,8 +43,10 @@ std::string Node::toString() const
     return ::toString(move);
 }
 
-std::vector<std::weak_ptr<Node> > Node::ancestors() const
+std::vector<std::weak_ptr<Node> > Node::ancestors(const Node* const final) const
 {
+  if (this==final)
+    return {};
   std::vector<std::weak_ptr<Node> > result;
   for (auto nodePtr=&previousNode;;) {
     const auto& node=*nodePtr;
@@ -37,6 +54,8 @@ std::vector<std::weak_ptr<Node> > Node::ancestors() const
       return result;
     else {
       result.emplace_back(node);
+      if (node.get()==final)
+        return result;
       nodePtr=&node->previousNode;
     }
   }

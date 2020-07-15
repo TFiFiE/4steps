@@ -253,6 +253,33 @@ void Game::moveContextMenu(const QPoint pos)
   });
   menu->addAction(copyMove);
 
+  const auto copySequence=new QAction(tr("Copy sequence to clipboard"),menu);
+  const auto cursorNode=getNodeAndColumn().first;
+  std::vector<std::weak_ptr<Node> > sequence;
+  if (node->isAncestorOfOrSameAs(cursorNode.get())) {
+    sequence.emplace_back(cursorNode);
+    append(sequence,cursorNode->ancestors(node.get()));
+  }
+  else if (cursorNode->isAncestorOfOrSameAs(node.get())) {
+    sequence.emplace_back(node);
+    append(sequence,node->ancestors(cursorNode.get()));
+  }
+  if (sequence.empty())
+    copySequence->setEnabled(false);
+  else {
+    std::string sequenceString;
+    for (auto move=sequence.rbegin();move!=sequence.rend();++move) {
+      if (move!=sequence.rbegin())
+        sequenceString+='\n';
+      const auto sequenceNode=move->lock();
+      sequenceString+=sequenceNode->toPlyString()+' '+sequenceNode->toString();
+    }
+    connect(copySequence,&QAction::triggered,this,[sequenceString] {
+      QGuiApplication::clipboard()->setText(QString::fromStdString(sequenceString));
+    });
+  }
+  menu->addAction(copySequence);
+
   const auto childIndex=node->childIndex();
   for (unsigned int direction=0;direction<2;++direction) {
     const auto shiftDirection=new QAction(direction==0 ? tr("Shift up") : tr("Shift down"),menu);

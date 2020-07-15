@@ -15,10 +15,13 @@ struct Node {
   mutable std::mutex children_mutex;
 
   explicit Node(NodePtr previousNode_,const ExtendedSteps& move_,const GameState& currentState_);
+  const Node& root() const;
   bool isGameStart() const;
   bool inSetup() const;
+  std::string toPlyString() const;
+  std::string toPlyString(const Node& root) const;
   std::string toString() const;
-  std::vector<std::weak_ptr<Node> > ancestors() const;
+  std::vector<std::weak_ptr<Node> > ancestors(const Node* const final=nullptr) const;
   int numMovesBefore(const Node* descendant) const;
   bool isAncestorOfOrSameAs(const Node* descendant) const;
   NodePtr findClosestChild(const NodePtr& descendant) const;
