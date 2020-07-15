@@ -74,6 +74,7 @@ Bots::Bots(ASIP& session_,const QUrl& url_,MainWindow& mainWindow_) :
   vBoxLayout.addWidget(&label);
 
   message.setStyleSheet("background-color:"+QTextEdit().palette().base().color().name()+';');
+  message.setTextInteractionFlags(Qt::TextSelectableByMouse);
   message.setVisible(false);
   vBoxLayout.addWidget(&message);
 
