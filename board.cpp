@@ -607,8 +607,12 @@ bool Board::autoFinalize(const bool stepsTaken)
     }
     else {
       const auto& currentSteps=potentialMove.get().current();
-      if (gameState().stepsAvailable==0 || (!stepsTaken && currentNode->findMatchingChild(currentSteps).first!=nullptr))
-        finalizeMove(currentSteps);
+      if (gameState().stepsAvailable==0 || (!stepsTaken && currentNode->findMatchingChild(currentSteps).first!=nullptr)) {
+        if (currentNode->legalMove(gameState())==LEGAL)
+          finalizeMove(currentSteps);
+        else
+          return false;
+      }
       else {
         if (const auto& child=currentNode->findPartialMatchingChild(potentialMove.get().all()).first)
           potentialMove.data.set(child->move,currentSteps.size());
