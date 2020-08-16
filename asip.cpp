@@ -303,6 +303,7 @@ void ASIP::sit()
           update(false);
         }
         catch (const std::exception& exception) {
+          gameStateReply=nullptr;
           emit error(exception);
         }
       });
@@ -318,17 +319,18 @@ void ASIP::forceUpdate()
   if (gameStateReply!=nullptr) {
     disconnect(gameStateReply,&QNetworkReply::finished,nullptr,nullptr);
     gameStateReply->deleteLater();
-    gameStateReply=post(this,{{"action","gamestate"},dataPair("sid"),{"wait","0"},{"maxwait","0"}});
-    connect(gameStateReply,&QNetworkReply::finished,this,[=] {
-      try {
-        processReply(*gameStateReply);
-        update(true);
-      }
-      catch (const std::exception& exception) {
-        emit error(exception);
-      }
-    });
   }
+  gameStateReply=post(this,{{"action","gamestate"},dataPair("sid"),{"wait","0"},{"maxwait","0"}});
+  connect(gameStateReply,&QNetworkReply::finished,this,[=] {
+    try {
+      processReply(*gameStateReply);
+      update(true);
+    }
+    catch (const std::exception& exception) {
+      gameStateReply=nullptr;
+      emit error(exception);
+    }
+  });
 }
 
 void ASIP::start()
@@ -387,6 +389,7 @@ void ASIP::update(const bool hardSynchronization)
       update(false);
     }
     catch (const std::exception& exception) {
+      gameStateReply=nullptr;
       emit error(exception);
     }
   });
