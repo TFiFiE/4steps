@@ -133,6 +133,16 @@ bool Board::setNode(NodePtr newNode,const bool sound,bool keepState)
   return !keepState;
 }
 
+void Board::playMoveSounds(const Node& node)
+{
+  if (node.previousNode!=nullptr) {
+    if (node.previousNode->inSetup())
+      playSound("qrc:/finished-setup.wav");
+    else
+      playStepSounds(node.move,true);
+  }
+}
+
 void Board::proposeMove(const Node& child,const unsigned int playedOutSteps)
 {
   if (currentNode->inSetup())

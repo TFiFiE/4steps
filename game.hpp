@@ -24,7 +24,7 @@ private:
   void setWindowState();
   void addGameMenu(const bool controllable);
   void addBoardMenu();
-  void addControlsMenu(const bool controllable);
+  void addControlsMenu();
   void addDockMenu();
   void moveContextMenu(const QPoint pos);
   void addCornerWidget();
@@ -44,6 +44,7 @@ private:
   bool processMoves(const std::pair<GameTree,size_t>& treeAndNumber,const Side role,const Result& result,const bool hardSynchronization);
   void receiveGameTree(const GameTree& gameTreeNode,const bool sound);
   void receiveNodeChange(const NodePtr& newNode);
+  void expandToNode(const Node& node);
   void processVisibleNode(const NodePtr& node);
   void synchronizeWithMoveCell(const QModelIndex& current);
   void updateMoveList();

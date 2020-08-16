@@ -27,6 +27,7 @@ public:
   bool playable() const;
 
   bool setNode(NodePtr newNode,const bool sound=false,bool keepState=false);
+  void playMoveSounds(const Node& node);
   void proposeMove(const Node& child,const unsigned int playedOutSteps);
   void proposeSetup(GameState gameState);
   void doSteps(const ExtendedSteps& potentialMove,const bool sound,const int undoneSteps=0);

@@ -51,7 +51,7 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   const bool controllable=(controllableSides[FIRST_SIDE] || controllableSides[SECOND_SIDE]);
   addGameMenu(controllable);
   addBoardMenu();
-  addControlsMenu(controllable);
+  addControlsMenu();
   addDockMenu();
   addCornerWidget();
   connect(&board,&Board::sendNodeChange,this,&Game::receiveNodeChange);
@@ -164,11 +164,10 @@ void Game::addBoardMenu()
   });
 }
 
-void Game::addControlsMenu(const bool controllable)
+void Game::addControlsMenu()
 {
   const auto controlsMenu=menuBar()->addMenu(tr("&Controls"));
 
-  stepMode.setEnabled(controllable);
   stepMode.setCheckable(true);
   stepMode.setChecked(board.stepMode);
   stepMode.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_S));
@@ -341,19 +340,26 @@ void Game::addCornerWidget()
   connect(&explore,&QCheckBox::toggled,this,&Game::setExploration);
   cornerLayout.addWidget(&explore);
 
-  connect(&current,&QPushButton::clicked,this,[this] {
-    const auto& currentNode=board.currentNode.get();
-    if (currentNode==liveNode) {
-      if (!board.potentialMove.get().empty())
-        board.undoSteps(true);
-    }
-    else {
-      const auto& child=liveNode->findClosestChild(currentNode);
-      board.setNode(liveNode);
-      if (child!=nullptr)
-        board.proposeMove(*child.get(),0);
-    }
-  });
+  if (liveNode==nullptr)
+    current.setEnabled(false);
+  else
+    connect(&current,&QPushButton::clicked,this,[this] {
+      if (liveNode!=nullptr) {
+        const auto& currentNode=board.currentNode.get();
+        if (currentNode==liveNode) {
+          expandToNode(*liveNode);
+          treeView.scrollTo(treeModel.index(liveNode,0));
+          if (!board.potentialMove.get().empty())
+            board.undoSteps(true);
+        }
+        else {
+          const auto& child=liveNode->findClosestChild(currentNode);
+          board.setNode(liveNode);
+          if (child!=nullptr)
+            board.proposeMove(*child.get(),0);
+        }
+      }
+    });
   cornerLayout.addWidget(&current);
 
   menuBar()->setCornerWidget(&cornerWidget);
@@ -621,7 +627,6 @@ void Game::setExploration(const bool on)
     }
   }
   emit treeModel.layoutChanged();
-  current.setEnabled(on && liveNode!=nullptr);
 }
 
 bool Game::processMoves(const std::pair<GameTree,size_t>& treeAndNumber,const Side role,const Result& result,const bool hardSynchronization)
@@ -659,16 +664,22 @@ void Game::receiveGameTree(const GameTree& gameTreeNode,const bool sound)
   gameTree.insert(gameTree.begin()+insertPos,gameTreeNode.begin()+insertPos,gameTreeNode.end());
   gameTree.erase(unsorted_unique(gameTree.begin(),gameTree.end()),gameTree.end());
 
-  const auto oldNode=board.currentNode.get();
-  const bool changed=board.setNode(liveNode,sound,true);
-  explore.setChecked(false);
-  if (session->role()==board.sideToMove()) {
-    if (!changed)
-      board.undoSteps(true);
-    else if (const auto& child=liveNode->findClosestChild(oldNode))
-      board.proposeMove(*child.get(),0);
+  if (board.explore) {
+    board.playMoveSounds(*liveNode);
+    expandToNode(*liveNode);
   }
-  processVisibleNode(liveNode);
+  else {
+    const auto oldNode=board.currentNode.get();
+    const bool changed=board.setNode(liveNode,sound,true);
+    explore.setChecked(false);
+    if (session->role()==board.sideToMove()) {
+      if (!changed)
+        board.undoSteps(true);
+      else if (const auto& child=liveNode->findClosestChild(oldNode))
+        board.proposeMove(*child.get(),0);
+    }
+    processVisibleNode(liveNode);
+  }
 }
 
 void Game::receiveNodeChange(const NodePtr& newNode)
@@ -689,11 +700,16 @@ void Game::receiveNodeChange(const NodePtr& newNode)
   processVisibleNode(newNode);
 }
 
-void Game::processVisibleNode(const NodePtr& node)
+void Game::expandToNode(const Node& node)
 {
-  const auto& ancestors=node->ancestors();
+  const auto& ancestors=node.ancestors();
   for (auto ancestor=ancestors.rbegin();ancestor!=ancestors.rend();++ancestor)
     treeView.expand(treeModel.index(ancestor->lock(),0));
+}
+
+void Game::processVisibleNode(const NodePtr& node)
+{
+  expandToNode(*node);
   const auto& index=treeModel.lastIndex(node);
   if (!board.explore)
     treeModel.exclusive=index;
