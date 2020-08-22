@@ -51,7 +51,7 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   const bool controllable=(controllableSides[FIRST_SIDE] || controllableSides[SECOND_SIDE]);
   addGameMenu(controllable);
   addBoardMenu();
-  addControlsMenu();
+  addInputMenu();
   addDockMenu();
   addCornerWidget();
   connect(&board,&Board::sendNodeChange,this,&Game::receiveNodeChange);
@@ -164,22 +164,22 @@ void Game::addBoardMenu()
   });
 }
 
-void Game::addControlsMenu()
+void Game::addInputMenu()
 {
-  const auto controlsMenu=menuBar()->addMenu(tr("&Controls"));
+  const auto inputMenu=menuBar()->addMenu(tr("&Input"));
 
   stepMode.setCheckable(true);
   stepMode.setChecked(board.stepMode);
   stepMode.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_S));
   connect(&stepMode,&QAction::toggled,&board,&Board::setStepMode);
-  controlsMenu->addAction(&stepMode);
+  inputMenu->addAction(&stepMode);
 
   confirm.setEnabled(session!=nullptr);
   confirm.setCheckable(true);
   confirm.setChecked(board.confirm);
   confirm.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_C));
   connect(&confirm,&QAction::toggled,&board,&Board::setConfirm);
-  controlsMenu->addAction(&confirm);
+  inputMenu->addAction(&confirm);
 }
 
 void Game::addDockMenu()
