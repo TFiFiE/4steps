@@ -24,7 +24,8 @@ MainWindow::MainWindow(Globals& globals_,QWidget* const parent) :
   menu->addAction(&emptyGame);
 
   customGame.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_C));
-  connect(&customGame,&QAction::triggered,this,[this]{new Game(globals,FIRST_SIDE,this,nullptr,true);});
+  using namespace std;
+  connect(&customGame,&QAction::triggered,this,[this]{new Game(globals,FIRST_SIDE,this,nullptr,make_unique<GameState>());});
   menu->addAction(&customGame);
 
   logIn.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_L));

@@ -13,14 +13,14 @@
 #include "io.hpp"
 
 using namespace std;
-Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const std::shared_ptr<ASIP> session_,const bool customSetup) :
+Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const std::shared_ptr<ASIP> session_,const std::unique_ptr<GameState> customSetup) :
   QMainWindow(parent),
   globals(globals_),
   session(session_),
-  gameTree(customSetup ? GameTree() : Node::createTree()),
+  gameTree(customSetup==nullptr ? Node::createTree() : GameTree()),
   treeModel(gameTree.empty() ? nullptr : gameTree.front()),
   liveNode(session==nullptr ? nullptr : treeModel.root),
-  board(globals,treeModel.root,session==nullptr,viewpoint,session!=nullptr,{session==nullptr,session==nullptr}),
+  board(globals,treeModel.root,session==nullptr,viewpoint,session!=nullptr,{session==nullptr,session==nullptr},customSetup.get(),parent),
   dockWidgetResized(false),
   galleries{{{board,FIRST_SIDE},{board,SECOND_SIDE}}},
   processedMoves(0),
@@ -409,6 +409,26 @@ void Game::saveDockStates()
   globals.settings.setValue("state",saveState());
   globals.settings.setValue("orientation",board.southIsUp.get());
   globals.settings.endGroup();
+}
+
+void Game::mousePressEvent(QMouseEvent* event)
+{
+  if (event->button()==Qt::RightButton) {
+    auto menu=new QMenu(this);
+    menu->setAttribute(Qt::WA_DeleteOnClose);
+
+    const auto customGame=new QAction(tr("Start custom setup with current position"),menu);
+    connect(customGame,&QAction::triggered,this,[this] {
+      using namespace std;
+      new Game(globals,board.southIsUp ? SECOND_SIDE : FIRST_SIDE,parentWidget(),nullptr,make_unique<GameState>(board.gameState()));
+    });
+    menu->addAction(customGame);
+
+    menu->popup(QCursor::pos());
+    event->accept();
+  }
+  else
+    event->ignore();
 }
 
 bool Game::event(QEvent* event)

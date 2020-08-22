@@ -18,7 +18,7 @@ class ASIP;
 class Game : public QMainWindow {
   Q_OBJECT
 public:
-  explicit Game(Globals& globals_,const Side viewpoint,QWidget* const parent=nullptr,const std::shared_ptr<ASIP> session_=std::shared_ptr<ASIP>(),const bool customSetup=false);
+  explicit Game(Globals& globals_,const Side viewpoint,QWidget* const parent=nullptr,const std::shared_ptr<ASIP> session_=std::shared_ptr<ASIP>(),const std::unique_ptr<GameState> customSetup=nullptr);
 private:
   void addDockWidget(const Qt::DockWidgetArea area,QDockWidget& dockWidget,const Qt::Orientation orientation,const bool before);
   void setWindowState();
@@ -30,6 +30,7 @@ private:
   void addCornerWidget();
   void initLiveGame();
   void saveDockStates();
+  virtual void mousePressEvent(QMouseEvent* event) override;
   virtual bool event(QEvent* event) override;
   virtual bool eventFilter(QObject* watched,QEvent* event) override;
   static std::array<bool,NUM_SIDES> getControllableSides(const std::shared_ptr<ASIP> session);

@@ -6,12 +6,13 @@
 #include "io.hpp"
 #include "popup.hpp"
 
-Board::Board(Globals& globals_,NodePtr currentNode_,const bool explore_,const Side viewpoint,const bool soundOn,const std::array<bool,NUM_SIDES>& controllableSides_,QWidget* const parent,const Qt::WindowFlags f) :
+Board::Board(Globals& globals_,NodePtr currentNode_,const bool explore_,const Side viewpoint,const bool soundOn,const std::array<bool,NUM_SIDES>& controllableSides_,const GameState* const customSetup_,QWidget* const parent,const Qt::WindowFlags f) :
   QWidget(parent,f),
   explore(explore_),
   southIsUp(viewpoint==SECOND_SIDE),
   currentNode(currentNode_),
   globals(globals_),
+  potentialSetup(customSetup_==nullptr ? GameState() : *customSetup_),
   controllableSides(controllableSides_),
   autoRotate(false),
   drag{NO_SQUARE,NO_SQUARE},
@@ -662,22 +663,34 @@ void Board::mousePressEvent(QMouseEvent* event)
     break;
     case Qt::RightButton:
       if (playable()) {
-        if (drag[ORIGIN]!=NO_SQUARE)
+        if (drag[ORIGIN]!=NO_SQUARE) {
           endDrag();
+          break;
+        }
         else if (!stepMode && highlighted[ORIGIN]!=NO_SQUARE) {
           highlighted[ORIGIN]=NO_SQUARE;
           update();
+          break;
         }
         else if (customSetup()) {
           if (square!=NO_SQUARE)
             new Popup(*this,square);
+          break;
         }
-        else
-          undoSteps(false);
       }
+      event->ignore();
+      return;
     break;
     case Qt::MidButton:
       animateMove(true);
+    break;
+    case Qt::BackButton:
+      if (!customSetup())
+        undoSteps(false);
+    break;
+    case Qt::ForwardButton:
+      if (!customSetup())
+        redoSteps(false);
     break;
     default:
       event->ignore();
@@ -809,9 +822,18 @@ void Board::mouseDoubleClickEvent(QMouseEvent* event)
     }
     break;
     case Qt::RightButton:
+      disableAnimation();
+    break;
+    case Qt::BackButton:
       if (!customSetup()) {
         disableAnimation();
         undoSteps(true);
+      }
+    break;
+    case Qt::ForwardButton:
+      if (!customSetup()) {
+        disableAnimation();
+        redoSteps(true);
       }
     break;
     default:

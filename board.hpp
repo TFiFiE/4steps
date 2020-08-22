@@ -14,7 +14,7 @@ struct Globals;
 class Board : public QWidget {
   Q_OBJECT
 public:
-  explicit Board(Globals& globals_,NodePtr currentNode_,const bool explore_,const Side viewpoint,const bool soundOn,const std::array<bool,NUM_SIDES>& controllableSides_={true,true},QWidget* const parent=nullptr,const Qt::WindowFlags f=Qt::WindowFlags());
+  explicit Board(Globals& globals_,NodePtr currentNode_,const bool explore_,const Side viewpoint,const bool soundOn,const std::array<bool,NUM_SIDES>& controllableSides_={true,true},const GameState* const customSetup_=nullptr,QWidget* const parent=nullptr,const Qt::WindowFlags f=Qt::WindowFlags());
   bool customSetup() const;
   bool setupPhase() const;
   bool setupPlacementPhase() const;
