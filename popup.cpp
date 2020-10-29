@@ -110,12 +110,10 @@ void Popup::mouseReleaseEvent(QMouseEvent* event)
         else
           board.potentialSetup.sideToMove=otherSide(board.potentialSetup.sideToMove);
         emit board.boardChanged();
-        board.update();
       }
       else if (!pieceTypeAndSideAtMax[piece]) {
         board.potentialSetup.currentPieces[affectedSquare]=piece;
         emit board.boardChanged();
-        board.update();
       }
     }
     close();

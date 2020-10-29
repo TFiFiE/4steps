@@ -111,7 +111,7 @@ private:
   const QColor neutralColor;
 signals:
   void gameStarted();
-  void boardChanged();
+  void boardChanged(const bool refresh=true);
   void boardRotated(const bool southIsUp);
   void sendNodeChange(const NodePtr& newNode,const NodePtr& oldNode);
 

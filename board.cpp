@@ -37,6 +37,11 @@ Board::Board(Globals& globals_,NodePtr currentNode_,const bool explore_,const Si
   setAnimationDelay(animationDelay);
   setConfirm(confirm);
 
+  connect(this,&Board::boardChanged,this,[this](const bool refresh) {
+    if (refresh)
+      refreshHighlights(true);
+  });
+  connect(this,&Board::boardChanged,this,static_cast<void (Board::*)()>(&Board::update));
   connect(&animationTimer,&QTimer::timeout,this,&Board::animateNextStep);
 }
 
@@ -129,8 +134,6 @@ bool Board::setNode(NodePtr newNode,const bool sound,bool keepState)
   if (autoRotate)
     setViewpoint(sideToMove());
   emit boardChanged();
-  refreshHighlights(true);
-  update();
   return !keepState;
 }
 
@@ -160,7 +163,6 @@ void Board::proposeSetup(GameState gameState)
   potentialSetup=std::move(gameState);
   currentSetupPiece=-1;
   emit boardChanged();
-  refreshHighlights(true);
 }
 
 void Board::doSteps(const ExtendedSteps& steps,const bool sound,const int undoneSteps)
@@ -173,10 +175,8 @@ void Board::doSteps(const ExtendedSteps& steps,const bool sound,const int undone
     const bool updated=(int(steps.size())!=undoneSteps);
     if (updated)
       endDrag();
-    if (!autoFinalize(true) && updated) {
+    if (!autoFinalize(true) && updated)
       emit boardChanged();
-      refreshHighlights(true);
-    }
   }
 }
 
@@ -199,7 +199,6 @@ void Board::undoSteps(const bool all)
   if (updated) {
     endDrag();
     emit boardChanged();
-    refreshHighlights(true);
   }
 }
 
@@ -208,10 +207,8 @@ void Board::redoSteps(const bool all)
   const bool updated=potentialMove.data.shiftEnd(true,all);
   if (updated)
     endDrag();
-  if (!autoFinalize(updated) && updated) {
+  if (!autoFinalize(updated) && updated)
     emit boardChanged();
-    refreshHighlights(true);
-  }
 }
 
 void Board::rotate()
@@ -555,7 +552,6 @@ bool Board::doubleSquareSetupAction(const SquareIndex origin,const SquareIndex d
     else
       std::swap(currentPieces[origin],currentPieces[destination]);
     emit boardChanged();
-    refreshHighlights(true);
     return true;
   }
   else
@@ -575,11 +571,9 @@ void Board::finalizeSetup(const Placements& placements)
   emit sendNodeChange(newNode,currentNode);
   currentNode=std::move(newNode);
 
-  emit boardChanged();
   if (autoRotate)
     setViewpoint(sideToMove());
-  refreshHighlights(true);
-  update();
+  emit boardChanged();
 }
 
 void Board::finalizeMove(const ExtendedSteps& move)
@@ -589,11 +583,9 @@ void Board::finalizeMove(const ExtendedSteps& move)
   currentNode=std::move(newNode);
 
   potentialMove.data.clear();
-  emit boardChanged();
   if (autoRotate && currentNode->result.endCondition==NO_END)
     setViewpoint(sideToMove());
-  refreshHighlights(true);
-  update();
+  emit boardChanged();
 }
 
 void Board::endDrag()
@@ -777,8 +769,6 @@ void Board::mouseDoubleClickEvent(QMouseEvent* event)
               if (autoRotate)
                 setViewpoint(sideToMove());
               emit boardChanged();
-              refreshHighlights(true);
-              update();
             }
             else
               MessageBox(QMessageBox::Critical,tr("Terminal position"),tr("Game already finished in this position."),QMessageBox::NoButton,this).exec();
