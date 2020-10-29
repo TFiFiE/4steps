@@ -10,21 +10,11 @@ Popup::Popup(Board& board_,const SquareIndex affectedSquare_) :
   QWidget(&board_,Qt::Popup),
   board(board_),
   affectedSquare(affectedSquare_),
-  pieceTypeAndSideAtMax{false},
+  pieceTypeAndSideAtMax{board.gameState().piecesAtMax()},
   upSide(board.southIsUp ? FIRST_SIDE : SECOND_SIDE),
   left((toFile(affectedSquare)*2<NUM_FILES)!=board.southIsUp),
   dragging(false)
 {
-  unsigned int pieceCounts[NUM_SIDES][NUM_PIECE_TYPES]={{0}};
-  for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square)) {
-    const PieceTypeAndSide pieceOnSquare=board.gameState().currentPieces[square];
-    if (pieceOnSquare!=NO_PIECE) {
-      auto& pieceCount=pieceCounts[toSide(pieceOnSquare)][toPieceType(pieceOnSquare)];
-      if (++pieceCount==numStartingPiecesPerType[toPieceType(pieceOnSquare)])
-        pieceTypeAndSideAtMax[pieceOnSquare]=true;
-    }
-  }
-
   for (auto& row:pieceOnSquare)
     row.fill(NO_PIECE);
   for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side))
@@ -111,7 +101,9 @@ void Popup::mouseReleaseEvent(QMouseEvent* event)
           board.potentialSetup.sideToMove=otherSide(board.potentialSetup.sideToMove);
         emit board.boardChanged();
       }
-      else if (!pieceTypeAndSideAtMax[piece]) {
+      else if (pieceTypeAndSideAtMax[piece])
+        return;
+      else {
         board.potentialSetup.currentPieces[affectedSquare]=piece;
         emit board.boardChanged();
       }

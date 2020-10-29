@@ -91,6 +91,22 @@ Placements Board::currentPlacements() const
   return gameState().placements(sideToMove());
 }
 
+NodePtr Board::tentativeChildNode() const
+{
+  assert(!customSetup());
+  if (currentNode->inSetup()) {
+    const auto& setup=currentPlacements();
+    if (!setup.empty())
+      return Node::addSetup(currentNode,setup,true);
+  }
+  else {
+    const auto& move=potentialMove.get().current();
+    if (!move.empty())
+      return Node::makeMove(currentNode,move,true);
+  }
+  return nullptr;
+}
+
 std::string Board::tentativeMoveString() const
 {
   if (setupPhase())
@@ -207,6 +223,26 @@ void Board::redoSteps(const bool all)
     endDrag();
   if (!autoFinalize(updated) && updated)
     emit boardChanged();
+}
+
+void Board::animateMove(const bool showStart)
+{
+  if (customSetup() || currentNode->isGameStart())
+    return;
+  else if (currentNode->move.empty())
+    playSound("qrc:/finished-setup.wav");
+  else {
+    qMediaPlaylist.clear();
+    const auto& previousMove=currentNode->move;
+    nextAnimatedStep=previousMove.begin();
+    assert(nextAnimatedStep!=previousMove.end());
+    if (showStart) {
+      animationTimer.start();
+      update();
+    }
+    else
+      animateNextStep();
+  }
 }
 
 void Board::rotate()
@@ -677,9 +713,6 @@ void Board::mousePressEvent(QMouseEvent* event)
       event->ignore();
       return;
     break;
-    case Qt::MidButton:
-      animateMove(true);
-    break;
     case Qt::BackButton:
       if (!customSetup())
         undoSteps(false);
@@ -930,26 +963,6 @@ void Board::paintEvent(QPaintEvent*)
   if (drag[ORIGIN]!=NO_SQUARE && !isAnimating())
     globals.pieceIcons.drawPiece(qPainter,iconSet,gameState_.currentPieces[drag[ORIGIN]],QRect(mousePosition.x()-squareWidth()/2,mousePosition.y()-squareHeight()/2,squareWidth(),squareHeight()));
   qPainter.end();
-}
-
-void Board::animateMove(const bool showStart)
-{
-  if (customSetup() || currentNode->isGameStart())
-    return;
-  else if (currentNode->move.empty())
-    playSound("qrc:/finished-setup.wav");
-  else {
-    qMediaPlaylist.clear();
-    const auto& previousMove=currentNode->move;
-    nextAnimatedStep=previousMove.begin();
-    assert(nextAnimatedStep!=previousMove.end());
-    if (showStart) {
-      animationTimer.start();
-      update();
-    }
-    else
-      animateNextStep();
-  }
 }
 
 void Board::animateNextStep()

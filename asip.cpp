@@ -227,7 +227,7 @@ Side ASIP::sideToMove() const
   return toSide(get<QString>("turn")[0].toLatin1());
 }
 
-std::pair<GameTree,size_t> ASIP::getMoves(NodePtr root) const
+std::tuple<GameTree,size_t,bool> ASIP::getMoves(NodePtr root) const
 {
   const QReadLocker readLocker(&mostRecentData_mutex);
   return toTree(get<QString>("moves").toStdString(),std::move(root));

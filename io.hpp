@@ -4,6 +4,7 @@
 #include <sstream>
 #include <QCoreApplication>
 #include "node.hpp"
+#include "wordbuffer.hpp"
 
 const char pieceLetters[]="RrCcDdHhMmEe ";
 
@@ -13,11 +14,35 @@ inline QString sideWord(const Side side)
                             QCoreApplication::translate("","Silver");
 }
 
-inline PieceTypeAndSide toPieceTypeAndSide(const char pieceLetter)
+inline QString pieceName(const PieceTypeAndSide piece)
+{
+  const QString array[]={
+    QCoreApplication::translate("",  "Gold rabbit"),
+    QCoreApplication::translate("","Silver rabbit"),
+    QCoreApplication::translate("",  "Gold cat"),
+    QCoreApplication::translate("","Silver cat"),
+    QCoreApplication::translate("",  "Gold dog"),
+    QCoreApplication::translate("","Silver dog"),
+    QCoreApplication::translate("",  "Gold horse"),
+    QCoreApplication::translate("","Silver horse"),
+    QCoreApplication::translate("",  "Gold camel"),
+    QCoreApplication::translate("","Silver camel"),
+    QCoreApplication::translate("",  "Gold elephant"),
+    QCoreApplication::translate("","Silver elephant"),
+    QCoreApplication::translate("","No piece"),
+  };
+  return array[piece];
+}
+
+inline PieceTypeAndSide toPieceTypeAndSide(const char pieceLetter,const bool strict=true)
 {
   const auto pointer=strchr(pieceLetters,pieceLetter);
-  if (pointer==nullptr)
-    throw std::runtime_error("Unrecognized piece letter: "+std::string(1,pieceLetter));
+  if (pointer==nullptr) {
+    if (strict)
+      throw std::runtime_error("Unrecognized piece letter: "+std::string(1,pieceLetter));
+    else
+      return NO_PIECE;
+  }
   return static_cast<PieceTypeAndSide>(pointer-pieceLetters);
 }
 
@@ -32,11 +57,11 @@ inline std::array<char,3> toCoordinates(const SquareIndex square,const char firs
   return toCoordinates(toFile(square),toRank(square),firstFileChar);
 }
 
-inline SquareIndex toSquare(const char fileLetter,const char rankLetter)
+inline SquareIndex toSquare(const char fileLetter,const char rankLetter,const bool strict=true)
 {
   const auto result=toSquare(static_cast<unsigned int>(fileLetter-'a'),
                              static_cast<unsigned int>(rankLetter-'1'));
-  if (result==NO_SQUARE)
+  if (result==NO_SQUARE && strict)
     throw std::runtime_error(std::string("Invalid square: ")+fileLetter+rankLetter);
   return result;
 }
@@ -52,15 +77,20 @@ inline char directionLetter(const SquareIndex origin,const SquareIndex destinati
   }
 }
 
-inline SquareIndex toDestination(const SquareIndex origin,const char directionLetter)
+inline SquareIndex toDestination(const SquareIndex origin,const char directionLetter,const bool strict=true)
 {
-  switch (directionLetter) {
-    case 's': return static_cast<SquareIndex>(origin-NUM_FILES);
-    case 'w': return static_cast<SquareIndex>(origin-1);
-    case 'e': return static_cast<SquareIndex>(origin+1);
-    case 'n': return static_cast<SquareIndex>(origin+NUM_FILES);
-    default : throw std::runtime_error("Unrecognized destination letter: "+std::string(1,directionLetter));
+  const char directionLetters[]="swen";
+  const auto pointer=strchr(directionLetters,directionLetter);
+  if (pointer==nullptr) {
+    if (strict)
+      throw std::runtime_error("Unrecognized destination letter: "+std::string(1,directionLetter));
+    else
+      return NO_SQUARE;
   }
+  const auto destination=toDestination(origin,static_cast<Direction>(pointer-directionLetters));
+  if (destination==NO_SQUARE && strict)
+    throw std::runtime_error(std::string("Direction is off the edge of the board."));
+  return destination;
 }
 
 inline std::string toString(const PieceTypeAndSide pieceTypeAndSide,const SquareIndex square)
@@ -96,7 +126,7 @@ inline std::string toPlyString(const int moveIndex)
 {
   assert(moveIndex>=0);
   std::stringstream ss;
-  ss<<(moveIndex/2)+1<<"gs"[moveIndex%2];
+  ss<<(moveIndex/NUM_SIDES)+1<<"gs"[moveIndex%NUM_SIDES];
   return ss.str();
 }
 
@@ -105,18 +135,39 @@ inline std::string toPlyString(const int moveIndex,const Node& root)
   return toPlyString(moveIndex+(root.isGameStart() ? 0 : NUM_SIDES+root.currentState.sideToMove));
 }
 
+inline std::pair<Side,std::string> toMoveStart(std::string input)
+{
+  if (!input.empty()) {
+    const Side side=toSide(input.back());
+    if (side!=NO_SIDE) {
+      input.pop_back();
+      if (all_of(input.begin(),input.end(),isdigit))
+        return {side,input};
+    }
+  }
+  return {NO_SIDE,""};
+}
+
 inline int toMoveIndex(const std::string& input)
 {
-  if (input.size()<2)
+  const auto pair=toMoveStart(input);
+  if (pair.first==NO_SIDE || pair.second.empty())
     return -1;
-  const Side side=toSide(input.back());
-  if (side==NO_SIDE)
-    return -1;
-  const auto moveNumber=input.substr(0,input.size()-1);
-  if (all_of(moveNumber.begin(),moveNumber.end(),isdigit))
-    return (stoi(moveNumber)-1)*2+(side==FIRST_SIDE ? 0 : 1);
   else
-    return -1;
+    return (stoi(pair.second)-1)*NUM_SIDES+(pair.first==FIRST_SIDE ? 0 : 1);
+}
+
+inline Placement toPlacement(const std::string& word,const bool strict=true)
+{
+  if (word.size()!=3) {
+    if (strict)
+      throw std::runtime_error("Placement word does not have 3 letters.");
+    else
+      return Placement::invalid();
+  }
+  const PieceTypeAndSide piece=toPieceTypeAndSide(word[0],strict);
+  const SquareIndex square=toSquare(word[1],word[2],strict);
+  return {square,piece};
 }
 
 inline Placements toPlacements(const std::string& input)
@@ -125,12 +176,8 @@ inline Placements toPlacements(const std::string& input)
   std::stringstream ss;
   ss<<input;
   std::string word;
-  while (ss>>word) {
-    runtime_assert(word.size()==3,"Placement word does not have 3 letters.");
-    const PieceTypeAndSide piece=toPieceTypeAndSide(word[0]);
-    const SquareIndex square=toSquare(word[1],word[2]);
-    result.emplace(Placement{square,piece});
-  }
+  while (ss>>word)
+    result.emplace(toPlacement(word));
   return result;
 }
 
@@ -170,6 +217,25 @@ inline std::string toString(const Container& sequence)
   return toString(begin(sequence),end(sequence));
 }
 
+inline std::pair<Placement,SquareIndex> toDisplacement(const std::string& word,const bool strict=true)
+{
+  if (word.size()==4) {
+    const Placement placement=toPlacement(word.substr(0,3),strict);
+    if (placement.isValid()) {
+      if (word[3]=='x')
+        return {placement,NO_SQUARE};
+      else {
+        const SquareIndex destination=toDestination(placement.location,word[3],strict);
+        if (destination!=NO_SQUARE)
+          return {placement,destination};
+      }
+    }
+  }
+  else if (strict)
+    throw std::runtime_error("Step word does not have 4 letters.");
+  return {Placement::invalid(),NO_SQUARE};
+}
+
 inline PieceSteps toMove(const std::string& input)
 {
   PieceSteps result;
@@ -177,64 +243,214 @@ inline PieceSteps toMove(const std::string& input)
   ss<<input;
   std::string word;
   while (ss>>word) {
-    runtime_assert(word.size()==4,"Step word does not have 4 letters.");
-    const PieceTypeAndSide piece=toPieceTypeAndSide(word[0]);
-    const SquareIndex origin=toSquare(word[1],word[2]);
-    if (word[3]=='x') {
+    const auto displacement=toDisplacement(word);
+    const PieceTypeAndSide piece=displacement.first.piece;
+    const SquareIndex origin=displacement.first.location;
+    const SquareIndex destination=displacement.second;
+    if (destination==NO_SQUARE) {
       runtime_assert(!result.empty(),"Capture is first word of move.");
       runtime_assert(adjacentTrap(std::get<ORIGIN>(result.back()))==origin,"Capturing step is not adjacent to trap.");
       std::get<TRAPPED_PIECE>(result.back())=piece;
     }
-    else {
-      const SquareIndex destination=toDestination(origin,word[3]);
+    else
       result.emplace_back(origin,destination,NO_PIECE,piece);
-    }
   }
   return result;
 }
 
-inline std::pair<GameTree,size_t> toTree(const std::string& lines,NodePtr root)
+struct runtime_error : public std::runtime_error {
+  runtime_error(const QString& what_arg) : std::runtime_error(what_arg.toStdString()) {}
+};
+
+inline std::tuple<GameTree,size_t,bool> toTree(const std::string& input,NodePtr node,const bool replaceNode=false)
 {
-  assert(root!=nullptr);
-  assert(root->isGameStart());
-  GameTree gameTree(1,std::move(root));
+  assert(node!=nullptr);
+  GameTree gameTree;
+  unsigned int nodeChanges=0;
 
+  Placements setup;
+  ExtendedSteps move;
+  if (replaceNode) {
+    const auto& previousNode=node->previousNode;
+    assert(previousNode!=nullptr);
+    if (previousNode->inSetup())
+      setup=node->currentState.playedPlacements();
+    else
+      move=node->move;
+    node=previousNode;
+  }
+
+  WordBuffer wordBuffer(input);
+  std::string word;
+  while (wordBuffer.peek(word)) {
+    bool endMove=true;
+    if (word=="takeback") {
+      gameTree.push_front(node);
+      node=node->previousNode;
+      ++nodeChanges;
+      wordBuffer.get(nullptr);
+    }
+    else if (node->inSetup()) {
+      const auto placement=toPlacement(word,false);
+      if (placement.isValid()) {
+        if (node->currentState.sideToMove==toSide(placement.piece)) {
+          if (isSetupSquare(node->currentState.sideToMove,placement.location)) {
+            if (find_if(setup.cbegin(),setup.cend(),[&placement](const Placement& existing) {
+                  return placement.location==existing.location;
+                })==setup.cend()) {
+              const auto pieceType=toPieceType(placement.piece);
+              const auto pieceTypeNumber=count_if(setup.cbegin(),setup.cend(),[&placement](const Placement& existing) {
+                return placement.piece==existing.piece;
+              });
+              if (pieceTypeNumber<int(numStartingPiecesPerType[pieceType])) {
+                setup.emplace(placement);
+                wordBuffer.get(nullptr);
+                continue;
+              }
+              else
+                throw runtime_error(QCoreApplication::translate("","Out of piece type: ")+pieceName(placement.piece));
+            }
+            else
+              throw runtime_error(QCoreApplication::translate("","Duplicate setup square: ")+toCoordinates(placement.location).data());
+          }
+          else
+            throw runtime_error(QCoreApplication::translate("","Illegal setup square: ")+toCoordinates(placement.location).data());
+        }
+      }
+      else {
+        const Side side=toMoveStart(word).first;
+        if (side!=NO_SIDE) {
+          wordBuffer.get(nullptr);
+          if (node->currentState.sideToMove==side)
+            endMove=false;
+        }
+        else if (!toDisplacement(word,false).first.isValid())
+          throw runtime_error(QCoreApplication::translate("","Invalid word: ")+QString::fromStdString(word));
+      }
+      if (endMove) {
+        if (setup.size()<numStartingPieces)
+          throw runtime_error(QCoreApplication::translate("","Illegal end of setup: ")+QString::fromStdString(word));
+        else {
+          node=Node::addSetup(node,setup,false);
+          ++nodeChanges;
+        }
+      }
+    }
+    else {
+      const GameState& gameState=move.empty() ? node->currentState : std::get<RESULTING_STATE>(move.back());
+      const Side side=toMoveStart(word).first;
+      if (node->result.endCondition!=NO_END && node->currentState.sideToMove!=side)
+        throw runtime_error(QCoreApplication::translate("","Play in finished position: ")+QString::fromStdString(word));
+      else if (side!=NO_SIDE) {
+        wordBuffer.get(nullptr);
+        if (node->currentState.sideToMove==side)
+          endMove=false;
+      }
+      else if (gameState.stepsAvailable>0) {
+        const auto displacement=toDisplacement(word,false);
+        if (displacement.first.isValid()) {
+          const SquareIndex destination=displacement.second;
+          if (destination==NO_SQUARE)
+            throw runtime_error(QCoreApplication::translate("","Capture without step: ")+QString::fromStdString(word));
+          else {
+            wordBuffer.get(nullptr);
+            std::string captureWord;
+            if (wordBuffer.peek(captureWord)) {
+              const auto capture=toDisplacement(captureWord,false);
+              if (capture.first.isValid() && capture.second==NO_SQUARE) {
+                word+=' '+captureWord;
+                wordBuffer.get(nullptr);
+              }
+            }
+            const SquareIndex origin=displacement.first.location;
+            if (gameState.legalStep(origin,destination)) {
+              const auto step=GameState(gameState).takeExtendedStep(origin,destination);
+              if (toString(step)==word) {
+                move.emplace_back(step);
+                continue;
+              }
+            }
+            throw runtime_error(QCoreApplication::translate("","Invalid step: ")+QString::fromStdString(word));
+          }
+        }
+        else
+          throw runtime_error(QCoreApplication::translate("","Invalid word: ")+QString::fromStdString(word));
+      }
+      if (endMove) {
+        switch (node->legalMove(gameState)) {
+          case LEGAL:
+            node=Node::makeMove(node,move,false);
+            ++nodeChanges;
+          break;
+          case ILLEGAL_PUSH_INCOMPLETION:
+            throw runtime_error(QCoreApplication::translate("","Incomplete push: ")+QString::fromStdString(toString(move)));
+          case ILLEGAL_PASS:
+            throw runtime_error(QCoreApplication::translate("","Illegal pass: ")+QString::fromStdString(toString(move)));
+          case ILLEGAL_REPETITION:
+            throw runtime_error(QCoreApplication::translate("","Illegal repetition: ")+QString::fromStdString(toString(move)));
+        }
+      }
+    }
+    setup.clear();
+    move.clear();
+  }
+
+  bool completeLastMove;
+  if (!setup.empty()) {
+    node=Node::addSetup(node,setup,false);
+    ++nodeChanges;
+    completeLastMove=false;
+  }
+  else if (!move.empty()) {
+    node=Node::makeMove(node,move,false);
+    ++nodeChanges;
+    completeLastMove=false;
+  }
+  else
+    completeLastMove=true;
+
+  gameTree.push_front(node);
+
+  return make_tuple(gameTree,nodeChanges,completeLastMove);
+}
+
+inline GameState customizedGameState(const std::string& input,GameState gameState=GameState())
+{
   std::stringstream ss;
-  ss<<lines;
-
-  std::vector<std::pair<size_t,std::string> > moves;
-  int moveIndex=-1;
-  std::string move;
+  ss<<input;
   std::string word;
   while (ss>>word) {
-    const int newMoveIndex=toMoveIndex(word);
-    if (newMoveIndex>=0) {
-      if (!move.empty()) {
-        runtime_assert(moveIndex>=0,"Move list does not begin with move index.");
-        moves.emplace_back(moveIndex,move);
-        move.clear();
+    const Side side=toMoveStart(word).first;
+    if (side!=NO_SIDE)
+      gameState.sideToMove=side;
+    else {
+      const auto placement=toPlacement(word,false);
+      if (placement.isValid()) {
+        if (gameState.currentPieces[placement.location]!=placement.piece) {
+          if (gameState.piecesAtMax()[placement.piece])
+            throw runtime_error(QCoreApplication::translate("","Side out of pieces of type: ")+pieceName(placement.piece));
+          else
+            gameState.currentPieces[placement.location]=placement.piece;
+        }
       }
-      moveIndex=newMoveIndex;
+      else {
+        const auto displacement=toDisplacement(word,false);
+        const auto& placement=displacement.first;
+        if (placement.isValid()) {
+          if (gameState.currentPieces[placement.location]==placement.piece) {
+            gameState.currentPieces[placement.location]=NO_PIECE;
+            if (displacement.second!=NO_SQUARE)
+              gameState.currentPieces[displacement.second]=placement.piece;
+          }
+          else
+            throw runtime_error(QCoreApplication::translate("","Piece type not on %1: ").arg(toCoordinates(placement.location).data())+pieceName(placement.piece));
+        }
+        else
+          throw runtime_error(QCoreApplication::translate("","Invalid word: ")+QString::fromStdString(word));
+      }
     }
-    else
-      move+=word+' ';
   }
-  if (!move.empty()) {
-    runtime_assert(moveIndex>=0,"Move list does not begin with move index.");
-    moves.emplace_back(moveIndex,move);
-  }
-  for (const auto& move:moves) {
-    auto& node=gameTree.front();
-    if (move.second=="takeback") {
-      gameTree.emplace(gameTree.begin(),node);
-      gameTree.front()=gameTree.front()->previousNode;
-    }
-    else if (move.first<NUM_SIDES)
-      node=Node::addSetup(node,toPlacements(move.second),false);
-    else
-      node=Node::makeMove(node,toMove(move.second),false);
-  }
-  return {gameTree,moves.size()};
+  return gameState;
 }
 
 inline EndCondition toEndCondition(const char letter)

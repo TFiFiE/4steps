@@ -42,7 +42,8 @@ private:
   qint64 updateCornerMessage();
   void soundTicker(const Side sideToMove,const qint64 timeLeft);
   void setExploration(const bool on);
-  bool processMoves(const std::pair<GameTree,size_t>& treeAndNumber,const Side role,const Result& result,const bool hardSynchronization);
+  void processInput(const std::string& input);
+  bool processMoves(const std::tuple<GameTree,size_t,bool>& moves,const Side role,const Result& result,const bool hardSynchronization);
   void receiveGameTree(const GameTree& gameTreeNode,const bool sound);
   void receiveNodeChange(const NodePtr& newNode);
   void expandToNode(const Node& node);

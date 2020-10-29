@@ -413,22 +413,44 @@ void Game::saveDockStates()
 
 void Game::mousePressEvent(QMouseEvent* event)
 {
-  if (event->button()==Qt::RightButton) {
-    auto menu=new QMenu(this);
-    menu->setAttribute(Qt::WA_DeleteOnClose);
+  switch (event->button()) {
+    case Qt::RightButton: {
+      auto menu=new QMenu(this);
+      menu->setAttribute(Qt::WA_DeleteOnClose);
 
-    const auto customGame=new QAction(tr("Start custom setup with current position"),menu);
-    connect(customGame,&QAction::triggered,this,[this] {
-      using namespace std;
-      new Game(globals,board.southIsUp ? SECOND_SIDE : FIRST_SIDE,parentWidget(),nullptr,make_unique<GameState>(board.gameState()));
-    });
-    menu->addAction(customGame);
+      const auto showMove=new QAction(tr("Show last move"),menu);
+      if (board.customSetup() || board.currentNode->isGameStart())
+        showMove->setEnabled(false);
+      else
+        connect(showMove,&QAction::triggered,this,[this]{board.animateMove(true);});
+      menu->addAction(showMove);
 
-    menu->popup(QCursor::pos());
-    event->accept();
+      const auto fromClipboard=new QAction(tr("Play from clipboard"),menu);
+      if (QGuiApplication::clipboard()->text().isEmpty())
+        fromClipboard->setEnabled(false);
+      else
+        connect(fromClipboard,&QAction::triggered,this,[this]{processInput(QGuiApplication::clipboard()->text().toStdString());});
+      menu->addAction(fromClipboard);
+
+      const auto customGame=new QAction(tr("Start custom setup with current position"),menu);
+      connect(customGame,&QAction::triggered,this,[this] {
+        using namespace std;
+        new Game(globals,board.southIsUp ? SECOND_SIDE : FIRST_SIDE,parentWidget(),nullptr,make_unique<GameState>(board.gameState()));
+      });
+      menu->addAction(customGame);
+
+      menu->popup(QCursor::pos());
+    }
+    break;
+    case Qt::MidButton:
+      processInput(QGuiApplication::clipboard()->text().toStdString());
+    break;
+    default:
+      event->ignore();
+      return;
+    break;
   }
-  else
-    event->ignore();
+  event->accept();
 }
 
 bool Game::event(QEvent* event)
@@ -554,7 +576,7 @@ void Game::synchronize(const bool hard)
     nextTickTime=-1;
   updateTimes();
 
-  const auto technicalResult=moves.first.front()->result;
+  const auto technicalResult=get<0>(moves).front()->result;
   if (technicalResult.endCondition!=NO_END && technicalResult!=result) {
     assert(technicalResult.winner!=NO_SIDE);
     if (otherSide(technicalResult.winner)==role) {
@@ -649,10 +671,44 @@ void Game::setExploration(const bool on)
   emit treeModel.layoutChanged();
 }
 
-bool Game::processMoves(const std::pair<GameTree,size_t>& treeAndNumber,const Side role,const Result& result,const bool hardSynchronization)
+void Game::processInput(const std::string& input)
 {
-  const auto& receivedTree=treeAndNumber.first;
-  const size_t sessionMoves=treeAndNumber.second;
+  try {
+    if (board.customSetup())
+      board.proposeSetup(customizedGameState(input,board.gameState()));
+    else {
+      NodePtr tentativeChild=board.tentativeChildNode();
+      const auto& startingNode=(tentativeChild==nullptr ? board.currentNode.get() : tentativeChild);
+      auto moves=toTree(input,startingNode,tentativeChild!=nullptr);
+      auto& addedGameTree=get<0>(moves);
+      const auto nodeChanges=get<1>(moves);
+      if (nodeChanges>1 || startingNode!=addedGameTree.front()) {
+        if (get<2>(moves))
+          tentativeChild=nullptr;
+        else {
+          tentativeChild=std::make_shared<Node>(nullptr,addedGameTree.front()->move,addedGameTree.front()->currentState); // detach from parent
+          addedGameTree.front()=addedGameTree.front()->previousNode;
+        }
+        append(gameTree,addedGameTree);
+        gameTree.erase(unsorted_unique(gameTree.begin(),gameTree.end()),gameTree.end());
+        explore.setChecked(true);
+        const auto& newNode=addedGameTree.front();
+        board.setNode(newNode);
+        expandToNode(*newNode);
+        if (tentativeChild!=nullptr)
+          board.proposeMove(*tentativeChild.get(),tentativeChild->move.size());
+      }
+    }
+  }
+  catch (const std::exception& exception) {
+    MessageBox(QMessageBox::Critical,"Illegal input",exception.what(),QMessageBox::NoButton,this).exec();
+  }
+}
+
+bool Game::processMoves(const std::tuple<GameTree,size_t,bool>& moves,const Side role,const Result& result,const bool hardSynchronization)
+{
+  const auto& receivedTree=get<0>(moves);
+  const size_t sessionMoves=get<1>(moves);
   const auto& serverNode=*receivedTree.front();
   const int movesAhead=serverNode.numMovesBefore(liveNode.get());
   if (movesAhead==0)

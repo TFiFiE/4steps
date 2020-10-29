@@ -22,7 +22,8 @@ bool Node::isGameStart() const
 
 bool Node::inSetup() const
 {
-  return previousNode==nullptr ? currentState.empty() : (currentState.sideToMove==SECOND_SIDE && move.empty());
+  return previousNode==nullptr ? (move.empty() && currentState.sideToMove==FIRST_SIDE && currentState.empty())
+                               : (currentState.sideToMove==SECOND_SIDE && move.empty() && previousNode->isGameStart());
 }
 
 std::string Node::toPlyString() const

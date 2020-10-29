@@ -43,6 +43,22 @@ Placements GameState::playedPlacements() const
   return placements(otherSide(sideToMove));
 }
 
+std::array<bool,NUM_PIECE_SIDE_COMBINATIONS> GameState::piecesAtMax() const
+{
+  std::array<bool,NUM_PIECE_SIDE_COMBINATIONS> result={false};
+  unsigned int pieceCounts[NUM_SIDES][NUM_PIECE_TYPES]={{0}};
+  for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square)) {
+    const PieceTypeAndSide pieceOnSquare=currentPieces[square];
+    if (pieceOnSquare!=NO_PIECE) {
+      const PieceType pieceType=toPieceType(pieceOnSquare);
+      auto& pieceCount=pieceCounts[toSide(pieceOnSquare)][pieceType];
+      if (++pieceCount==numStartingPiecesPerType[pieceType])
+        result[pieceOnSquare]=true;
+    }
+  }
+  return result;
+}
+
 bool GameState::isSupported(const SquareIndex square,const Side side) const
 {
   for (const auto adjacentSquare:adjacentSquares(square))
@@ -138,8 +154,7 @@ std::vector<ExtendedSteps> GameState::legalRoutes(const SquareIndex origin,const
   for (const auto adjacentSquare:adjacentSquares(origin))
     if (legalStep(origin,adjacentSquare)) {
       GameState changedState(*this);
-      const PieceTypeAndSide trappedPiece=changedState.takeStep(origin,adjacentSquare);
-      const ExtendedStep step(origin,adjacentSquare,trappedPiece,changedState);
+      const ExtendedStep step=changedState.takeExtendedStep(origin,adjacentSquare);
       for (auto movement:changedState.legalRoutes(adjacentSquare,destination)) {
         movement.insert(movement.begin(),step);
         result.push_back(movement);
@@ -238,6 +253,12 @@ PieceTypeAndSide GameState::takeStep(const SquareIndex origin,const SquareIndex 
   }
   --stepsAvailable;
   return victim;
+}
+
+ExtendedStep GameState::takeExtendedStep(const SquareIndex origin,const SquareIndex destination)
+{
+  const PieceTypeAndSide trappedPiece=takeStep(origin,destination);
+  return ExtendedStep(origin,destination,trappedPiece,*this);
 }
 
 ExtendedSteps GameState::takePieceSteps(const PieceSteps& pieceSteps)

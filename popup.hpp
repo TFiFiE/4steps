@@ -17,7 +17,7 @@ private:
 
   Board& board;
   const SquareIndex affectedSquare;
-  bool pieceTypeAndSideAtMax[NUM_PIECE_SIDE_COMBINATIONS];
+  const std::array<bool,NUM_PIECE_SIDE_COMBINATIONS> pieceTypeAndSideAtMax;
   enum {
     ROWS_PER_SIDE=2,
     ROWS=NUM_SIDES*ROWS_PER_SIDE,

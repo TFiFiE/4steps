@@ -13,6 +13,7 @@ public:
   bool empty() const;
   Placements placements(const Side side) const;
   Placements playedPlacements() const;
+  std::array<bool,NUM_PIECE_SIDE_COMBINATIONS> piecesAtMax() const;
   bool isSupported(const SquareIndex square,const Side side) const;
   bool isFrozen(const SquareIndex square) const;
   bool floatingPiece(const SquareIndex square) const;
@@ -26,6 +27,7 @@ public:
 
   void add(const Placements& placements);
   PieceTypeAndSide takeStep(const SquareIndex origin,const SquareIndex destination);
+  ExtendedStep takeExtendedStep(const SquareIndex origin,const SquareIndex destination);
   ExtendedSteps takePieceSteps(const PieceSteps& pieceSteps);
   void switchTurn();
 

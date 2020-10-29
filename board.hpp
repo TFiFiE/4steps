@@ -22,6 +22,7 @@ public:
   const GameState& gameState() const;
   const GameState& displayedGameState() const;
   Placements currentPlacements() const;
+  NodePtr tentativeChildNode() const;
   std::string tentativeMoveString() const;
   bool gameEnd() const;
   bool playable() const;
@@ -33,6 +34,7 @@ public:
   void doSteps(const ExtendedSteps& potentialMove,const bool sound,const int undoneSteps=0);
   void undoSteps(const bool all);
   void redoSteps(const bool all);
+  void animateMove(const bool showStart);
   void rotate();
   void setViewpoint(const Side side);
   void setAutoRotate(const bool on);
@@ -88,7 +90,6 @@ private:
   virtual void focusOutEvent(QFocusEvent*) override;
   virtual void paintEvent(QPaintEvent*) override;
 
-  void animateMove(const bool showStart);
   void animateNextStep();
   void disableAnimation();
   void playStepSounds(const ExtendedSteps& steps,const bool emphasize);

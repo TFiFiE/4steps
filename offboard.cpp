@@ -26,7 +26,6 @@ void OffBoard::paintEvent(QPaintEvent*)
 {
   QPainter qPainter(this);
 
-  const int numStartingPieces=std::accumulate(std::begin(numStartingPiecesPerType),std::end(numStartingPiecesPerType),0);
   const bool tall=height()>width();
   int squareWidth,squareHeight;
   if (tall) {

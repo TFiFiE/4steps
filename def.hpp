@@ -5,6 +5,7 @@
 #include <vector>
 #include <tuple>
 #include <memory>
+#include <deque>
 #include <array>
 #include <cassert>
 #include <QString>
@@ -85,6 +86,8 @@ struct Placement {
   PieceTypeAndSide piece;
   bool operator==(const Placement& rhs) const {return location==rhs.location && piece==rhs.piece;}
   bool operator<(const Placement& rhs) const {return piece!=rhs.piece ? piece>rhs.piece : location<rhs.location;}
+  bool isValid() const {return location!=NO_SQUARE && piece!=NO_PIECE;}
+  static Placement invalid() {return {NO_SQUARE,NO_PIECE};}
 };
 
 typedef std::set<Placement> Placements;
@@ -101,9 +104,10 @@ typedef std::vector<PieceStep> PieceSteps;
 
 struct Node;
 typedef std::shared_ptr<Node> NodePtr;
-typedef std::vector<NodePtr> GameTree;
+typedef std::deque<NodePtr> GameTree;
 
 const std::array<unsigned int,NUM_PIECE_TYPES> numStartingPiecesPerType={8,2,2,2,1,1};
+const unsigned int numStartingPieces=std::accumulate(std::begin(numStartingPiecesPerType),std::end(numStartingPiecesPerType),0);
 
 template<class Integer>
 Integer floorDiv(const Integer dividend,const Integer divisor)
@@ -316,8 +320,16 @@ inline SquareIndex adjacentTrap(const SquareIndex trapNeighbor)
 
 inline SquareIndex toDestination(const SquareIndex origin,const Direction direction)
 {
-  const int directionToOffset[]={-NUM_FILES,-1,1,NUM_FILES};
-  return static_cast<SquareIndex>(origin+directionToOffset[direction]);
+  unsigned int file=toFile(origin);
+  unsigned int rank=toRank(origin);
+  switch (direction) {
+    case SOUTH: --rank; break;
+    case  WEST: --file; break;
+    case  EAST: ++file; break;
+    case NORTH: ++rank; break;
+    default: return NO_SQUARE;
+  }
+  return toSquare(file,rank);
 }
 
 inline std::string replaceString(std::string subject,const std::string& search,const std::string& replace)
