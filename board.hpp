@@ -66,7 +66,7 @@ private:
 
   template<class Type> bool setSetting(readonly<Board,Type>& currentValue,const Type newValue,const QString& key);
   void initSetup();
-  void nextSetupPiece();
+  bool nextSetupPiece(const bool finalize=true);
   bool setUpPiece(const SquareIndex destination);
   bool refreshHighlights(const bool clearSelected);
   bool updateStepHighlights();
@@ -101,8 +101,7 @@ private:
   QMediaPlaylist qMediaPlaylist;
 
   GameState potentialSetup;
-  std::array<unsigned int,NUM_PIECE_TYPES-1> numSetupPieces;
-  int currentSetupPiece;
+  PieceType currentSetupPiece;
   std::array<bool,NUM_SIDES> controllableSides;
   bool autoRotate;
   std::array<SquareIndex,2> drag;

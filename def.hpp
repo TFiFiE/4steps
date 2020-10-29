@@ -118,6 +118,12 @@ inline void increment(T& t)
   t=static_cast<T>(t+1);
 }
 
+template<class T>
+inline void decrement(T& t)
+{
+  t=static_cast<T>(t-1);
+}
+
 template<class Number>
 inline Number clipped(const Number number,const Number min,const Number max)
 {

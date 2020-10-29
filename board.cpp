@@ -57,7 +57,7 @@ bool Board::setupPhase() const
 
 bool Board::setupPlacementPhase() const
 {
-  return !customSetup() && currentNode->inSetup() && currentSetupPiece>=0;
+  return !customSetup() && currentNode->inSetup() && currentSetupPiece>FIRST_PIECE_TYPE;
 }
 
 Side Board::sideToMove() const
@@ -124,10 +124,8 @@ bool Board::setNode(NodePtr newNode,const bool sound,bool keepState)
   }
   if (!keepState) {
     endDrag();
-    if (setupPhase()) {
-      potentialSetup=currentNode->currentState;
+    if (setupPhase())
       initSetup();
-    }
     else
       potentialMove.data.clear();
   }
@@ -161,8 +159,8 @@ void Board::proposeSetup(GameState gameState)
 {
   endDrag();
   potentialSetup=std::move(gameState);
-  currentSetupPiece=-1;
-  emit boardChanged();
+  if (customSetup() || !nextSetupPiece(false))
+    emit boardChanged();
 }
 
 void Board::doSteps(const ExtendedSteps& steps,const bool sound,const int undoneSteps)
@@ -405,15 +403,27 @@ bool Board::setSetting(readonly<Board,Type>& currentValue,const Type newValue,co
 
 void Board::initSetup()
 {
-  std::copy_n(&numStartingPiecesPerType[1],NUM_PIECE_TYPES-1,numSetupPieces.begin());
+  potentialSetup=currentNode->currentState;
+  for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square))
+    if (isSetupSquare(sideToMove(),square))
+      potentialSetup.currentPieces[square]=NO_PIECE;
   nextSetupPiece();
 }
 
-void Board::nextSetupPiece()
+bool Board::nextSetupPiece(const bool finalize)
 {
-  currentSetupPiece=static_cast<int>(numSetupPieces.size()-1);
-  while (true) {
-    if (currentSetupPiece<0) {
+  std::array<unsigned int,NUM_PIECE_TYPES> numPiecesPerType=numStartingPiecesPerType;
+  for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square)) {
+    const PieceTypeAndSide squarePiece=potentialSetup.currentPieces[square];
+    if (squarePiece!=NO_PIECE && isSetupSquare(sideToMove(),square)) {
+      assert(isSide(squarePiece,sideToMove()));
+      --numPiecesPerType[toPieceType(squarePiece)];
+    }
+  }
+
+  currentSetupPiece=static_cast<PieceType>(NUM_PIECE_TYPES-1);
+  for (auto numPiecesIter=numPiecesPerType.crbegin();numPiecesIter!=numPiecesPerType.crend();++numPiecesIter,decrement(currentSetupPiece))
+    if (currentSetupPiece==FIRST_PIECE_TYPE) {
       // Fill remaining squares with most numerous piece type.
       const PieceTypeAndSide piece=toPieceTypeAndSide(FIRST_PIECE_TYPE,sideToMove());
       for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square)) {
@@ -421,14 +431,14 @@ void Board::nextSetupPiece()
         if (squarePiece==NO_PIECE && isSetupSquare(sideToMove(),square))
           squarePiece=piece;
       }
-      autoFinalize(true);
+      if (finalize)
+        autoFinalize(true);
       emit boardChanged();
-      break;
+      return true;
     }
-    if (numSetupPieces[currentSetupPiece]>0)
+    else if (*numPiecesIter>0)
       break;
-    --currentSetupPiece;
-  }
+  return false;
 }
 
 bool Board::setUpPiece(const SquareIndex destination)
@@ -437,12 +447,8 @@ bool Board::setUpPiece(const SquareIndex destination)
     auto& currentPieces=potentialSetup.currentPieces;
     if (std::all_of(currentPieces.begin(),currentPieces.end(),[](const PieceTypeAndSide& piece){return piece==NO_PIECE;}))
       emit gameStarted();
-    PieceTypeAndSide& currentPiece=currentPieces[destination];
-    if (currentPiece!=NO_PIECE)
-      ++numSetupPieces[toPieceType(currentPiece)-1];
-    currentPiece=toPieceTypeAndSide(static_cast<PieceType>(currentSetupPiece+1),sideToMove());
+    currentPieces[destination]=toPieceTypeAndSide(currentSetupPiece,sideToMove());
     emit boardChanged();
-    --numSetupPieces[currentSetupPiece];
     nextSetupPiece();
     return true;
   }
@@ -560,16 +566,14 @@ bool Board::doubleSquareSetupAction(const SquareIndex origin,const SquareIndex d
 
 void Board::finalizeSetup(const Placements& placements)
 {
-  if (sideToMove()==FIRST_SIDE) {
-    potentialSetup.sideToMove=SECOND_SIDE;
-    initSetup();
-  }
-  else
-    potentialMove.data.clear();
-
   const auto newNode=Node::addSetup(currentNode,placements,explore);
   emit sendNodeChange(newNode,currentNode);
   currentNode=std::move(newNode);
+
+  if (sideToMove()==SECOND_SIDE)
+    initSetup();
+  else
+    potentialMove.data.clear();
 
   if (autoRotate)
     setViewpoint(sideToMove());
@@ -599,7 +603,7 @@ bool Board::autoFinalize(const bool stepsTaken)
 {
   if (!customSetup() && explore) {
     if (currentNode->inSetup()) {
-      if (currentSetupPiece<0)
+      if (currentSetupPiece<=FIRST_PIECE_TYPE)
         finalizeSetup(currentPlacements());
       else if (const auto& child=currentNode->findPartialMatchingChild(currentPlacements()).first) {
         proposeSetup(child->currentState);
@@ -777,7 +781,7 @@ void Board::mouseDoubleClickEvent(QMouseEvent* event)
             MessageBox(QMessageBox::Critical,tr("Illegal position"),tr("Unprotected piece on trap."),QMessageBox::NoButton,this).exec();
         }
         else if (currentNode->inSetup()) {
-          if (currentSetupPiece<0 && confirmMove()) {
+          if (currentSetupPiece<=FIRST_PIECE_TYPE && confirmMove()) {
             if (!explore)
               playSound("qrc:/finished-setup.wav");
             finalizeSetup(currentPlacements());
@@ -922,7 +926,7 @@ void Board::paintEvent(QPaintEvent*)
       }
     }
   if (playable() && setupPlacementPhase())
-    globals.pieceIcons.drawPiece(qPainter,iconSet,toPieceTypeAndSide(static_cast<PieceType>(currentSetupPiece+1),sideToMove()),QRect((NUM_FILES-1)/2.0*squareWidth(),(NUM_RANKS-1)/2.0*squareHeight(),squareWidth(),squareHeight()));
+    globals.pieceIcons.drawPiece(qPainter,iconSet,toPieceTypeAndSide(currentSetupPiece,sideToMove()),QRect((NUM_FILES-1)/2.0*squareWidth(),(NUM_RANKS-1)/2.0*squareHeight(),squareWidth(),squareHeight()));
   if (drag[ORIGIN]!=NO_SQUARE && !isAnimating())
     globals.pieceIcons.drawPiece(qPainter,iconSet,gameState_.currentPieces[drag[ORIGIN]],QRect(mousePosition.x()-squareWidth()/2,mousePosition.y()-squareHeight()/2,squareWidth(),squareHeight()));
   qPainter.end();
