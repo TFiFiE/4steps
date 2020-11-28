@@ -4,7 +4,6 @@
 #include <sstream>
 #include <QCoreApplication>
 #include "node.hpp"
-#include "wordbuffer.hpp"
 
 const char pieceLetters[]="RrCcDdHhMmEe ";
 
@@ -280,15 +279,15 @@ inline std::tuple<GameTree,size_t,bool> toTree(const std::string& input,NodePtr 
     node=previousNode;
   }
 
-  WordBuffer wordBuffer(input);
+  std::stringstream ss;
+  ss<<input;
   std::string word;
-  while (wordBuffer.peek(word)) {
+  for (auto posBefore=ss.tellg();ss>>word;posBefore=ss.tellg()) {
     bool endMove=true;
     if (word=="takeback") {
       gameTree.push_front(node);
       node=node->previousNode;
       ++nodeChanges;
-      wordBuffer.get(nullptr);
     }
     else if (node->inSetup()) {
       const auto placement=toPlacement(word,false);
@@ -304,7 +303,6 @@ inline std::tuple<GameTree,size_t,bool> toTree(const std::string& input,NodePtr 
               });
               if (pieceTypeNumber<int(numStartingPiecesPerType[pieceType])) {
                 setup.emplace(placement);
-                wordBuffer.get(nullptr);
                 continue;
               }
               else
@@ -316,15 +314,18 @@ inline std::tuple<GameTree,size_t,bool> toTree(const std::string& input,NodePtr 
           else
             throw runtime_error(QCoreApplication::translate("","Illegal setup square: ")+toCoordinates(placement.location).data());
         }
+        else
+          ss.seekg(posBefore);
       }
       else {
         const Side side=toMoveStart(word).first;
         if (side!=NO_SIDE) {
-          wordBuffer.get(nullptr);
           if (node->currentState.sideToMove==side)
             endMove=false;
         }
-        else if (!toDisplacement(word,false).first.isValid())
+        else if (word=="pass" || toDisplacement(word,false).first.isValid())
+          ss.seekg(posBefore);
+        else
           throw runtime_error(QCoreApplication::translate("","Invalid word: ")+QString::fromStdString(word));
       }
       if (endMove) {
@@ -342,40 +343,43 @@ inline std::tuple<GameTree,size_t,bool> toTree(const std::string& input,NodePtr 
       if (node->result.endCondition!=NO_END && node->currentState.sideToMove!=side)
         throw runtime_error(QCoreApplication::translate("","Play in finished position: ")+QString::fromStdString(word));
       else if (side!=NO_SIDE) {
-        wordBuffer.get(nullptr);
         if (node->currentState.sideToMove==side)
           endMove=false;
       }
       else if (gameState.stepsAvailable>0) {
-        const auto displacement=toDisplacement(word,false);
-        if (displacement.first.isValid()) {
-          const SquareIndex destination=displacement.second;
-          if (destination==NO_SQUARE)
-            throw runtime_error(QCoreApplication::translate("","Capture without step: ")+QString::fromStdString(word));
-          else {
-            wordBuffer.get(nullptr);
-            std::string captureWord;
-            if (wordBuffer.peek(captureWord)) {
-              const auto capture=toDisplacement(captureWord,false);
-              if (capture.first.isValid() && capture.second==NO_SQUARE) {
-                word+=' '+captureWord;
-                wordBuffer.get(nullptr);
+        if (word!="pass") {
+          const auto displacement=toDisplacement(word,false);
+          if (displacement.first.isValid()) {
+            const SquareIndex destination=displacement.second;
+            if (destination==NO_SQUARE)
+              throw runtime_error(QCoreApplication::translate("","Capture without step: ")+QString::fromStdString(word));
+            else {
+              std::string captureWord;
+              posBefore=ss.tellg();
+              if (ss>>captureWord) {
+                const auto capture=toDisplacement(captureWord,false);
+                if (capture.first.isValid() && capture.second==NO_SQUARE)
+                  word+=' '+captureWord;
+                else
+                  ss.seekg(posBefore);
               }
-            }
-            const SquareIndex origin=displacement.first.location;
-            if (gameState.legalStep(origin,destination)) {
-              const auto step=GameState(gameState).takeExtendedStep(origin,destination);
-              if (toString(step)==word) {
-                move.emplace_back(step);
-                continue;
+              const SquareIndex origin=displacement.first.location;
+              if (gameState.legalStep(origin,destination)) {
+                const auto step=GameState(gameState).takeExtendedStep(origin,destination);
+                if (toString(step)==word) {
+                  move.emplace_back(step);
+                  continue;
+                }
               }
+              throw runtime_error(QCoreApplication::translate("","Invalid step: ")+QString::fromStdString(word));
             }
-            throw runtime_error(QCoreApplication::translate("","Invalid step: ")+QString::fromStdString(word));
           }
+          else
+            throw runtime_error(QCoreApplication::translate("","Invalid word: ")+QString::fromStdString(word));
         }
-        else
-          throw runtime_error(QCoreApplication::translate("","Invalid word: ")+QString::fromStdString(word));
       }
+      else
+        ss.seekg(posBefore);
       if (endMove) {
         switch (node->legalMove(gameState)) {
           case LEGAL:

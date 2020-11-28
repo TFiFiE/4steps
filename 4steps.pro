@@ -74,8 +74,7 @@ HEADERS += \
     server.hpp \
     timecontrol.hpp \
     timeestimator.hpp \
-    treemodel.hpp \
-    wordbuffer.hpp
+    treemodel.hpp
 
 RESOURCES += \
     resources.qrc
