@@ -31,19 +31,37 @@ GameList::GameList(Server* const server,const QString& labelText) :
   connect(&tableWidget,&QTableWidget::itemClicked,this,[=](const QTableWidgetItem* item){
     const auto& game=games[item->row()];
     const auto column=item->column();
-    Side role,viewpoint;
-    if (column>1) {
-      role=NO_SIDE;
-      viewpoint=FIRST_SIDE;
+    const auto& self=server->session.username();
+    const auto& players=game.players;
+
+    Side role=NO_SIDE;
+    const Side selectedSide=(column<NUM_SIDES ? static_cast<Side>(column) : NO_SIDE);
+    if (selectedSide==NO_SIDE) {
+      for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side))
+        if (self==players[side]) {
+          role=side;
+          break;
+        }
     }
     else {
-      viewpoint=(column==1 ? SECOND_SIDE : FIRST_SIDE);
-      const auto playerName=game.players[viewpoint];
-      if (playerName.isEmpty() || playerName==server->session.username())
-        role=viewpoint;
-      else
-        role=NO_SIDE;
+      const auto& playerName=players[selectedSide];
+      if (playerName.isEmpty() || self==playerName)
+        role=selectedSide;
+      else {
+        const Side nonselectedSide=otherSide(selectedSide);
+        if (self==players[nonselectedSide])
+          role=nonselectedSide;
+      }
     }
+
+    Side viewpoint;
+    if (selectedSide!=NO_SIDE)
+      viewpoint=selectedSide;
+    else if (role==NO_SIDE)
+      viewpoint=FIRST_SIDE;
+    else
+      viewpoint=role;
+
     server->enterGame(game,role,viewpoint);
   });
   tableWidget.setContextMenuPolicy(Qt::CustomContextMenu);
