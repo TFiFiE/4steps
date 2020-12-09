@@ -43,6 +43,8 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   current(tr("&Current")),
   iconSets(this)
 {
+  if (session==nullptr && customSetup==nullptr)
+    setWindowTitle("New game");
   setCentralWidget(&board);
   setDockOptions(QMainWindow::AllowNestedDocks);
 
@@ -566,6 +568,7 @@ void Game::synchronize(const bool hard)
   }
   const auto players=session->getPlayers();
   const auto sideToMove=(status==ASIP::LIVE ? session->sideToMove() : NO_SIDE);
+  setWindowTitle(players[FIRST_SIDE]+" - "+players[SECOND_SIDE]);
   for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side)) {
     playerBars[side].player.setText(players[side]);
     playerBars[side].setActive(side==sideToMove);
@@ -829,6 +832,7 @@ void Game::updateMoveList()
         moveString+=placementString;
       }
     }
+    setWindowTitle(moveString.empty() ? "Custom game" : QString::fromStdString(moveString+' '+toLetter(board.sideToMove(),true)));
   }
   else
     moveString=toPlyString(node->depth,*treeModel.root)+' '+board.tentativeMoveString();
