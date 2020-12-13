@@ -652,7 +652,7 @@ bool Board::autoFinalize(const bool stepsTaken)
     else {
       const auto& currentSteps=potentialMove.get().current();
       if (gameState().stepsAvailable==0 || (!stepsTaken && currentNode->findMatchingChild(currentSteps).first!=nullptr)) {
-        if (currentNode->legalMove(gameState())==LEGAL)
+        if (currentNode->legalMove(gameState())==MoveLegality::LEGAL)
           finalizeMove(currentSteps);
         else
           return false;
@@ -823,23 +823,23 @@ void Board::mouseDoubleClickEvent(QMouseEvent* event)
         else {
           const auto& playedMove=potentialMove.get().current();
           switch (currentNode->legalMove(gameState())) {
-            case LEGAL:
+            case MoveLegality::LEGAL:
               if (confirmMove()) {
                 if (!explore)
                   playSound("qrc:/loud-step.wav");
                 finalizeMove(playedMove);
               }
             break;
-            case ILLEGAL_PUSH_INCOMPLETION:
+            case MoveLegality::ILLEGAL_PUSH_INCOMPLETION:
               playSound("qrc:/illegal-move.wav");
               MessageBox(QMessageBox::Critical,tr("Incomplete push"),tr("Push was not completed."),QMessageBox::NoButton,this).exec();
             break;
-            case ILLEGAL_PASS:
+            case MoveLegality::ILLEGAL_PASS:
               playSound("qrc:/illegal-move.wav");
               if (!playedMove.empty())
                 MessageBox(QMessageBox::Critical,tr("Illegal pass"),tr("Move did not change board."),QMessageBox::NoButton,this).exec();
             break;
-            case ILLEGAL_REPETITION:
+            case MoveLegality::ILLEGAL_REPETITION:
               playSound("qrc:/illegal-move.wav");
               MessageBox(QMessageBox::Critical,tr("Illegal repetition"),tr("Move would repeat board and side to move too often."),QMessageBox::NoButton,this).exec();
             break;

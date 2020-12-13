@@ -52,7 +52,7 @@ enum Direction {
   NORTH
 };
 
-enum MoveLegality {
+enum struct MoveLegality {
   LEGAL,
   ILLEGAL_PUSH_INCOMPLETION,
   ILLEGAL_PASS,

@@ -95,29 +95,29 @@ MoveLegality Node::legalMove(const GameState& resultingState) const
 {
   assert(!inSetup());
   if (resultingState.inPush)
-    return ILLEGAL_PUSH_INCOMPLETION;
+    return MoveLegality::ILLEGAL_PUSH_INCOMPLETION;
   assert(resultingState.sideToMove==currentState.sideToMove);
   if (resultingState.currentPieces==currentState.currentPieces)
-    return ILLEGAL_PASS;
+    return MoveLegality::ILLEGAL_PASS;
   unsigned int repetitionCount=0;
   for (auto currentNode=previousNode;currentNode!=nullptr;currentNode=currentNode->previousNode) {
     const GameState& earlierState=currentNode->currentState;
     if (resultingState.sideToMove!=earlierState.sideToMove &&
         resultingState.currentPieces==earlierState.currentPieces) {
       if (repetitionCount==MAX_ALLOWED_REPETITIONS)
-        return ILLEGAL_REPETITION;
+        return MoveLegality::ILLEGAL_REPETITION;
       else
         ++repetitionCount;
     }
     if (currentNode->move.empty())
       break;
   }
-  return LEGAL;
+  return MoveLegality::LEGAL;
 }
 
 bool Node::hasLegalMoves(const GameState& startingState) const
 {
-  if (legalMove(startingState)==LEGAL)
+  if (legalMove(startingState)==MoveLegality::LEGAL)
     return true;
   for (SquareIndex origin=FIRST_SQUARE;origin<NUM_SQUARES;increment(origin))
     for (const SquareIndex adjacentSquare:adjacentSquares(origin))

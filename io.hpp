@@ -382,15 +382,15 @@ inline std::tuple<GameTree,size_t,bool> toTree(const std::string& input,NodePtr 
         ss.seekg(posBefore);
       if (endMove) {
         switch (node->legalMove(gameState)) {
-          case LEGAL:
+          case MoveLegality::LEGAL:
             node=Node::makeMove(node,move,false);
             ++nodeChanges;
           break;
-          case ILLEGAL_PUSH_INCOMPLETION:
+          case MoveLegality::ILLEGAL_PUSH_INCOMPLETION:
             throw runtime_error(QCoreApplication::translate("","Incomplete push: ")+QString::fromStdString(toString(move)));
-          case ILLEGAL_PASS:
+          case MoveLegality::ILLEGAL_PASS:
             throw runtime_error(QCoreApplication::translate("","Illegal pass: ")+QString::fromStdString(toString(move)));
-          case ILLEGAL_REPETITION:
+          case MoveLegality::ILLEGAL_REPETITION:
             throw runtime_error(QCoreApplication::translate("","Illegal repetition: ")+QString::fromStdString(toString(move)));
         }
       }
