@@ -258,8 +258,134 @@ inline PieceSteps toMove(const std::string& input)
 }
 
 struct runtime_error : public std::runtime_error {
-  runtime_error(const QString& what_arg) : std::runtime_error(what_arg.toStdString()) {}
+  runtime_error(const QString& what_arg="") : std::runtime_error(what_arg.toStdString()) {}
 };
+
+inline std::tuple<NodePtr,std::string,runtime_error> parseChunk(std::stringstream& ss,NodePtr node,Placements& setup,ExtendedSteps& move,const bool after)
+{
+  auto posBefore=ss.tellg();
+  std::string chunk;
+  if (ss>>chunk) {
+    bool endMove=true;
+    if (chunk=="takeback")
+      node=node->previousNode;
+    else if (node->inSetup()) {
+      const auto placement=toPlacement(chunk,false);
+      if (placement.isValid()) {
+        if (node->currentState.sideToMove==toSide(placement.piece)) {
+          if (isSetupSquare(node->currentState.sideToMove,placement.location)) {
+            if (find_if(setup.cbegin(),setup.cend(),[&placement](const Placement& existing) {
+                  return placement.location==existing.location;
+                })==setup.cend()) {
+              const auto pieceType=toPieceType(placement.piece);
+              const auto pieceTypeNumber=count_if(setup.cbegin(),setup.cend(),[&placement](const Placement& existing) {
+                return placement.piece==existing.piece;
+              });
+              if (pieceTypeNumber<int(numStartingPiecesPerType[pieceType])) {
+                setup.emplace(placement);
+                return make_tuple(node,chunk,runtime_error());
+              }
+              else
+                return make_tuple(nullptr,chunk,runtime_error(QCoreApplication::translate("","Out of piece type: ")+pieceName(placement.piece)));
+            }
+            else
+              return make_tuple(nullptr,chunk,runtime_error(QCoreApplication::translate("","Duplicate setup square: ")+toCoordinates(placement.location).data()));
+          }
+          else
+            return make_tuple(nullptr,chunk,runtime_error(QCoreApplication::translate("","Illegal setup square: ")+toCoordinates(placement.location).data()));
+        }
+        else
+          ss.seekg(posBefore);
+      }
+      else {
+        const Side side=toMoveStart(chunk).first;
+        if (side!=NO_SIDE) {
+          if (node->currentState.sideToMove==side)
+            endMove=false;
+        }
+        else if (chunk=="pass" || toDisplacement(chunk,false).first.isValid())
+          ss.seekg(posBefore);
+        else
+          return make_tuple(nullptr,chunk,runtime_error(QCoreApplication::translate("","Invalid word: ")+QString::fromStdString(chunk)));
+      }
+      if (endMove) {
+        if (setup.size()<numStartingPieces)
+          return make_tuple(nullptr,chunk,runtime_error(QCoreApplication::translate("","Illegal end of setup: ")+QString::fromStdString(chunk)));
+        else
+          node=Node::addSetup(node,setup,after);
+      }
+    }
+    else {
+      const GameState& gameState=move.empty() ? node->currentState : std::get<RESULTING_STATE>(move.back());
+      const Side side=toMoveStart(chunk).first;
+      if (node->result.endCondition!=NO_END && node->currentState.sideToMove!=side)
+        return make_tuple(nullptr,chunk,runtime_error(QCoreApplication::translate("","Play in finished position: ")+QString::fromStdString(chunk)));
+      else if (side!=NO_SIDE) {
+        if (node->currentState.sideToMove==side)
+          endMove=false;
+      }
+      else if (gameState.stepsAvailable>0) {
+        if (chunk!="pass") {
+          const auto displacement=toDisplacement(chunk,false);
+          if (displacement.first.isValid()) {
+            const SquareIndex destination=displacement.second;
+            if (destination==NO_SQUARE)
+              return make_tuple(nullptr,chunk,runtime_error(QCoreApplication::translate("","Capture without step: ")+QString::fromStdString(chunk)));
+            else {
+              std::string captureWord;
+              posBefore=ss.tellg();
+              if (ss>>captureWord) {
+                const auto capture=toDisplacement(captureWord,false);
+                if (capture.first.isValid() && capture.second==NO_SQUARE)
+                  chunk+=' '+captureWord;
+                else
+                  ss.seekg(posBefore);
+              }
+              else {
+                ss.clear();
+                ss.seekg(posBefore);
+              }
+              const SquareIndex origin=displacement.first.location;
+              if (gameState.legalStep(origin,destination)) {
+                const auto step=GameState(gameState).takeExtendedStep(origin,destination);
+                if (toString(step)==chunk) {
+                  move.emplace_back(step);
+                  return make_tuple(node,chunk,runtime_error());
+                }
+              }
+              return make_tuple(nullptr,chunk,runtime_error(QCoreApplication::translate("","Invalid step: ")+QString::fromStdString(chunk)));
+            }
+          }
+          else
+            return make_tuple(nullptr,chunk,runtime_error(QCoreApplication::translate("","Invalid word: ")+QString::fromStdString(chunk)));
+        }
+      }
+      else
+        ss.seekg(posBefore);
+      if (endMove) {
+        switch (node->legalMove(gameState)) {
+          case MoveLegality::LEGAL:
+            node=Node::makeMove(node,move,after);
+          break;
+          case MoveLegality::ILLEGAL_PUSH_INCOMPLETION:
+            return make_tuple(nullptr,chunk,runtime_error(QCoreApplication::translate("","Incomplete push: ")+QString::fromStdString(toString(move))));
+          case MoveLegality::ILLEGAL_PASS:
+            return make_tuple(nullptr,chunk,runtime_error(QCoreApplication::translate("","Illegal pass: ")+QString::fromStdString(toString(move))));
+          case MoveLegality::ILLEGAL_REPETITION:
+            return make_tuple(nullptr,chunk,runtime_error(QCoreApplication::translate("","Illegal repetition: ")+QString::fromStdString(toString(move))));
+        }
+      }
+    }
+    setup.clear();
+    move.clear();
+    if (ss.tellg()==posBefore)
+      return parseChunk(ss,node,setup,move,after);
+    else
+      return make_tuple(node,chunk,runtime_error());
+  }
+  else
+    return make_tuple(nullptr,chunk,runtime_error());
+}
 
 inline std::tuple<GameTree,size_t,bool> toTree(const std::string& input,NodePtr node,const bool replaceNode=false)
 {
@@ -281,122 +407,22 @@ inline std::tuple<GameTree,size_t,bool> toTree(const std::string& input,NodePtr 
 
   std::stringstream ss;
   ss<<input;
-  std::string word;
-  for (auto posBefore=ss.tellg();ss>>word;posBefore=ss.tellg()) {
-    bool endMove=true;
-    if (word=="takeback") {
-      gameTree.push_front(node);
-      node=node->previousNode;
+  while (true) {
+    const auto result=parseChunk(ss,node,setup,move,false);
+    const auto newNode=std::get<0>(result);
+    if (newNode==nullptr) {
+      const auto error=std::get<2>(result);
+      if (error.what()==std::string())
+        break;
+      else
+        throw error;
+    }
+    else if (newNode!=node) {
+      if (newNode==node->previousNode)
+        gameTree.push_front(node);
+      node=newNode;
       ++nodeChanges;
     }
-    else if (node->inSetup()) {
-      const auto placement=toPlacement(word,false);
-      if (placement.isValid()) {
-        if (node->currentState.sideToMove==toSide(placement.piece)) {
-          if (isSetupSquare(node->currentState.sideToMove,placement.location)) {
-            if (find_if(setup.cbegin(),setup.cend(),[&placement](const Placement& existing) {
-                  return placement.location==existing.location;
-                })==setup.cend()) {
-              const auto pieceType=toPieceType(placement.piece);
-              const auto pieceTypeNumber=count_if(setup.cbegin(),setup.cend(),[&placement](const Placement& existing) {
-                return placement.piece==existing.piece;
-              });
-              if (pieceTypeNumber<int(numStartingPiecesPerType[pieceType])) {
-                setup.emplace(placement);
-                continue;
-              }
-              else
-                throw runtime_error(QCoreApplication::translate("","Out of piece type: ")+pieceName(placement.piece));
-            }
-            else
-              throw runtime_error(QCoreApplication::translate("","Duplicate setup square: ")+toCoordinates(placement.location).data());
-          }
-          else
-            throw runtime_error(QCoreApplication::translate("","Illegal setup square: ")+toCoordinates(placement.location).data());
-        }
-        else
-          ss.seekg(posBefore);
-      }
-      else {
-        const Side side=toMoveStart(word).first;
-        if (side!=NO_SIDE) {
-          if (node->currentState.sideToMove==side)
-            endMove=false;
-        }
-        else if (word=="pass" || toDisplacement(word,false).first.isValid())
-          ss.seekg(posBefore);
-        else
-          throw runtime_error(QCoreApplication::translate("","Invalid word: ")+QString::fromStdString(word));
-      }
-      if (endMove) {
-        if (setup.size()<numStartingPieces)
-          throw runtime_error(QCoreApplication::translate("","Illegal end of setup: ")+QString::fromStdString(word));
-        else {
-          node=Node::addSetup(node,setup,false);
-          ++nodeChanges;
-        }
-      }
-    }
-    else {
-      const GameState& gameState=move.empty() ? node->currentState : std::get<RESULTING_STATE>(move.back());
-      const Side side=toMoveStart(word).first;
-      if (node->result.endCondition!=NO_END && node->currentState.sideToMove!=side)
-        throw runtime_error(QCoreApplication::translate("","Play in finished position: ")+QString::fromStdString(word));
-      else if (side!=NO_SIDE) {
-        if (node->currentState.sideToMove==side)
-          endMove=false;
-      }
-      else if (gameState.stepsAvailable>0) {
-        if (word!="pass") {
-          const auto displacement=toDisplacement(word,false);
-          if (displacement.first.isValid()) {
-            const SquareIndex destination=displacement.second;
-            if (destination==NO_SQUARE)
-              throw runtime_error(QCoreApplication::translate("","Capture without step: ")+QString::fromStdString(word));
-            else {
-              std::string captureWord;
-              posBefore=ss.tellg();
-              if (ss>>captureWord) {
-                const auto capture=toDisplacement(captureWord,false);
-                if (capture.first.isValid() && capture.second==NO_SQUARE)
-                  word+=' '+captureWord;
-                else
-                  ss.seekg(posBefore);
-              }
-              const SquareIndex origin=displacement.first.location;
-              if (gameState.legalStep(origin,destination)) {
-                const auto step=GameState(gameState).takeExtendedStep(origin,destination);
-                if (toString(step)==word) {
-                  move.emplace_back(step);
-                  continue;
-                }
-              }
-              throw runtime_error(QCoreApplication::translate("","Invalid step: ")+QString::fromStdString(word));
-            }
-          }
-          else
-            throw runtime_error(QCoreApplication::translate("","Invalid word: ")+QString::fromStdString(word));
-        }
-      }
-      else
-        ss.seekg(posBefore);
-      if (endMove) {
-        switch (node->legalMove(gameState)) {
-          case MoveLegality::LEGAL:
-            node=Node::makeMove(node,move,false);
-            ++nodeChanges;
-          break;
-          case MoveLegality::ILLEGAL_PUSH_INCOMPLETION:
-            throw runtime_error(QCoreApplication::translate("","Incomplete push: ")+QString::fromStdString(toString(move)));
-          case MoveLegality::ILLEGAL_PASS:
-            throw runtime_error(QCoreApplication::translate("","Illegal pass: ")+QString::fromStdString(toString(move)));
-          case MoveLegality::ILLEGAL_REPETITION:
-            throw runtime_error(QCoreApplication::translate("","Illegal repetition: ")+QString::fromStdString(toString(move)));
-        }
-      }
-    }
-    setup.clear();
-    move.clear();
   }
 
   bool completeLastMove;
