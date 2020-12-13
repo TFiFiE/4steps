@@ -46,6 +46,7 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   if (session==nullptr && customSetup==nullptr)
     setWindowTitle("New game");
   setCentralWidget(&board);
+  connect(&board,&Board::customContextMenuRequested,this,&Game::contextMenu);
   setDockOptions(QMainWindow::AllowNestedDocks);
 
   setWindowState();
@@ -413,37 +414,38 @@ void Game::saveDockStates()
   globals.settings.endGroup();
 }
 
+void Game::contextMenu()
+{
+  auto menu=new QMenu(this);
+  menu->setAttribute(Qt::WA_DeleteOnClose);
+
+  const auto showMove=new QAction(tr("Show last move"),menu);
+  if (board.customSetup() || board.currentNode->isGameStart())
+    showMove->setEnabled(false);
+  else
+    connect(showMove,&QAction::triggered,this,[this]{board.animateMove(true);});
+  menu->addAction(showMove);
+
+  const auto fromClipboard=new QAction(tr("Play from clipboard"),menu);
+  if (QGuiApplication::clipboard()->text().isEmpty())
+    fromClipboard->setEnabled(false);
+  else
+    connect(fromClipboard,&QAction::triggered,this,[this]{processInput(QGuiApplication::clipboard()->text().toStdString());});
+  menu->addAction(fromClipboard);
+
+  const auto customGame=new QAction(tr("Start custom setup with current position"),menu);
+  connect(customGame,&QAction::triggered,this,[this] {
+    using namespace std;
+    new Game(globals,board.southIsUp ? SECOND_SIDE : FIRST_SIDE,parentWidget(),nullptr,make_unique<GameState>(board.gameState()));
+  });
+  menu->addAction(customGame);
+
+  menu->popup(QCursor::pos());
+}
+
 void Game::mousePressEvent(QMouseEvent* event)
 {
   switch (event->button()) {
-    case Qt::RightButton: {
-      auto menu=new QMenu(this);
-      menu->setAttribute(Qt::WA_DeleteOnClose);
-
-      const auto showMove=new QAction(tr("Show last move"),menu);
-      if (board.customSetup() || board.currentNode->isGameStart())
-        showMove->setEnabled(false);
-      else
-        connect(showMove,&QAction::triggered,this,[this]{board.animateMove(true);});
-      menu->addAction(showMove);
-
-      const auto fromClipboard=new QAction(tr("Play from clipboard"),menu);
-      if (QGuiApplication::clipboard()->text().isEmpty())
-        fromClipboard->setEnabled(false);
-      else
-        connect(fromClipboard,&QAction::triggered,this,[this]{processInput(QGuiApplication::clipboard()->text().toStdString());});
-      menu->addAction(fromClipboard);
-
-      const auto customGame=new QAction(tr("Start custom setup with current position"),menu);
-      connect(customGame,&QAction::triggered,this,[this] {
-        using namespace std;
-        new Game(globals,board.southIsUp ? SECOND_SIDE : FIRST_SIDE,parentWidget(),nullptr,make_unique<GameState>(board.gameState()));
-      });
-      menu->addAction(customGame);
-
-      menu->popup(QCursor::pos());
-    }
-    break;
     case Qt::MidButton:
       processInput(QGuiApplication::clipboard()->text().toStdString());
     break;

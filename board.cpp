@@ -18,6 +18,7 @@ Board::Board(Globals& globals_,NodePtr currentNode_,const bool explore_,const Si
   drag{NO_SQUARE,NO_SQUARE},
   neutralColor(0x89,0x65,0x7B)
 {
+  setContextMenuPolicy(Qt::NoContextMenu);
   qMediaPlayer.setPlaylist(&qMediaPlaylist);
   toggleSound(soundOn);
   if (!customSetup())
@@ -710,8 +711,7 @@ void Board::mousePressEvent(QMouseEvent* event)
           break;
         }
       }
-      event->ignore();
-      return;
+      emit customContextMenuRequested(event->pos());
     break;
     case Qt::BackButton:
       if (!customSetup())

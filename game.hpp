@@ -30,6 +30,7 @@ private:
   void addCornerWidget();
   void initLiveGame();
   void saveDockStates();
+  void contextMenu();
   virtual void mousePressEvent(QMouseEvent* event) override;
   virtual bool event(QEvent* event) override;
   virtual bool eventFilter(QObject* watched,QEvent* event) override;
