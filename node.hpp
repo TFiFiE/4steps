@@ -48,6 +48,7 @@ public:
   static NodePtr makeMove(const NodePtr& node,const PieceSteps& move,const bool after);
   void swapChildren(const Node& firstChild,const int siblingOffset) const;
   static NodePtr root(const NodePtr& node);
+  static std::vector<std::weak_ptr<Node> > selfAndAncestors(const NodePtr& node,const Node* const final=nullptr);
 
   static GameTree createTree()
   {

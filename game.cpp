@@ -258,14 +258,10 @@ void Game::moveContextMenu(const QPoint pos)
   const auto copySequence=new QAction(tr("Copy sequence to clipboard"),menu);
   const auto cursorNode=getNodeAndColumn().first;
   std::vector<std::weak_ptr<Node> > sequence;
-  if (node->isAncestorOfOrSameAs(cursorNode.get())) {
-    sequence.emplace_back(cursorNode);
-    append(sequence,cursorNode->ancestors(node.get()));
-  }
-  else if (cursorNode->isAncestorOfOrSameAs(node.get())) {
-    sequence.emplace_back(node);
-    append(sequence,node->ancestors(cursorNode.get()));
-  }
+  if (node->isAncestorOfOrSameAs(cursorNode.get()))
+    sequence=Node::selfAndAncestors(cursorNode,node.get());
+  else if (cursorNode->isAncestorOfOrSameAs(node.get()))
+    sequence=Node::selfAndAncestors(node,cursorNode.get());
   if (sequence.empty())
     copySequence->setEnabled(false);
   else {

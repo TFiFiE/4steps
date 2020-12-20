@@ -46,20 +46,10 @@ std::string Node::toString() const
 
 std::vector<std::weak_ptr<Node> > Node::ancestors(const Node* const final) const
 {
-  if (this==final)
+  if (this==final || previousNode==nullptr)
     return {};
-  std::vector<std::weak_ptr<Node> > result;
-  for (auto nodePtr=&previousNode;;) {
-    const auto& node=*nodePtr;
-    if (node==nullptr)
-      return result;
-    else {
-      result.emplace_back(node);
-      if (node.get()==final)
-        return result;
-      nodePtr=&node->previousNode;
-    }
-  }
+  else
+    return selfAndAncestors(previousNode,final);
 }
 
 int Node::numMovesBefore(const Node* descendant) const
@@ -321,4 +311,22 @@ NodePtr Node::root(const NodePtr& node)
     else
       nodePtr=&previousNode;
   }
+}
+
+std::vector<std::weak_ptr<Node> > Node::selfAndAncestors(const NodePtr& node,const Node* const final)
+{
+  assert(node!=nullptr);
+  std::vector<std::weak_ptr<Node> > result;
+  for (auto nodePtr=&node;;) {
+    const auto& node=*nodePtr;
+    result.emplace_back(node);
+    if (node.get()==final)
+      break;
+    const auto& previousNode=node->previousNode;
+    if (previousNode==nullptr)
+      break;
+    else
+      nodePtr=&previousNode;
+  }
+  return result;
 }
