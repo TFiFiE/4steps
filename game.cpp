@@ -678,26 +678,25 @@ void Game::processInput(const std::string& input)
     if (board.customSetup())
       board.proposeSetup(customizedGameState(input,board.gameState()));
     else {
-      NodePtr tentativeChild=board.tentativeChildNode();
-      const auto& startingNode=(tentativeChild==nullptr ? board.currentNode.get() : tentativeChild);
-      auto moves=toTree(input,startingNode,tentativeChild!=nullptr);
-      auto& addedGameTree=get<0>(moves);
+      auto tentativeMove=board.tentativeMove();
+      auto& setup=tentativeMove.first;
+      auto& move=tentativeMove.second;
+      const auto moves=toTree(input,board.currentNode,setup,move);
+      const auto& addedGameTree=get<0>(moves);
       const auto nodeChanges=get<1>(moves);
-      if (nodeChanges>1 || startingNode!=addedGameTree.front()) {
-        if (get<2>(moves))
-          tentativeChild=nullptr;
-        else {
-          tentativeChild=std::make_shared<Node>(nullptr,addedGameTree.front()->move,addedGameTree.front()->currentState); // detach from parent
-          addedGameTree.front()=addedGameTree.front()->previousNode;
-        }
+      if (nodeChanges>0) {
         append(gameTree,addedGameTree);
         gameTree.erase(unsorted_unique(gameTree.begin(),gameTree.end()),gameTree.end());
         explore.setChecked(true);
         const auto& newNode=addedGameTree.front();
         board.setNode(newNode);
         expandToNode(*newNode);
-        if (tentativeChild!=nullptr)
-          board.proposeMove(*tentativeChild.get(),tentativeChild->move.size());
+      }
+      if (nodeChanges>0 || tentativeMove!=board.tentativeMove()) {
+        if (board.currentNode->inSetup())
+          board.proposeSetup(setup);
+        else
+          board.redoSteps(move);
       }
     }
   }

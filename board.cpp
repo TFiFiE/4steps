@@ -92,20 +92,14 @@ Placements Board::currentPlacements() const
   return gameState().placements(sideToMove());
 }
 
-NodePtr Board::tentativeChildNode() const
+std::pair<Placements,ExtendedSteps> Board::tentativeMove() const
 {
-  assert(!customSetup());
-  if (currentNode->inSetup()) {
-    const auto& setup=currentPlacements();
-    if (!setup.empty())
-      return Node::addSetup(currentNode,setup,true);
-  }
-  else {
-    const auto& move=potentialMove.get().current();
-    if (!move.empty())
-      return Node::makeMove(currentNode,move,true);
-  }
-  return nullptr;
+  std::pair<Placements,ExtendedSteps> result;
+  if (setupPhase())
+    result.first=currentPlacements();
+  else
+    result.second=potentialMove.get().current();
+  return result;
 }
 
 std::string Board::tentativeMoveString() const
@@ -180,6 +174,16 @@ void Board::proposeSetup(GameState gameState)
     emit boardChanged();
 }
 
+void Board::proposeSetup(const Placements& placements)
+{
+  endDrag();
+  if (!customSetup())
+    clearSetup();
+  potentialSetup.add(placements);
+  if (customSetup() || !nextSetupPiece(false))
+    emit boardChanged();
+}
+
 void Board::doSteps(const ExtendedSteps& steps,const bool sound,const int undoneSteps)
 {
   if (!steps.empty()) {
@@ -223,6 +227,14 @@ void Board::redoSteps(const bool all)
   if (updated)
     endDrag();
   if (!autoFinalize(updated) && updated)
+    emit boardChanged();
+}
+
+void Board::redoSteps(const ExtendedSteps& steps)
+{
+  potentialMove.data.set(steps,steps.size());
+  endDrag();
+  if (!autoFinalize(true))
     emit boardChanged();
 }
 
@@ -438,12 +450,17 @@ bool Board::setSetting(readonly<Board,Type>& currentValue,const Type newValue,co
   }
 }
 
-void Board::initSetup()
+void Board::clearSetup()
 {
   potentialSetup=currentNode->currentState;
   for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square))
     if (isSetupSquare(sideToMove(),square))
       potentialSetup.currentPieces[square]=NO_PIECE;
+}
+
+void Board::initSetup()
+{
+  clearSetup();
   nextSetupPiece();
 }
 

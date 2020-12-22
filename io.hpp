@@ -387,23 +387,11 @@ inline std::tuple<NodePtr,std::string,runtime_error> parseChunk(std::stringstrea
     return make_tuple(nullptr,chunk,runtime_error());
 }
 
-inline std::tuple<GameTree,size_t,bool> toTree(const std::string& input,NodePtr node,const bool replaceNode=false)
+inline std::tuple<GameTree,size_t> toTree(const std::string& input,NodePtr node,Placements& setup,ExtendedSteps& move)
 {
   assert(node!=nullptr);
   GameTree gameTree;
   unsigned int nodeChanges=0;
-
-  Placements setup;
-  ExtendedSteps move;
-  if (replaceNode) {
-    const auto& previousNode=node->previousNode;
-    assert(previousNode!=nullptr);
-    if (previousNode->inSetup())
-      setup=node->currentState.playedPlacements();
-    else
-      move=node->move;
-    node=previousNode;
-  }
 
   std::stringstream ss;
   ss<<input;
@@ -424,6 +412,19 @@ inline std::tuple<GameTree,size_t,bool> toTree(const std::string& input,NodePtr 
       ++nodeChanges;
     }
   }
+  gameTree.push_front(node);
+
+  return make_tuple(gameTree,nodeChanges);
+}
+
+inline std::tuple<GameTree,size_t,bool> toTree(const std::string& input,const NodePtr& startingNode)
+{
+  Placements setup;
+  ExtendedSteps move;
+  auto result=toTree(input,startingNode,setup,move);
+  auto& gameTree=std::get<0>(result);
+  auto& node=gameTree.front();
+  auto& nodeChanges=std::get<1>(result);
 
   bool completeLastMove;
   if (!setup.empty()) {
@@ -438,8 +439,6 @@ inline std::tuple<GameTree,size_t,bool> toTree(const std::string& input,NodePtr 
   }
   else
     completeLastMove=true;
-
-  gameTree.push_front(node);
 
   return make_tuple(gameTree,nodeChanges,completeLastMove);
 }

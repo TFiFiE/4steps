@@ -22,7 +22,7 @@ public:
   const GameState& gameState() const;
   const GameState& displayedGameState() const;
   Placements currentPlacements() const;
-  NodePtr tentativeChildNode() const;
+  std::pair<Placements,ExtendedSteps> tentativeMove() const;
   std::string tentativeMoveString() const;
   bool gameEnd() const;
   bool playable() const;
@@ -31,9 +31,11 @@ public:
   void playMoveSounds(const Node& node);
   void proposeMove(const Node& child,const unsigned int playedOutSteps);
   void proposeSetup(GameState gameState);
+  void proposeSetup(const Placements& placements);
   void doSteps(const ExtendedSteps& potentialMove,const bool sound,const int undoneSteps=0);
   void undoSteps(const bool all);
   void redoSteps(const bool all);
+  void redoSteps(const ExtendedSteps& steps);
   void animateMove(const bool showStart);
   void rotate();
   void setViewpoint(const Side side);
@@ -67,6 +69,7 @@ private:
   bool isAnimating() const;
 
   template<class Type> bool setSetting(readonly<Board,Type>& currentValue,const Type newValue,const QString& key);
+  void clearSetup();
   void initSetup();
   bool nextSetupPiece(const bool finalize=true);
   bool setUpPiece(const SquareIndex destination);
