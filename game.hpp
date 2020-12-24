@@ -49,6 +49,7 @@ private:
   void receiveNodeChange(const NodePtr& newNode);
   void expandToNode(const Node& node);
   void processVisibleNode(const NodePtr& node);
+  void setPosition(NodePtr node,const std::pair<Placements,ExtendedSteps>& partialMove);
   void synchronizeWithMoveCell(const QModelIndex& current);
   void updateMoveList();
   QPersistentModelIndex getCurrentIndex() const;
@@ -82,6 +83,8 @@ private:
     QCheckBox explore;
     QPushButton current;
   QActionGroup iconSets;
+
+  friend class StartAnalysis;
 };
 
 #endif // GAME_HPP

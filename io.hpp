@@ -121,17 +121,17 @@ inline Side toSide(const char input)
     return NO_SIDE;
 }
 
-inline std::string toPlyString(const int moveIndex)
+inline std::string toPlyString(const int moveIndex,const bool newStyle=true)
 {
   assert(moveIndex>=0);
   std::stringstream ss;
-  ss<<(moveIndex/NUM_SIDES)+1<<"gs"[moveIndex%NUM_SIDES];
+  ss<<(moveIndex/NUM_SIDES)+1<<toLetter(static_cast<Side>(moveIndex%NUM_SIDES),newStyle);
   return ss.str();
 }
 
-inline std::string toPlyString(const int moveIndex,const Node& root)
+inline std::string toPlyString(const int moveIndex,const Node& root,const bool newStyle=true)
 {
-  return toPlyString(moveIndex+(root.isGameStart() ? 0 : NUM_SIDES+root.currentState.sideToMove));
+  return toPlyString(moveIndex+(root.isGameStart() ? 0 : NUM_SIDES+root.currentState.sideToMove),newStyle);
 }
 
 inline std::pair<Side,std::string> toMoveStart(std::string input)
@@ -214,6 +214,30 @@ template<class Container>
 inline std::string toString(const Container& sequence)
 {
   return toString(begin(sequence),end(sequence));
+}
+
+inline std::string toMoveList(const NodePtr& node,const std::string& separator,const bool newStyle)
+{
+  std::vector<std::string> moves;
+  const auto ancestors=Node::selfAndAncestors(node);
+  auto ancestor=ancestors.rbegin();
+  const auto root=ancestor->lock();
+  assert(root->previousNode==nullptr);
+  unsigned int moveIndex=0;
+  if (!root->isGameStart()) {
+    for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side),++moveIndex) {
+      const auto placements=root->currentState.placements(side);
+      assert(!placements.empty());
+      moves.emplace_back(toPlyString(moveIndex,newStyle)+' '+toString(placements));
+    }
+    if (root->currentState.sideToMove==SECOND_SIDE) {
+      moves.emplace_back(toPlyString(moveIndex,newStyle)+" pass");
+      ++moveIndex;
+    }
+  }
+  for (++ancestor;ancestor!=ancestors.rend();++ancestor,++moveIndex)
+    moves.emplace_back(toPlyString(moveIndex,newStyle)+' '+ancestor->lock()->toString());
+  return join(moves,separator);
 }
 
 inline std::pair<Placement,SquareIndex> toDisplacement(const std::string& word,const bool strict=true)

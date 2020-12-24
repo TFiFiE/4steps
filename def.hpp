@@ -159,6 +159,12 @@ inline bool found(const Container& container,const Element element)
   return find_if(container.begin(),container.end(),[&](const typename Container::value_type& tuple){return std::get<tupleIndex>(tuple)==element;})!=container.end();
 }
 
+template<class Container,class Element>
+inline unsigned int count(const Container& container,const Element element)
+{
+  return std::count(container.begin(),container.end(),element);
+}
+
 template<class Sequence,class Subsequence>
 inline bool startsWith(const Sequence& sequence,const Subsequence& subsequence)
 {
@@ -175,6 +181,18 @@ template<class Container>
 inline void append(Container& target,const Container& extension)
 {
   target.insert(target.end(),extension.begin(),extension.end());
+}
+
+template<class Container>
+inline typename Container::value_type join(const Container& container,const typename Container::value_type& separator)
+{
+  typename Container::value_type result;
+  for (const auto& element:container) {
+    if (!result.empty())
+      append(result,separator);
+    append(result,element);
+  }
+  return result;
 }
 
 template<class Iterator>
@@ -351,6 +369,13 @@ template<class Widget>
 inline int textWidth(const Widget& widget)
 {
   return widget.fontMetrics().boundingRect(widget.text()).width()+10;
+}
+
+inline QFont monospace()
+{
+  QFont font("Monospace");
+  font.setStyleHint(QFont::TypeWriter);
+  return font;
 }
 
 inline void openDialog(QDialog* const dialog)

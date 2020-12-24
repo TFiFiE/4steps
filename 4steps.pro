@@ -18,6 +18,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 
 SOURCES += \
+    analysis.cpp \
     arimaa_com.cpp \
     asip.cpp \
     asip1.cpp \
@@ -40,11 +41,13 @@ SOURCES += \
     playerbar.cpp \
     popup.cpp \
     server.cpp \
+    startanalysis.cpp \
     timecontrol.cpp \
     timeestimator.cpp \
     treemodel.cpp
 
 HEADERS += \
+    analysis.hpp \
     arimaa_com.hpp \
     asip.hpp \
     asip1.hpp \
@@ -72,6 +75,7 @@ HEADERS += \
     potentialmove.hpp \
     readonly.hpp \
     server.hpp \
+    startanalysis.hpp \
     timecontrol.hpp \
     timeestimator.hpp \
     treemodel.hpp

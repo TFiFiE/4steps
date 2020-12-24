@@ -233,10 +233,20 @@ std::tuple<GameTree,size_t,bool> ASIP::getMoves(NodePtr root) const
   return toTree(get<QString>("moves").toStdString(),std::move(root));
 }
 
-std::array<QString,NUM_SIDES> ASIP::getPlayers() const
+std::array<QString,NUM_SIDES> ASIP::getAnnotatedPlayers() const
 {
   const QReadLocker readLocker(&mostRecentData_mutex);
   return {mostRecentData.value("wplayer").toString(),mostRecentData.value("bplayer").toString()};
+}
+
+std::array<QString,NUM_SIDES> ASIP::getPlayers() const
+{
+  auto result=getAnnotatedPlayers();
+  const QString annotation="* ";
+  for (auto& annotedPlayer:result)
+    if (annotedPlayer.startsWith(annotation))
+      annotedPlayer.remove(0,annotation.size());
+  return result;
 }
 
 Result ASIP::getResult() const

@@ -20,12 +20,15 @@ struct Node {
   bool inSetup() const;
   std::string toPlyString() const;
   std::string toPlyString(const Node& root) const;
+  std::string nextPlyString() const;
   std::string toString() const;
   std::vector<std::weak_ptr<Node> > ancestors(const Node* const final=nullptr) const;
   int numMovesBefore(const Node* descendant) const;
   bool isAncestorOfOrSameAs(const Node* descendant) const;
   NodePtr findClosestChild(const NodePtr& descendant) const;
   MoveLegality legalMove(const GameState& resultingState) const;
+  MoveLegality legalMove(const ExtendedSteps& move) const;
+  bool legalPartialMove(const ExtendedSteps& move) const;
   bool hasLegalMoves(const GameState& startingState) const;
   Result detectGameEnd() const;
   int childIndex() const;
@@ -48,6 +51,7 @@ public:
   static NodePtr makeMove(const NodePtr& node,const PieceSteps& move,const bool after);
   void swapChildren(const Node& firstChild,const int siblingOffset) const;
   static NodePtr root(const NodePtr& node);
+  static NodePtr reroot(NodePtr source,NodePtr target=nullptr);
   static std::vector<std::weak_ptr<Node> > selfAndAncestors(const NodePtr& node,const Node* const final=nullptr);
 
   static GameTree createTree()

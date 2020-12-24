@@ -10,6 +10,7 @@
 #include "asip.hpp"
 #include "messagebox.hpp"
 #include "offboard.hpp"
+#include "startanalysis.hpp"
 #include "io.hpp"
 
 using namespace std;
@@ -429,12 +430,24 @@ void Game::contextMenu()
     connect(fromClipboard,&QAction::triggered,this,[this]{processInput(QGuiApplication::clipboard()->text().toStdString());});
   menu->addAction(fromClipboard);
 
+  const bool disabled=(session!=nullptr && !finished && count(session->getPlayers(),session->username())==1);
+
   const auto customGame=new QAction(tr("Start custom setup with current position"),menu);
-  connect(customGame,&QAction::triggered,this,[this] {
-    using namespace std;
-    new Game(globals,board.southIsUp ? SECOND_SIDE : FIRST_SIDE,parentWidget(),nullptr,make_unique<GameState>(board.gameState()));
-  });
+  if (disabled)
+    customGame->setEnabled(false);
+  else
+    connect(customGame,&QAction::triggered,this,[this] {
+      using namespace std;
+      new Game(globals,board.southIsUp ? SECOND_SIDE : FIRST_SIDE,parentWidget(),nullptr,make_unique<GameState>(board.gameState()));
+    });
   menu->addAction(customGame);
+
+  const auto analysis=new QAction(tr("Run analysis"),menu);
+  if (disabled)
+    analysis->setEnabled(false);
+  else
+    connect(analysis,&QAction::triggered,this,[this]{openDialog(new StartAnalysis(globals,board.currentNode.get(),board.tentativeMove(),this));});
+  menu->addAction(analysis);
 
   menu->popup(QCursor::pos());
 }
@@ -564,7 +577,7 @@ void Game::synchronize(const bool hard)
       board.setControllable({true,true});
     break;
   }
-  const auto players=session->getPlayers();
+  const auto players=session->getAnnotatedPlayers();
   const auto sideToMove=(status==ASIP::LIVE ? session->sideToMove() : NO_SIDE);
   setWindowTitle(players[FIRST_SIDE]+" - "+players[SECOND_SIDE]);
   for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side)) {
@@ -697,6 +710,8 @@ void Game::processInput(const std::string& input)
           board.proposeSetup(setup);
         else
           board.redoSteps(move);
+
+        emit treeModel.layoutChanged();
       }
     }
   }
@@ -790,6 +805,26 @@ void Game::processVisibleNode(const NodePtr& node)
   if (!board.explore)
     treeModel.exclusive=index;
   setCurrentIndex(index);
+  emit treeModel.layoutChanged();
+}
+
+void Game::setPosition(NodePtr node,const std::pair<Placements,ExtendedSteps>& partialMove)
+{
+  if (treeModel.root==nullptr)
+    treeModel.root=Node::root(node);
+  else
+    node=Node::reroot(node,treeModel.root);
+
+  Node::addToTree(gameTree,node);
+  explore.setChecked(true);
+  board.setNode(node);
+  expandToNode(*node);
+
+  if (board.currentNode->inSetup())
+    board.proposeSetup(partialMove.first);
+  else
+    board.doSteps(partialMove.second,false);
+
   emit treeModel.layoutChanged();
 }
 

@@ -36,6 +36,11 @@ std::string Node::toPlyString(const Node& root) const
   return depth==0 ? "" : ::toPlyString(depth-1,root);
 }
 
+std::string Node::nextPlyString() const
+{
+  return ::toPlyString(depth,root());
+}
+
 std::string Node::toString() const
 {
   if (move.empty())
@@ -103,6 +108,16 @@ MoveLegality Node::legalMove(const GameState& resultingState) const
       break;
   }
   return MoveLegality::LEGAL;
+}
+
+MoveLegality Node::legalMove(const ExtendedSteps& move) const
+{
+  return legalMove(move.empty() ? currentState : std::get<RESULTING_STATE>(move.back()));
+}
+
+bool Node::legalPartialMove(const ExtendedSteps& move) const
+{
+  return move.empty() || hasLegalMoves(std::get<RESULTING_STATE>(move.back()));
 }
 
 bool Node::hasLegalMoves(const GameState& startingState) const
@@ -311,6 +326,25 @@ NodePtr Node::root(const NodePtr& node)
     else
       nodePtr=&previousNode;
   }
+}
+
+NodePtr Node::reroot(NodePtr source,NodePtr target)
+{
+  assert(source!=nullptr);
+  assert(target==nullptr || target->previousNode==nullptr);
+  std::vector<std::pair<ExtendedSteps,GameState> > line;
+  do {
+    line.emplace_back(source->move,source->currentState);
+    source=source->previousNode;
+  } while (source!=nullptr);
+  auto ancestor=line.rbegin();
+  if (target==nullptr)
+    target=std::make_shared<Node>(nullptr,ancestor->first,ancestor->second);
+  else
+    assert(*ancestor==make_pair(target->move,target->currentState));
+  for (++ancestor;ancestor!=line.rend();++ancestor)
+    target=Node::addChild(target,ancestor->first,ancestor->second,true);
+  return target;
 }
 
 std::vector<std::weak_ptr<Node> > Node::selfAndAncestors(const NodePtr& node,const Node* const final)
