@@ -9,6 +9,15 @@ GameState::GameState() :
   fill(currentPieces,NO_PIECE);
 }
 
+GameState::GameState(const Side sideToMove_,const Board& currentPieces_) :
+  sideToMove(sideToMove_),
+  currentPieces(currentPieces_),
+  stepsAvailable(MAX_STEPS_PER_MOVE),
+  inPush(false),
+  followupDestination(NO_SQUARE)
+{
+}
+
 bool GameState::operator==(const GameState& rhs) const
 {
   return sideToMove==rhs.sideToMove &&

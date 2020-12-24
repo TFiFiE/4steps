@@ -12,7 +12,7 @@ Board::Board(Globals& globals_,NodePtr currentNode_,const bool explore_,const Si
   southIsUp(viewpoint==SECOND_SIDE),
   currentNode(currentNode_),
   globals(globals_),
-  potentialSetup(customSetup_==nullptr ? GameState() : *customSetup_),
+  potentialSetup(customSetup_==nullptr ? GameState() : GameState(customSetup_->sideToMove,customSetup_->currentPieces)),
   controllableSides(controllableSides_),
   autoRotate(false),
   drag{NO_SQUARE,NO_SQUARE},
