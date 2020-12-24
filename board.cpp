@@ -603,7 +603,14 @@ bool Board::doubleSquareAction(const SquareIndex origin,const SquareIndex destin
 
 bool Board::doubleSquareSetupAction(const SquareIndex origin,const SquareIndex destination)
 {
-  if (isSetupSquare(sideToMove(),destination)) {
+  if (destination==NO_SQUARE) {
+    potentialSetup.currentPieces[origin]=NO_PIECE;
+    if (!customSetup())
+      nextSetupPiece();
+    emit boardChanged();
+    return true;
+  }
+  else if (isSetupSquare(sideToMove(),destination)) {
     GameState::Board& currentPieces=potentialSetup.currentPieces;
     if (customSetup()) {
       currentPieces[destination]=currentPieces[origin];
