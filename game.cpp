@@ -443,7 +443,7 @@ void Game::contextMenu()
   menu->addAction(customGame);
 
   const auto analysis=new QAction(tr("Run analysis"),menu);
-  if (disabled)
+  if (disabled || board.currentNode->result.endCondition!=NO_END)
     analysis->setEnabled(false);
   else
     connect(analysis,&QAction::triggered,this,[this]{openDialog(new StartAnalysis(globals,board.currentNode.get(),board.tentativeMove(),this));});
