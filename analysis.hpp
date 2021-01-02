@@ -16,7 +16,8 @@ class Analysis : public QWidget {
   Q_OBJECT
 public:
   struct CommandLine {
-    QString executable,beforeMoves,moves,afterMoves;
+    QString executable,moves;
+    QStringList beforeMoves,afterMoves;
   };
 
   explicit Analysis(Globals& globals_,NodePtr node,const std::pair<Placements,ExtendedSteps>& partialMove,const CommandLine& commandLine,std::set<std::string>& passSynonyms_,QWidget* parent=nullptr);

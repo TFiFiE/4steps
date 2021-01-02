@@ -62,9 +62,10 @@ Analysis::Analysis(Globals& globals_,NodePtr node,const std::pair<Placements,Ext
   moveFile.open();
   QTextStream moveFileStream(&moveFile);
   moveFileStream<<commandLine.moves;
-  QStringList processStrings={commandLine.executable,commandLine.beforeMoves,moveFile.fileName(),commandLine.afterMoves};
-  processStrings.removeAll("");
-  process.start(processStrings.join(" "));
+  QStringList processStrings=commandLine.beforeMoves;
+  processStrings.append(moveFile.fileName());
+  processStrings.append(commandLine.afterMoves);
+  process.start(commandLine.executable,processStrings);
 
   globals.settings.beginGroup("Analysis");
   const auto size=globals.settings.value("size").toSize();

@@ -13,8 +13,8 @@ StartAnalysis::StartAnalysis(Globals& globals_,const NodePtr& node_,const std::p
   vBoxLayout(this),
   executableLabel(tr("Executable:")),
   executablePushButton(tr("&Locate")),
-  argumentGroupBox(tr("Arguments")),
-  partialMoveCheckBox(tr("Partial &move:")),
+  argumentGroupBox(tr("Arguments (line-separated)")),
+  partialMoveGroupBox(tr("Partial &move")),
   dialogButtonBox(QDialogButtonBox::Ok|QDialogButtonBox::Cancel)
 {
   executable.addWidget(&executableLabel);
@@ -27,6 +27,11 @@ StartAnalysis::StartAnalysis(Globals& globals_,const NodePtr& node_,const std::p
 
   vBoxLayout.addLayout(&executable);
 
+  for (auto& textEdit:arguments) {
+    textEdit.setAcceptRichText(false);
+    textEdit.setLineWrapMode(QTextEdit::NoWrap);
+  }
+
   argumentLayout.addWidget(&arguments[0]);
   moveFileContent.setReadOnly(true);
   moveFileContent.setText(QString::fromStdString(toMoveList(node," ",false)));
@@ -36,27 +41,29 @@ StartAnalysis::StartAnalysis(Globals& globals_,const NodePtr& node_,const std::p
 
   const auto& setup=partialMove.first;
   const auto& move=partialMove.second;
-  if (move.empty() ? setup.empty() : !node->legalPartialMove(move)) {
-    partialMoveCheckBox.setChecked(false);
-    partialMoveCheckBox.setEnabled(false);
-  }
-  partialMoveLayout.addWidget(&partialMoveCheckBox);
-  partialMoveArguments[0].setAlignment(Qt::AlignRight);
-  partialMoveArguments[1].setAlignment(Qt::AlignCenter);
-  partialMoveArguments[2].setAlignment(Qt::AlignLeft);
-  partialMoveArguments[1].setReadOnly(true);
-  if (partialMoveCheckBox.isEnabled())
-    partialMoveArguments[1].setText(QString::fromStdString(node->inSetup() ? toString(setup) : toString(move)));
+  const bool partialMovePossible=(move.empty() ? !setup.empty() : node->legalPartialMove(move));
+  partialMoveGroupBox.setCheckable(true);
+  partialMoveGroupBox.setChecked(partialMovePossible);
+  partialMoveGroupBox.setEnabled(partialMovePossible);
+  partialMoveLine.setReadOnly(true);
+  if (partialMovePossible)
+    partialMoveLine.setText(QString::fromStdString(node->inSetup() ? toString(setup) : toString(move)));
   for (auto& partialMoveArgument:partialMoveArguments) {
+    partialMoveArgument.setAcceptRichText(false);
+    partialMoveArgument.setLineWrapMode(QTextEdit::NoWrap);
     partialMoveLayout.addWidget(&partialMoveArgument);
-    partialMoveArgument.setEnabled(partialMoveCheckBox.isChecked());
+    partialMoveArgument.setEnabled(partialMoveGroupBox.isChecked());
   }
-  connect(&partialMoveCheckBox,&QCheckBox::toggled,this,[this](int state) {
+  partialMoveLayout.insertWidget(1,&partialMoveLine);
+  partialMoveLine.setEnabled(partialMoveGroupBox.isChecked());
+  connect(&partialMoveGroupBox,&QGroupBox::toggled,this,[this](int state) {
     for (auto& partialMoveArgument:partialMoveArguments)
       partialMoveArgument.setEnabled(state);
+    partialMoveLine.setEnabled(state);
     setWindowTitle();
   });
-  argumentLayout.addLayout(&partialMoveLayout);
+  partialMoveGroupBox.setLayout(&partialMoveLayout);
+  argumentLayout.addWidget(&partialMoveGroupBox);
 
   argumentLayout.addWidget(&arguments[2]);
 
@@ -70,25 +77,24 @@ StartAnalysis::StartAnalysis(Globals& globals_,const NodePtr& node_,const std::p
     setEnabled(false);
     Analysis::CommandLine commandLine;
     commandLine.executable=executableLineEdit.text();
-    commandLine.beforeMoves=arguments[0].text();
+    commandLine.beforeMoves=split(arguments[0]);
     commandLine.moves=moveFileContent.text();
 
-    QStringList afterArguments={arguments[1].text()};
-    if (partialMoveCheckBox.isChecked()) {
-      QStringList partialMoveStrings;
-      for (const auto& partialMoveArgument:partialMoveArguments)
-        partialMoveStrings.append(partialMoveArgument.text());
-      afterArguments.append(partialMoveStrings.join(""));
+    commandLine.afterMoves=split(arguments[1]);
+    if (partialMoveGroupBox.isChecked()) {
+      commandLine.afterMoves.append(split(partialMoveArguments[0]));
+      commandLine.afterMoves.append(partialMoveLine.text());
+      commandLine.afterMoves.append(split(partialMoveArguments[1]));
     }
-    afterArguments.append(arguments[2].text());
-    afterArguments.removeAll("");
-    commandLine.afterMoves=afterArguments.join(" ");
+    commandLine.afterMoves.append(split(arguments[2]));
 
     std::set<std::string> words;
     for (const auto& word:passSynonyms.text().split(" ",QString::SkipEmptyParts))
       words.emplace(word.toStdString());
 
-    const auto analysis=new Analysis(globals,node,partialMoveCheckBox.isChecked() ? partialMove : std::pair<Placements,ExtendedSteps>(),commandLine,words,this);
+    const auto analysis=new Analysis(globals,node,partialMoveGroupBox.isChecked() ? partialMove : std::pair<Placements,ExtendedSteps>(),commandLine,words,this);
+    if (analysis->isHidden() && analysis->process.state()==QProcess::NotRunning)
+      setEnabled(true);
     connect(&analysis->process,&QProcess::errorOccurred,this,[this]{setEnabled(true);});
     connect(&analysis->process,&QProcess::readyReadStandardOutput,this,[=] {
       setEnabled(true);
@@ -107,11 +113,16 @@ StartAnalysis::StartAnalysis(Globals& globals_,const NodePtr& node_,const std::p
   dialogButtonBox.button(QDialogButtonBox::Ok)->setFocus();
 }
 
+QStringList StartAnalysis::split(const QTextEdit& textEdit)
+{
+  return textEdit.toPlainText().split('\n',QString::SkipEmptyParts);
+}
+
 void StartAnalysis::setWindowTitle()
 {
   QString position=QString::fromStdString(node->nextPlyString());
-  if (partialMoveCheckBox.isChecked())
-    position+=' '+partialMoveArguments[1].text();
+  if (partialMoveGroupBox.isChecked())
+    position+=' '+partialMoveLine.text();
   QDialog::setWindowTitle(tr("Analyze %1").arg(position));
 }
 
@@ -120,11 +131,11 @@ void StartAnalysis::readSettings(QSettings& settings)
   settings.beginGroup("Analysis");
   executableLineEdit.setText(settings.value("executable").toString());
   arguments[0].setText(settings.value("first_arguments","analyze").toString());
-  arguments[1].setText(settings.value("middle_arguments","-threads 1").toString());
-  if (partialMoveCheckBox.isEnabled())
-    partialMoveCheckBox.setChecked(settings.value("partial_move",true).toBool());
-  partialMoveArguments[0].setText(settings.value("before_partial_move","-m \"").toString());
-  partialMoveArguments[2].setText(settings.value("after_partial_move","\"").toString());
+  arguments[1].setText(settings.value("middle_arguments","-threads\n1").toString());
+  if (partialMoveGroupBox.isEnabled())
+    partialMoveGroupBox.setChecked(settings.value("partial_move",true).toBool());
+  partialMoveArguments[0].setText(settings.value("before_partial_move","-m").toString());
+  partialMoveArguments[1].setText(settings.value("after_partial_move").toString());
   arguments[2].setText(settings.value("last_arguments").toString());
   passSynonyms.setText(settings.value("pass_synonyms","qpss").toString());
   settings.endGroup();
@@ -134,16 +145,16 @@ void StartAnalysis::writeSettings(QSettings& settings) const
 {
   settings.beginGroup("Analysis");
   settings.setValue("executable",executableLineEdit.text());
-  settings.setValue("first_arguments",arguments[0].text());
-  settings.setValue("middle_arguments",arguments[1].text());
-  if (partialMoveCheckBox.isEnabled()) {
-    settings.setValue("partial_move",partialMoveCheckBox.isChecked());
-    if (partialMoveCheckBox.isChecked()) {
-      settings.setValue("before_partial_move",partialMoveArguments[0].text());
-      settings.setValue("after_partial_move",partialMoveArguments[2].text());
+  settings.setValue("first_arguments",arguments[0].toPlainText());
+  settings.setValue("middle_arguments",arguments[1].toPlainText());
+  if (partialMoveGroupBox.isEnabled()) {
+    settings.setValue("partial_move",partialMoveGroupBox.isChecked());
+    if (partialMoveGroupBox.isChecked()) {
+      settings.setValue("before_partial_move",partialMoveArguments[0].toPlainText());
+      settings.setValue("after_partial_move",partialMoveArguments[1].toPlainText());
     }
   }
-  settings.setValue("last_arguments",arguments[2].text());
+  settings.setValue("last_arguments",arguments[2].toPlainText());
   settings.setValue("pass_synonyms",passSynonyms.text());
   settings.endGroup();
 }
