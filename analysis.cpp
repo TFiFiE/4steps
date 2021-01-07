@@ -236,7 +236,8 @@ void Analysis::processPlainText(std::string& text)
 
 bool Analysis::event(QEvent* event)
 {
-  if (event->type()==QEvent::WindowActivate) {
+  const auto type=event->type();
+  if (type==QEvent::Close || type==QEvent::WindowActivate) {
     globals.settings.beginGroup("Analysis");
     globals.settings.setValue("size",normalGeometry().size());
     globals.settings.endGroup();

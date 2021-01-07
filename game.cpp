@@ -469,6 +469,7 @@ void Game::mousePressEvent(QMouseEvent* event)
 bool Game::event(QEvent* event)
 {
   switch (event->type()) {
+    case QEvent::Close:
     case QEvent::WindowActivate:
       globals.settings.beginGroup("Game");
       globals.settings.setValue("size",normalGeometry().size());
