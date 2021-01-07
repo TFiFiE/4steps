@@ -196,12 +196,24 @@ int Node::numChildren() const
   return findChild([](const NodePtr&,const int){return false;}).second;
 }
 
-int Node::maxChildSteps() const
+size_t Node::maxChildSteps() const
 {
   size_t result=0;
   findChild([&result](const NodePtr& child,const int) {
     result=std::max(result,child->move.size());
-    return false;
+    return result==MAX_STEPS_PER_MOVE;
+  });
+  return result;
+}
+
+size_t Node::maxDescendantSteps() const
+{
+  size_t result=0;
+  findChild([&result](const NodePtr& child,const int) {
+    result=std::max(result,child->move.size());
+    if (result<MAX_STEPS_PER_MOVE)
+      result=std::max(result,child->maxDescendantSteps());
+    return result==MAX_STEPS_PER_MOVE;
   });
   return result;
 }

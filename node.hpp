@@ -36,7 +36,8 @@ struct Node {
   NodePtr child(const int index) const;
   bool hasChild() const;
   int numChildren() const;
-  int maxChildSteps() const;
+  size_t maxChildSteps() const;
+  size_t maxDescendantSteps() const;
   std::pair<NodePtr,int> findPartialMatchingChild(const Placements& placements) const;
   std::pair<NodePtr,int> findPartialMatchingChild(const ExtendedSteps& steps) const;
   std::pair<NodePtr,int> findMatchingChild(const Placements& subset) const;

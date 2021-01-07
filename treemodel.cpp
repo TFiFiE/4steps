@@ -68,7 +68,7 @@ inline QModelIndex TreeModel::createIndex(const int row,const int column,const N
 int TreeModel::columnCount(const int numMoves) const
 {
   if (numMoves==0)
-    return NUM_FILES*2;
+    return numStartingPieces;
   else if (numMoves<MAX_STEPS_PER_MOVE)
     return numMoves+2;
   else
@@ -90,10 +90,12 @@ int TreeModel::rowCount(const QModelIndex& parent) const
 int TreeModel::columnCount(const QModelIndex& index) const
 {
   const auto item=getItem(index);
-  if (item==nullptr)
+  if (item==nullptr || !item->hasChild())
     return 0;
+  else if (item->inSetup())
+    return numStartingPieces;
   else
-    return columnCount(item->maxChildSteps());
+    return columnCount(index.parent().isValid() ? item->maxChildSteps() : item->maxDescendantSteps());
 }
 
 QModelIndex TreeModel::index(const int row,const int column,const QModelIndex& parent) const
@@ -142,7 +144,7 @@ QVariant TreeModel::data(const QModelIndex& index,const int role) const
       const unsigned int moveIndex=column-1;
       if (move.empty()) {
         const auto& placements=node->currentState.playedPlacements();
-        assert(placements.size()==NUM_FILES*2);
+        assert(placements.size()==numStartingPieces);
         const auto begin=next(placements.cbegin(),moveIndex);
         return QString::fromStdString(toString(begin,next(begin)));
       }
