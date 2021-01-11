@@ -467,7 +467,7 @@ inline std::tuple<GameTree,size_t,bool> toTree(const std::string& input,const No
   return make_tuple(gameTree,nodeChanges,completeLastMove);
 }
 
-inline GameState customizedGameState(const std::string& input,GameState gameState=GameState())
+inline TurnState customizedTurnState(const std::string& input,TurnState turnState=TurnState())
 {
   std::stringstream ss;
   ss<<input;
@@ -475,25 +475,25 @@ inline GameState customizedGameState(const std::string& input,GameState gameStat
   while (ss>>word) {
     const Side side=toMoveStart(word).first;
     if (side!=NO_SIDE)
-      gameState.sideToMove=side;
+      turnState.sideToMove=side;
     else {
       const auto placement=toPlacement(word,false);
       if (placement.isValid()) {
-        if (gameState.squarePieces[placement.location]!=placement.piece) {
-          if (gameState.piecesAtMax()[placement.piece])
+        if (turnState.squarePieces[placement.location]!=placement.piece) {
+          if (turnState.piecesAtMax()[placement.piece])
             throw runtime_error(QCoreApplication::translate("","Side out of pieces of type: ")+pieceName(placement.piece));
           else
-            gameState.squarePieces[placement.location]=placement.piece;
+            turnState.squarePieces[placement.location]=placement.piece;
         }
       }
       else {
         const auto displacement=toDisplacement(word,false);
         const auto& placement=displacement.first;
         if (placement.isValid()) {
-          if (gameState.squarePieces[placement.location]==placement.piece) {
-            gameState.squarePieces[placement.location]=NO_PIECE;
+          if (turnState.squarePieces[placement.location]==placement.piece) {
+            turnState.squarePieces[placement.location]=NO_PIECE;
             if (displacement.second!=NO_SQUARE)
-              gameState.squarePieces[displacement.second]=placement.piece;
+              turnState.squarePieces[displacement.second]=placement.piece;
           }
           else
             throw runtime_error(QCoreApplication::translate("","Piece type not on %1: ").arg(toCoordinates(placement.location).data())+pieceName(placement.piece));
@@ -503,7 +503,7 @@ inline GameState customizedGameState(const std::string& input,GameState gameStat
       }
     }
   }
-  return gameState;
+  return turnState;
 }
 
 inline EndCondition toEndCondition(const char letter)

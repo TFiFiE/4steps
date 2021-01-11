@@ -14,7 +14,7 @@ struct Globals;
 class Board : public QWidget {
   Q_OBJECT
 public:
-  explicit Board(Globals& globals_,NodePtr currentNode_,const bool explore_,const Side viewpoint,const bool soundOn,const std::array<bool,NUM_SIDES>& controllableSides_={true,true},const GameState* const customSetup_=nullptr,QWidget* const parent=nullptr,const Qt::WindowFlags f=Qt::WindowFlags());
+  explicit Board(Globals& globals_,NodePtr currentNode_,const bool explore_,const Side viewpoint,const bool soundOn,const std::array<bool,NUM_SIDES>& controllableSides_={true,true},const TurnState* const customSetup_=nullptr,QWidget* const parent=nullptr,const Qt::WindowFlags f=Qt::WindowFlags());
   bool customSetup() const;
   bool setupPhase() const;
   bool setupPlacementPhase() const;
@@ -30,7 +30,7 @@ public:
   bool setNode(NodePtr newNode,const bool sound=false,bool keepState=false);
   void playMoveSounds(const Node& node);
   void proposeMove(const Node& child,const unsigned int playedOutSteps);
-  void proposeSetup(GameState gameState);
+  void proposeSetup(const TurnState& turnState);
   void proposeSetup(const Placements& placements);
   void doSteps(const ExtendedSteps& potentialMove,const bool sound,const int undoneSteps=0);
   void undoSteps(const bool all);

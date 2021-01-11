@@ -18,7 +18,7 @@ class ASIP;
 class Game : public QMainWindow {
   Q_OBJECT
 public:
-  explicit Game(Globals& globals_,const Side viewpoint,QWidget* const parent=nullptr,const std::shared_ptr<ASIP> session_=std::shared_ptr<ASIP>(),const std::unique_ptr<GameState> customSetup=nullptr);
+  explicit Game(Globals& globals_,const Side viewpoint,QWidget* const parent=nullptr,const std::shared_ptr<ASIP> session_=std::shared_ptr<ASIP>(),const std::unique_ptr<TurnState> customSetup=nullptr);
 private:
   void addDockWidget(const Qt::DockWidgetArea area,QDockWidget& dockWidget,const Qt::Orientation orientation,const bool before);
   void setWindowState();

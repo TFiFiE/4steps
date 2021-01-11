@@ -1,17 +1,7 @@
 #include "gamestate.hpp"
 
-GameState::GameState() :
-  sideToMove(FIRST_SIDE),
-  stepsAvailable(MAX_STEPS_PER_MOVE),
-  inPush(false),
-  followupDestination(NO_SQUARE)
-{
-  fill(squarePieces,NO_PIECE);
-}
-
-GameState::GameState(const Side sideToMove_,const Board& squarePieces_) :
-  sideToMove(sideToMove_),
-  squarePieces(squarePieces_),
+GameState::GameState(const TurnState& turnState) :
+  TurnState(turnState),
   stepsAvailable(MAX_STEPS_PER_MOVE),
   inPush(false),
   followupDestination(NO_SQUARE)
@@ -26,92 +16,6 @@ bool GameState::operator==(const GameState& rhs) const
          inPush==rhs.inPush &&
          followupDestination==rhs.followupDestination &&
          followupOrigins==rhs.followupOrigins;
-}
-
-bool GameState::empty() const
-{
-  for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square))
-    if (squarePieces[square]!=NO_PIECE)
-      return false;
-  return true;
-}
-
-Placements GameState::placements(const Side side) const
-{
-  Placements result;
-  for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square)) {
-    const PieceTypeAndSide pieceType=squarePieces[square];
-    if (isSide(pieceType,side))
-      result.emplace(Placement{square,pieceType});
-  }
-  return result;
-}
-
-Placements GameState::playedPlacements() const
-{
-  return placements(otherSide(sideToMove));
-}
-
-std::array<bool,NUM_PIECE_SIDE_COMBINATIONS> GameState::piecesAtMax() const
-{
-  std::array<bool,NUM_PIECE_SIDE_COMBINATIONS> result={false};
-  unsigned int pieceCounts[NUM_SIDES][NUM_PIECE_TYPES]={{0}};
-  for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square)) {
-    const PieceTypeAndSide pieceOnSquare=squarePieces[square];
-    if (pieceOnSquare!=NO_PIECE) {
-      const PieceType pieceType=toPieceType(pieceOnSquare);
-      auto& pieceCount=pieceCounts[toSide(pieceOnSquare)][pieceType];
-      if (++pieceCount==numStartingPiecesPerType[pieceType])
-        result[pieceOnSquare]=true;
-    }
-  }
-  return result;
-}
-
-bool GameState::isSupported(const SquareIndex square,const Side side) const
-{
-  for (const auto adjacentSquare:adjacentSquares(square))
-    if (isSide(squarePieces[adjacentSquare],side))
-      return true;
-  return false;
-}
-
-bool GameState::isFrozen(const SquareIndex square) const
-{
-  const PieceTypeAndSide piece=squarePieces[square];
-  const Side side=toSide(piece);
-  bool dominatingNeighbor=false;
-  for (const auto adjacentSquare:adjacentSquares(square)) {
-    const PieceTypeAndSide neighbor=squarePieces[adjacentSquare];
-    if (isSide(neighbor,side))
-      return false;
-    else
-      dominatingNeighbor|=dominates(neighbor,piece);
-  }
-  return dominatingNeighbor;
-}
-
-bool GameState::floatingPiece(const SquareIndex square) const
-{
-  if (isTrap(square)) {
-    const PieceTypeAndSide pieceTypeAndSide=squarePieces[square];
-    if (pieceTypeAndSide!=NO_PIECE) {
-      const Side pieceSide=toSide(pieceTypeAndSide);
-      for (const auto adjacentSquare:adjacentSquares(square))
-        if (isSide(squarePieces[adjacentSquare],pieceSide))
-          return false;
-      return true;
-    }
-  }
-  return false;
-}
-
-bool GameState::legalPosition() const
-{
-  for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square))
-    if (floatingPiece(square))
-      return false;
-  return true;
 }
 
 Squares GameState::legalDestinations(const SquareIndex origin) const
@@ -198,20 +102,6 @@ ExtendedSteps GameState::preferredRoute(const SquareIndex origin,const SquareInd
   return result==routes.end() ? ExtendedSteps() : *result;
 }
 
-ExtendedSteps GameState::toExtendedSteps(const PieceSteps& pieceSteps) const
-{
-  return GameState(*this).takePieceSteps(pieceSteps);
-}
-
-void GameState::add(const Placements& placements)
-{
-  for (const auto& pair:placements) {
-    PieceTypeAndSide& pieceOnSquare=squarePieces[pair.location];
-    runtime_assert(pieceOnSquare==NO_PIECE,"Square already has a piece.");
-    pieceOnSquare=pair.piece;
-  }
-}
-
 PieceTypeAndSide GameState::takeStep(const SquareIndex origin,const SquareIndex destination)
 {
   runtime_assert(legalStep(origin,destination),"Not a legal step.");
@@ -286,8 +176,8 @@ ExtendedSteps GameState::takePieceSteps(const PieceSteps& pieceSteps)
 
 void GameState::switchTurn()
 {
+  TurnState::switchTurn();
   assert(!inPush);
-  sideToMove=otherSide(sideToMove);
   stepsAvailable=MAX_STEPS_PER_MOVE;
   followupDestination=NO_SQUARE;
   followupOrigins.clear();

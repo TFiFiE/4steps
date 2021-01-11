@@ -44,7 +44,8 @@ SOURCES += \
     startanalysis.cpp \
     timecontrol.cpp \
     timeestimator.cpp \
-    treemodel.cpp
+    treemodel.cpp \
+    turnstate.cpp
 
 HEADERS += \
     analysis.hpp \
@@ -78,7 +79,8 @@ HEADERS += \
     startanalysis.hpp \
     timecontrol.hpp \
     timeestimator.hpp \
-    treemodel.hpp
+    treemodel.hpp \
+    turnstate.hpp
 
 RESOURCES += \
     resources.qrc

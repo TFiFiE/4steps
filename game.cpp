@@ -14,7 +14,7 @@
 #include "io.hpp"
 
 using namespace std;
-Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const std::shared_ptr<ASIP> session_,const std::unique_ptr<GameState> customSetup) :
+Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const std::shared_ptr<ASIP> session_,const std::unique_ptr<TurnState> customSetup) :
   QMainWindow(parent),
   globals(globals_),
   session(session_),
@@ -438,7 +438,7 @@ void Game::contextMenu()
   else
     connect(customGame,&QAction::triggered,this,[this] {
       using namespace std;
-      new Game(globals,board.southIsUp ? SECOND_SIDE : FIRST_SIDE,parentWidget(),nullptr,make_unique<GameState>(board.gameState()));
+      new Game(globals,board.southIsUp ? SECOND_SIDE : FIRST_SIDE,parentWidget(),nullptr,make_unique<TurnState>(board.gameState()));
     });
   menu->addAction(customGame);
 
@@ -690,7 +690,7 @@ void Game::processInput(const std::string& input)
 {
   try {
     if (board.customSetup())
-      board.proposeSetup(customizedGameState(input,board.gameState()));
+      board.proposeSetup(customizedTurnState(input,board.gameState()));
     else {
       auto tentativeMove=board.tentativeMove();
       auto& setup=tentativeMove.first;

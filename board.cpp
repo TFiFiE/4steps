@@ -6,13 +6,13 @@
 #include "io.hpp"
 #include "popup.hpp"
 
-Board::Board(Globals& globals_,NodePtr currentNode_,const bool explore_,const Side viewpoint,const bool soundOn,const std::array<bool,NUM_SIDES>& controllableSides_,const GameState* const customSetup_,QWidget* const parent,const Qt::WindowFlags f) :
+Board::Board(Globals& globals_,NodePtr currentNode_,const bool explore_,const Side viewpoint,const bool soundOn,const std::array<bool,NUM_SIDES>& controllableSides_,const TurnState* const customSetup_,QWidget* const parent,const Qt::WindowFlags f) :
   QWidget(parent,f),
   explore(explore_),
   southIsUp(viewpoint==SECOND_SIDE),
   currentNode(currentNode_),
   globals(globals_),
-  potentialSetup(customSetup_==nullptr ? GameState() : GameState(customSetup_->sideToMove,customSetup_->squarePieces)),
+  potentialSetup(customSetup_==nullptr ? GameState() : GameState(*customSetup_)),
   controllableSides(controllableSides_),
   autoRotate(false),
   drag{NO_SQUARE,NO_SQUARE},
@@ -166,10 +166,11 @@ void Board::proposeMove(const Node& child,const unsigned int playedOutSteps)
   }
 }
 
-void Board::proposeSetup(GameState gameState)
+void Board::proposeSetup(const TurnState& turnState)
 {
   endDrag();
-  potentialSetup=std::move(gameState);
+  potentialSetup.sideToMove=turnState.sideToMove;
+  potentialSetup.squarePieces=turnState.squarePieces;
   if (customSetup() || !nextSetupPiece(false))
     emit boardChanged();
 }
@@ -611,7 +612,7 @@ bool Board::doubleSquareSetupAction(const SquareIndex origin,const SquareIndex d
     return true;
   }
   else if (isSetupSquare(sideToMove(),destination)) {
-    GameState::Board& squarePieces=potentialSetup.squarePieces;
+    auto& squarePieces=potentialSetup.squarePieces;
     if (customSetup()) {
       squarePieces[destination]=squarePieces[origin];
       squarePieces[origin]=NO_PIECE;
