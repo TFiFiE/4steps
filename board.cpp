@@ -12,7 +12,7 @@ Board::Board(Globals& globals_,NodePtr currentNode_,const bool explore_,const Si
   southIsUp(viewpoint==SECOND_SIDE),
   currentNode(currentNode_),
   globals(globals_),
-  potentialSetup(customSetup_==nullptr ? GameState() : GameState(customSetup_->sideToMove,customSetup_->currentPieces)),
+  potentialSetup(customSetup_==nullptr ? GameState() : GameState(customSetup_->sideToMove,customSetup_->squarePieces)),
   controllableSides(controllableSides_),
   autoRotate(false),
   drag{NO_SQUARE,NO_SQUARE},
@@ -63,13 +63,13 @@ bool Board::setupPlacementPhase() const
 
 Side Board::sideToMove() const
 {
-  return customSetup() ? potentialSetup.sideToMove : currentNode->currentState.sideToMove;
+  return customSetup() ? potentialSetup.sideToMove : currentNode->gameState.sideToMove;
 }
 
 const GameState& Board::gameState() const
 {
   return setupPhase() ? potentialSetup :
-                        (potentialMove.get().empty() ? currentNode->currentState : std::get<RESULTING_STATE>(potentialMove.get().back()));
+                        (potentialMove.get().empty() ? currentNode->gameState : std::get<RESULTING_STATE>(potentialMove.get().back()));
 }
 
 const GameState& Board::displayedGameState() const
@@ -79,7 +79,7 @@ const GameState& Board::displayedGameState() const
     assert(previousNode!=nullptr);
     const auto& previousMove=currentNode->move;
     if (nextAnimatedStep==previousMove.begin())
-      return previousNode->currentState;
+      return previousNode->gameState;
     else
       return std::get<RESULTING_STATE>(*--decltype(nextAnimatedStep)(nextAnimatedStep));
   }
@@ -159,7 +159,7 @@ void Board::playMoveSounds(const Node& node)
 void Board::proposeMove(const Node& child,const unsigned int playedOutSteps)
 {
   if (currentNode->inSetup())
-    proposeSetup(child.currentState);
+    proposeSetup(child.gameState);
   else {
     const auto& move=child.move;
     doSteps(move,false,move.size()-playedOutSteps);
@@ -207,7 +207,7 @@ void Board::undoSteps(const bool all)
     setNode(currentNode->previousNode);
     if (!all) {
       if (currentNode->inSetup())
-        proposeSetup(oldNode->currentState);
+        proposeSetup(oldNode->gameState);
       else {
         const auto& move=oldNode->move;
         doSteps(move,false,move.size()==MAX_STEPS_PER_MOVE ? 1 : 0);
@@ -452,10 +452,10 @@ bool Board::setSetting(readonly<Board,Type>& currentValue,const Type newValue,co
 
 void Board::clearSetup()
 {
-  potentialSetup=currentNode->currentState;
+  potentialSetup=currentNode->gameState;
   for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square))
     if (isSetupSquare(sideToMove(),square))
-      potentialSetup.currentPieces[square]=NO_PIECE;
+      potentialSetup.squarePieces[square]=NO_PIECE;
 }
 
 void Board::initSetup()
@@ -468,7 +468,7 @@ bool Board::nextSetupPiece(const bool finalize)
 {
   std::array<unsigned int,NUM_PIECE_TYPES> numPiecesPerType=numStartingPiecesPerType;
   for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square)) {
-    const PieceTypeAndSide squarePiece=potentialSetup.currentPieces[square];
+    const PieceTypeAndSide squarePiece=potentialSetup.squarePieces[square];
     if (squarePiece!=NO_PIECE && isSetupSquare(sideToMove(),square)) {
       assert(isSide(squarePiece,sideToMove()));
       --numPiecesPerType[toPieceType(squarePiece)];
@@ -481,7 +481,7 @@ bool Board::nextSetupPiece(const bool finalize)
       // Fill remaining squares with most numerous piece type.
       const PieceTypeAndSide piece=toPieceTypeAndSide(FIRST_PIECE_TYPE,sideToMove());
       for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square)) {
-        PieceTypeAndSide& squarePiece=potentialSetup.currentPieces[square];
+        PieceTypeAndSide& squarePiece=potentialSetup.squarePieces[square];
         if (squarePiece==NO_PIECE && isSetupSquare(sideToMove(),square))
           squarePiece=piece;
       }
@@ -498,10 +498,10 @@ bool Board::nextSetupPiece(const bool finalize)
 bool Board::setUpPiece(const SquareIndex destination)
 {
   if (isSetupSquare(sideToMove(),destination)) {
-    auto& currentPieces=potentialSetup.currentPieces;
-    if (std::all_of(currentPieces.begin(),currentPieces.end(),[](const PieceTypeAndSide& piece){return piece==NO_PIECE;}))
+    auto& squarePieces=potentialSetup.squarePieces;
+    if (std::all_of(squarePieces.begin(),squarePieces.end(),[](const PieceTypeAndSide& piece){return piece==NO_PIECE;}))
       emit gameStarted();
-    currentPieces[destination]=toPieceTypeAndSide(currentSetupPiece,sideToMove());
+    squarePieces[destination]=toPieceTypeAndSide(currentSetupPiece,sideToMove());
     emit boardChanged();
     nextSetupPiece();
     return true;
@@ -536,7 +536,7 @@ bool Board::updateStepHighlights(const QPoint& mousePosition)
   highlighted[ORIGIN]=positionToSquare(mousePosition);
   highlighted[DESTINATION]=closestAdjacentSquare(mousePosition);
   if (setupPhase()) {
-    if (!isSetupSquare(sideToMove(),highlighted[ORIGIN]) || potentialSetup.currentPieces[highlighted[ORIGIN]]==NO_PIECE)
+    if (!isSetupSquare(sideToMove(),highlighted[ORIGIN]) || potentialSetup.squarePieces[highlighted[ORIGIN]]==NO_PIECE)
       fill(highlighted,NO_SQUARE);
     else if (!isSetupSquare(sideToMove(),highlighted[DESTINATION]))
       highlighted[DESTINATION]=NO_SQUARE;
@@ -570,7 +570,7 @@ bool Board::singleSquareAction(const SquareIndex square)
     return doubleSquareAction(highlighted[ORIGIN],highlighted[DESTINATION]);
   else {
     if (highlighted[ORIGIN]==NO_SQUARE) {
-      if (setupPhase() ? (isSetupSquare(sideToMove(),square) && potentialSetup.currentPieces[square]!=NO_PIECE) : gameState().legalOrigin(square)) {
+      if (setupPhase() ? (isSetupSquare(sideToMove(),square) && potentialSetup.squarePieces[square]!=NO_PIECE) : gameState().legalOrigin(square)) {
         highlighted[ORIGIN]=square;
         return true;
       }
@@ -604,20 +604,20 @@ bool Board::doubleSquareAction(const SquareIndex origin,const SquareIndex destin
 bool Board::doubleSquareSetupAction(const SquareIndex origin,const SquareIndex destination)
 {
   if (destination==NO_SQUARE) {
-    potentialSetup.currentPieces[origin]=NO_PIECE;
+    potentialSetup.squarePieces[origin]=NO_PIECE;
     if (!customSetup())
       nextSetupPiece();
     emit boardChanged();
     return true;
   }
   else if (isSetupSquare(sideToMove(),destination)) {
-    GameState::Board& currentPieces=potentialSetup.currentPieces;
+    GameState::Board& squarePieces=potentialSetup.squarePieces;
     if (customSetup()) {
-      currentPieces[destination]=currentPieces[origin];
-      currentPieces[origin]=NO_PIECE;
+      squarePieces[destination]=squarePieces[origin];
+      squarePieces[origin]=NO_PIECE;
     }
     else
-      std::swap(currentPieces[origin],currentPieces[destination]);
+      std::swap(squarePieces[origin],squarePieces[destination]);
     emit boardChanged();
     return true;
   }
@@ -667,7 +667,7 @@ bool Board::autoFinalize(const bool stepsTaken)
       if (currentSetupPiece<=FIRST_PIECE_TYPE)
         finalizeSetup(currentPlacements());
       else if (const auto& child=currentNode->findPartialMatchingChild(currentPlacements()).first) {
-        proposeSetup(child->currentState);
+        proposeSetup(child->gameState);
         return true;
       }
       else
@@ -710,7 +710,7 @@ void Board::mousePressEvent(QMouseEvent* event)
   switch (event->button()) {
     case Qt::LeftButton:
       if (square!=NO_SQUARE && playable()) {
-        const PieceTypeAndSide currentPiece=gameState().currentPieces[square];
+        const PieceTypeAndSide currentPiece=gameState().squarePieces[square];
         if (customSetup() ? currentPiece!=NO_PIECE : (currentNode->inSetup() ? isSide(currentPiece,sideToMove()) : gameState().legalOrigin(square))) {
           fill(drag,square);
           dragSteps.clear();
@@ -820,7 +820,7 @@ void Board::mouseDoubleClickEvent(QMouseEvent* event)
     case Qt::LeftButton: {
       disableAnimation();
       const SquareIndex eventSquare=positionToSquare(event->pos());
-      if ((eventSquare==NO_SQUARE || gameState().currentPieces[eventSquare]==NO_PIECE) && (!stepMode || found(highlighted,NO_SQUARE))) {
+      if ((eventSquare==NO_SQUARE || gameState().squarePieces[eventSquare]==NO_PIECE) && (!stepMode || found(highlighted,NO_SQUARE))) {
         if (customSetup()) {
           if (potentialSetup.legalPosition()) {
             const auto node=std::make_shared<Node>(nullptr,ExtendedSteps(),potentialSetup);
@@ -929,7 +929,7 @@ void Board::paintEvent(QPaintEvent*)
   }
 
   const GameState& gameState_=displayedGameState();
-  const auto previousPieces=(customSetup() || currentNode->move.empty() ? nullptr : &currentNode->previousNode->currentState.currentPieces);
+  const auto previousPieces=(customSetup() || currentNode->move.empty() ? nullptr : &currentNode->previousNode->gameState.squarePieces);
 
   QPen qPen(Qt::SolidPattern,1);
   const QPoint mousePosition=mapFromGlobal(QCursor::pos());
@@ -954,7 +954,7 @@ void Board::paintEvent(QPaintEvent*)
           qPainter.setBrush(mildSideColors[sideToMove()]);
         else if (setupPhase() ? !customSetup() && playable() && isSetupRank(sideToMove(),rank)
                               : (isAnimating() || gameState_.stepsAvailable==MAX_STEPS_PER_MOVE) &&
-                                previousPieces!=nullptr && (*previousPieces)[square]!=gameState_.currentPieces[square])
+                                previousPieces!=nullptr && (*previousPieces)[square]!=gameState_.squarePieces[square])
           qPainter.setBrush(sideColors[otherSide(sideToMove())]);
         else {
           if (isTrapSquare)
@@ -977,7 +977,7 @@ void Board::paintEvent(QPaintEvent*)
         qPainter.drawText(qRect,Qt::AlignCenter,toCoordinates(file,rank,'A').data());
       }
       if (square!=drag[ORIGIN] || isAnimating()) {
-        const PieceTypeAndSide pieceOnSquare=gameState_.currentPieces[square];
+        const PieceTypeAndSide pieceOnSquare=gameState_.squarePieces[square];
         if (pieceOnSquare!=NO_PIECE)
           globals.pieceIcons.drawPiece(qPainter,iconSet,pieceOnSquare,qRect);
       }
@@ -985,7 +985,7 @@ void Board::paintEvent(QPaintEvent*)
   if (playable() && setupPlacementPhase())
     globals.pieceIcons.drawPiece(qPainter,iconSet,toPieceTypeAndSide(currentSetupPiece,sideToMove()),QRect((NUM_FILES-1)/2.0*squareWidth(),(NUM_RANKS-1)/2.0*squareHeight(),squareWidth(),squareHeight()));
   if (drag[ORIGIN]!=NO_SQUARE && !isAnimating())
-    globals.pieceIcons.drawPiece(qPainter,iconSet,gameState_.currentPieces[drag[ORIGIN]],QRect(mousePosition.x()-squareWidth()/2,mousePosition.y()-squareHeight()/2,squareWidth(),squareHeight()));
+    globals.pieceIcons.drawPiece(qPainter,iconSet,gameState_.squarePieces[drag[ORIGIN]],QRect(mousePosition.x()-squareWidth()/2,mousePosition.y()-squareHeight()/2,squareWidth(),squareHeight()));
   qPainter.end();
 }
 

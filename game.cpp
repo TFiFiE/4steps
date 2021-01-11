@@ -736,7 +736,7 @@ bool Game::processMoves(const std::tuple<GameTree,size_t,bool>& moves,const Side
       receiveGameTree(receivedTree,false);
   }
   else
-    receiveGameTree(receivedTree,role!=otherSide(serverNode.currentState.sideToMove));
+    receiveGameTree(receivedTree,role!=otherSide(serverNode.gameState.sideToMove));
   processedMoves=sessionMoves;
   return true;
 }
@@ -892,7 +892,7 @@ std::pair<NodePtr,int> Game::getNodeAndColumn() const
     const auto& currentPlacements=board.currentPlacements();
     if (!currentPlacements.empty())
       if (const auto& child=node->findPartialMatchingChild(currentPlacements).first) {
-        const auto& childPlacements=child->currentState.playedPlacements();
+        const auto& childPlacements=child->gameState.playedPlacements();
         const auto pair=mismatch(currentPlacements.begin(),currentPlacements.end(),childPlacements.begin());
         return {child,pair.second==childPlacements.end() ? childPlacements.size()-numStartingPiecesPerType[0] : distance(childPlacements.begin(),pair.second)};
       }

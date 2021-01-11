@@ -131,7 +131,7 @@ inline std::string toPlyString(const int moveIndex,const bool newStyle=true)
 
 inline std::string toPlyString(const int moveIndex,const Node& root,const bool newStyle=true)
 {
-  return toPlyString(moveIndex+(root.isGameStart() ? 0 : NUM_SIDES+root.currentState.sideToMove),newStyle);
+  return toPlyString(moveIndex+(root.isGameStart() ? 0 : NUM_SIDES+root.gameState.sideToMove),newStyle);
 }
 
 inline std::pair<Side,std::string> toMoveStart(std::string input)
@@ -185,7 +185,7 @@ inline std::string toString(const ExtendedStep& step)
   const SquareIndex origin=std::get<ORIGIN>(step);
   const SquareIndex destination=std::get<DESTINATION>(step);
   const PieceTypeAndSide trappedPiece=std::get<TRAPPED_PIECE>(step);
-  PieceTypeAndSide movedPiece=std::get<RESULTING_STATE>(step).currentPieces[destination];
+  PieceTypeAndSide movedPiece=std::get<RESULTING_STATE>(step).squarePieces[destination];
   if (movedPiece==NO_PIECE) {
     assert(isTrap(destination));
     assert(trappedPiece!=NO_PIECE);
@@ -226,11 +226,11 @@ inline std::string toMoveList(const NodePtr& node,const std::string& separator,c
   unsigned int moveIndex=0;
   if (!root->isGameStart()) {
     for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side),++moveIndex) {
-      const auto placements=root->currentState.placements(side);
+      const auto placements=root->gameState.placements(side);
       assert(!placements.empty());
       moves.emplace_back(toPlyString(moveIndex,newStyle)+' '+toString(placements));
     }
-    if (root->currentState.sideToMove==SECOND_SIDE) {
+    if (root->gameState.sideToMove==SECOND_SIDE) {
       moves.emplace_back(toPlyString(moveIndex,newStyle)+" pass");
       ++moveIndex;
     }
@@ -296,8 +296,8 @@ inline std::tuple<NodePtr,std::string,runtime_error> parseChunk(std::stringstrea
     else if (node->inSetup()) {
       const auto placement=toPlacement(chunk,false);
       if (placement.isValid()) {
-        if (node->currentState.sideToMove==toSide(placement.piece)) {
-          if (isSetupSquare(node->currentState.sideToMove,placement.location)) {
+        if (node->gameState.sideToMove==toSide(placement.piece)) {
+          if (isSetupSquare(node->gameState.sideToMove,placement.location)) {
             if (find_if(setup.cbegin(),setup.cend(),[&placement](const Placement& existing) {
                   return placement.location==existing.location;
                 })==setup.cend()) {
@@ -324,7 +324,7 @@ inline std::tuple<NodePtr,std::string,runtime_error> parseChunk(std::stringstrea
       else {
         const Side side=toMoveStart(chunk).first;
         if (side!=NO_SIDE) {
-          if (node->currentState.sideToMove==side)
+          if (node->gameState.sideToMove==side)
             endMove=false;
         }
         else if (chunk=="pass" || toDisplacement(chunk,false).first.isValid())
@@ -340,12 +340,12 @@ inline std::tuple<NodePtr,std::string,runtime_error> parseChunk(std::stringstrea
       }
     }
     else {
-      const GameState& gameState=move.empty() ? node->currentState : std::get<RESULTING_STATE>(move.back());
+      const GameState& gameState=move.empty() ? node->gameState : std::get<RESULTING_STATE>(move.back());
       const Side side=toMoveStart(chunk).first;
-      if (node->result.endCondition!=NO_END && node->currentState.sideToMove!=side)
+      if (node->result.endCondition!=NO_END && node->gameState.sideToMove!=side)
         return make_tuple(nullptr,chunk,runtime_error(QCoreApplication::translate("","Play in finished position: ")+QString::fromStdString(chunk)));
       else if (side!=NO_SIDE) {
-        if (node->currentState.sideToMove==side)
+        if (node->gameState.sideToMove==side)
           endMove=false;
       }
       else if (gameState.stepsAvailable>0) {
@@ -479,21 +479,21 @@ inline GameState customizedGameState(const std::string& input,GameState gameStat
     else {
       const auto placement=toPlacement(word,false);
       if (placement.isValid()) {
-        if (gameState.currentPieces[placement.location]!=placement.piece) {
+        if (gameState.squarePieces[placement.location]!=placement.piece) {
           if (gameState.piecesAtMax()[placement.piece])
             throw runtime_error(QCoreApplication::translate("","Side out of pieces of type: ")+pieceName(placement.piece));
           else
-            gameState.currentPieces[placement.location]=placement.piece;
+            gameState.squarePieces[placement.location]=placement.piece;
         }
       }
       else {
         const auto displacement=toDisplacement(word,false);
         const auto& placement=displacement.first;
         if (placement.isValid()) {
-          if (gameState.currentPieces[placement.location]==placement.piece) {
-            gameState.currentPieces[placement.location]=NO_PIECE;
+          if (gameState.squarePieces[placement.location]==placement.piece) {
+            gameState.squarePieces[placement.location]=NO_PIECE;
             if (displacement.second!=NO_SQUARE)
-              gameState.currentPieces[displacement.second]=placement.piece;
+              gameState.squarePieces[displacement.second]=placement.piece;
           }
           else
             throw runtime_error(QCoreApplication::translate("","Piece type not on %1: ").arg(toCoordinates(placement.location).data())+pieceName(placement.piece));

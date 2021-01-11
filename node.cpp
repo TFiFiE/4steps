@@ -1,11 +1,11 @@
 #include "node.hpp"
 #include "io.hpp"
 
-Node::Node(NodePtr previousNode_,const ExtendedSteps& move_,const GameState& currentState_) :
+Node::Node(NodePtr previousNode_,const ExtendedSteps& move_,const GameState& gameState_) :
   previousNode(std::move(previousNode_)),
   move(move_),
   depth(previousNode==nullptr ? 0 : previousNode->depth+1),
-  currentState(currentState_),
+  gameState(gameState_),
   result(detectGameEnd())
 {
 }
@@ -17,13 +17,13 @@ const Node& Node::root() const
 
 bool Node::isGameStart() const
 {
-  return previousNode==nullptr && move.empty() && currentState.sideToMove==FIRST_SIDE && currentState.empty();
+  return previousNode==nullptr && move.empty() && gameState.sideToMove==FIRST_SIDE && gameState.empty();
 }
 
 bool Node::inSetup() const
 {
-  return previousNode==nullptr ? (move.empty() && currentState.sideToMove==FIRST_SIDE && currentState.empty())
-                               : (currentState.sideToMove==SECOND_SIDE && move.empty() && previousNode->isGameStart());
+  return previousNode==nullptr ? (move.empty() && gameState.sideToMove==FIRST_SIDE && gameState.empty())
+                               : (gameState.sideToMove==SECOND_SIDE && move.empty() && previousNode->isGameStart());
 }
 
 std::string Node::toPlyString() const
@@ -44,7 +44,7 @@ std::string Node::nextPlyString() const
 std::string Node::toString() const
 {
   if (move.empty())
-    return ::toString(currentState.playedPlacements());
+    return ::toString(gameState.playedPlacements());
   else
     return ::toString(move);
 }
@@ -91,14 +91,14 @@ MoveLegality Node::legalMove(const GameState& resultingState) const
   assert(!inSetup());
   if (resultingState.inPush)
     return MoveLegality::ILLEGAL_PUSH_INCOMPLETION;
-  assert(resultingState.sideToMove==currentState.sideToMove);
-  if (resultingState.currentPieces==currentState.currentPieces)
+  assert(resultingState.sideToMove==gameState.sideToMove);
+  if (resultingState.squarePieces==gameState.squarePieces)
     return MoveLegality::ILLEGAL_PASS;
   unsigned int repetitionCount=0;
   for (auto currentNode=previousNode;currentNode!=nullptr;currentNode=currentNode->previousNode) {
-    const GameState& earlierState=currentNode->currentState;
+    const GameState& earlierState=currentNode->gameState;
     if (resultingState.sideToMove!=earlierState.sideToMove &&
-        resultingState.currentPieces==earlierState.currentPieces) {
+        resultingState.squarePieces==earlierState.squarePieces) {
       if (repetitionCount==MAX_ALLOWED_REPETITIONS)
         return MoveLegality::ILLEGAL_REPETITION;
       else
@@ -112,7 +112,7 @@ MoveLegality Node::legalMove(const GameState& resultingState) const
 
 MoveLegality Node::legalMove(const ExtendedSteps& move) const
 {
-  return legalMove(move.empty() ? currentState : std::get<RESULTING_STATE>(move.back()));
+  return legalMove(move.empty() ? gameState : std::get<RESULTING_STATE>(move.back()));
 }
 
 bool Node::legalPartialMove(const ExtendedSteps& move) const
@@ -139,11 +139,11 @@ Result Node::detectGameEnd() const
 {
   if (inSetup())
     return {NO_SIDE,NO_END};
-  assert(currentState.stepsAvailable==MAX_STEPS_PER_MOVE);
+  assert(gameState.stepsAvailable==MAX_STEPS_PER_MOVE);
   bool goal[NUM_SIDES]={false,false};
   bool eliminated[NUM_SIDES]={true,true};
   for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square)) {
-    const PieceTypeAndSide pieceTypeAndSide=currentState.currentPieces[square];
+    const PieceTypeAndSide pieceTypeAndSide=gameState.squarePieces[square];
     if (pieceTypeAndSide!=NO_PIECE) {
       const PieceType pieceType=toPieceType(pieceTypeAndSide);
       if (pieceType==WINNING_PIECE_TYPE) {
@@ -154,15 +154,15 @@ Result Node::detectGameEnd() const
       }
     }
   }
-  const Side playedSide=otherSide(currentState.sideToMove);
-  const auto prioritySides={playedSide,currentState.sideToMove};
+  const Side playedSide=otherSide(gameState.sideToMove);
+  const auto prioritySides={playedSide,gameState.sideToMove};
   for (const Side side:prioritySides) {
     if (goal[side])
       return {side,GOAL};
     else if (eliminated[otherSide(side)])
       return {side,ELIMINATION};
   }
-  if (hasLegalMoves(currentState))
+  if (hasLegalMoves(gameState))
     return {NO_SIDE,NO_END};
   else
     return {playedSide,IMMOBILIZATION};
@@ -221,7 +221,7 @@ size_t Node::maxDescendantSteps() const
 std::pair<NodePtr,int> Node::findPartialMatchingChild(const Placements& subset) const
 {
   return findChild([&](const NodePtr& child,const int) {
-    const auto& set=child->currentState.playedPlacements();
+    const auto& set=child->gameState.playedPlacements();
     return includes(set.begin(),set.end(),subset.begin(),subset.end());
   });
 }
@@ -236,7 +236,7 @@ std::pair<NodePtr,int> Node::findPartialMatchingChild(const ExtendedSteps& steps
 std::pair<NodePtr,int> Node::findMatchingChild(const Placements& subset) const
 {
   return findChild([&](const NodePtr& child,const int) {
-    return subset==child->currentState.playedPlacements();
+    return subset==child->gameState.playedPlacements();
   });
 }
 
@@ -274,7 +274,7 @@ std::pair<NodePtr,int> Node::findChild_(Predicate predicate) const
 NodePtr Node::addChild(const NodePtr& node,const ExtendedSteps& move,const GameState& gameState,const bool after)
 {
   const std::lock_guard<std::mutex> lock(node->children_mutex);
-  const auto oldChild=node->findChild_([&gameState](const NodePtr& child,const int){return gameState==child->currentState;}).first;
+  const auto oldChild=node->findChild_([&gameState](const NodePtr& child,const int){return gameState==child->gameState;}).first;
   if (oldChild==nullptr) {
     auto& children=node->children;
     const auto newChild=std::make_shared<Node>(node,move,gameState);
@@ -293,7 +293,7 @@ NodePtr Node::addChild(const NodePtr& node,const ExtendedSteps& move,const GameS
 NodePtr Node::addSetup(const NodePtr& node,const Placements& placements,const bool after)
 {
   assert(node->inSetup());
-  GameState gameState=node->currentState;
+  GameState gameState=node->gameState;
   gameState.add(placements);
   gameState.switchTurn();
   return addChild(node,ExtendedSteps(),gameState,after);
@@ -309,7 +309,7 @@ NodePtr Node::makeMove(const NodePtr& node,const ExtendedSteps& move,const bool 
 
 NodePtr Node::makeMove(const NodePtr& node,const PieceSteps& move,const bool after)
 {
-  return makeMove(node,node->currentState.toExtendedSteps(move),after);
+  return makeMove(node,node->gameState.toExtendedSteps(move),after);
 }
 
 void Node::swapChildren(const Node& firstChild,const int siblingOffset) const
@@ -346,14 +346,14 @@ NodePtr Node::reroot(NodePtr source,NodePtr target)
   assert(target==nullptr || target->previousNode==nullptr);
   std::vector<std::pair<ExtendedSteps,GameState> > line;
   do {
-    line.emplace_back(source->move,source->currentState);
+    line.emplace_back(source->move,source->gameState);
     source=source->previousNode;
   } while (source!=nullptr);
   auto ancestor=line.rbegin();
   if (target==nullptr)
     target=std::make_shared<Node>(nullptr,ancestor->first,ancestor->second);
   else
-    assert(*ancestor==make_pair(target->move,target->currentState));
+    assert(*ancestor==make_pair(target->move,target->gameState));
   for (++ancestor;ancestor!=line.rend();++ancestor)
     target=Node::addChild(target,ancestor->first,ancestor->second,true);
   return target;

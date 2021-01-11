@@ -96,7 +96,7 @@ void Popup::mouseReleaseEvent(QMouseEvent* event)
       const auto piece=pieceOnSquare[row][column];
       if (piece==NO_PIECE) {
         if ((row<ROWS_PER_SIDE)==(upSide==board.sideToMove()))
-          board.potentialSetup.currentPieces[affectedSquare]=NO_PIECE;
+          board.potentialSetup.squarePieces[affectedSquare]=NO_PIECE;
         else
           board.potentialSetup.sideToMove=otherSide(board.potentialSetup.sideToMove);
         emit board.boardChanged();
@@ -104,7 +104,7 @@ void Popup::mouseReleaseEvent(QMouseEvent* event)
       else if (pieceTypeAndSideAtMax[piece])
         return;
       else {
-        board.potentialSetup.currentPieces[affectedSquare]=piece;
+        board.potentialSetup.squarePieces[affectedSquare]=piece;
         emit board.boardChanged();
       }
     }

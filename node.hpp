@@ -9,12 +9,12 @@ struct Node {
   const NodePtr previousNode;
   ExtendedSteps move;
   const int depth;
-  const GameState currentState;
+  const GameState gameState;
   const Result result;
   mutable std::list<std::weak_ptr<Node> > children;
   mutable std::mutex children_mutex;
 
-  explicit Node(NodePtr previousNode_,const ExtendedSteps& move_,const GameState& currentState_);
+  explicit Node(NodePtr previousNode_,const ExtendedSteps& move_,const GameState& gameState_);
   const Node& root() const;
   bool isGameStart() const;
   bool inSetup() const;

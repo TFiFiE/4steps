@@ -9,7 +9,7 @@ public:
   typedef std::array<PieceTypeAndSide,NUM_SQUARES> Board;
 
   explicit GameState();
-  explicit GameState(const Side sideToMove_,const Board& currentPieces_);
+  explicit GameState(const Side sideToMove_,const Board& squarePieces_);
   bool operator==(const GameState& rhs) const;
   bool empty() const;
   Placements placements(const Side side) const;
@@ -33,7 +33,7 @@ public:
   void switchTurn();
 
   Side sideToMove;
-  Board currentPieces;
+  Board squarePieces;
   int stepsAvailable;
   bool inPush;
   SquareIndex followupDestination;

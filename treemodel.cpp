@@ -143,7 +143,7 @@ QVariant TreeModel::data(const QModelIndex& index,const int role) const
       const auto& move=node->move;
       const unsigned int moveIndex=column-1;
       if (move.empty()) {
-        const auto& placements=node->currentState.playedPlacements();
+        const auto& placements=node->gameState.playedPlacements();
         assert(placements.size()==numStartingPieces);
         const auto begin=next(placements.cbegin(),moveIndex);
         return QString::fromStdString(toString(begin,next(begin)));
@@ -161,7 +161,7 @@ QVariant TreeModel::data(const QModelIndex& index,const int role) const
 
         const auto result=node->result;
         if (node->result.endCondition!=NO_END)
-          step+=QString(' ')+(result.winner==node->currentState.sideToMove ? '-' : '+')+toupper(toChar(result.endCondition));
+          step+=QString(' ')+(result.winner==node->gameState.sideToMove ? '-' : '+')+toupper(toChar(result.endCondition));
         return step;
       }
     }

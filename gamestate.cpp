@@ -6,12 +6,12 @@ GameState::GameState() :
   inPush(false),
   followupDestination(NO_SQUARE)
 {
-  fill(currentPieces,NO_PIECE);
+  fill(squarePieces,NO_PIECE);
 }
 
-GameState::GameState(const Side sideToMove_,const Board& currentPieces_) :
+GameState::GameState(const Side sideToMove_,const Board& squarePieces_) :
   sideToMove(sideToMove_),
-  currentPieces(currentPieces_),
+  squarePieces(squarePieces_),
   stepsAvailable(MAX_STEPS_PER_MOVE),
   inPush(false),
   followupDestination(NO_SQUARE)
@@ -21,7 +21,7 @@ GameState::GameState(const Side sideToMove_,const Board& currentPieces_) :
 bool GameState::operator==(const GameState& rhs) const
 {
   return sideToMove==rhs.sideToMove &&
-         currentPieces==rhs.currentPieces &&
+         squarePieces==rhs.squarePieces &&
          stepsAvailable==rhs.stepsAvailable &&
          inPush==rhs.inPush &&
          followupDestination==rhs.followupDestination &&
@@ -31,7 +31,7 @@ bool GameState::operator==(const GameState& rhs) const
 bool GameState::empty() const
 {
   for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square))
-    if (currentPieces[square]!=NO_PIECE)
+    if (squarePieces[square]!=NO_PIECE)
       return false;
   return true;
 }
@@ -40,7 +40,7 @@ Placements GameState::placements(const Side side) const
 {
   Placements result;
   for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square)) {
-    const PieceTypeAndSide pieceType=currentPieces[square];
+    const PieceTypeAndSide pieceType=squarePieces[square];
     if (isSide(pieceType,side))
       result.emplace(Placement{square,pieceType});
   }
@@ -57,7 +57,7 @@ std::array<bool,NUM_PIECE_SIDE_COMBINATIONS> GameState::piecesAtMax() const
   std::array<bool,NUM_PIECE_SIDE_COMBINATIONS> result={false};
   unsigned int pieceCounts[NUM_SIDES][NUM_PIECE_TYPES]={{0}};
   for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square)) {
-    const PieceTypeAndSide pieceOnSquare=currentPieces[square];
+    const PieceTypeAndSide pieceOnSquare=squarePieces[square];
     if (pieceOnSquare!=NO_PIECE) {
       const PieceType pieceType=toPieceType(pieceOnSquare);
       auto& pieceCount=pieceCounts[toSide(pieceOnSquare)][pieceType];
@@ -71,18 +71,18 @@ std::array<bool,NUM_PIECE_SIDE_COMBINATIONS> GameState::piecesAtMax() const
 bool GameState::isSupported(const SquareIndex square,const Side side) const
 {
   for (const auto adjacentSquare:adjacentSquares(square))
-    if (isSide(currentPieces[adjacentSquare],side))
+    if (isSide(squarePieces[adjacentSquare],side))
       return true;
   return false;
 }
 
 bool GameState::isFrozen(const SquareIndex square) const
 {
-  const PieceTypeAndSide piece=currentPieces[square];
+  const PieceTypeAndSide piece=squarePieces[square];
   const Side side=toSide(piece);
   bool dominatingNeighbor=false;
   for (const auto adjacentSquare:adjacentSquares(square)) {
-    const PieceTypeAndSide neighbor=currentPieces[adjacentSquare];
+    const PieceTypeAndSide neighbor=squarePieces[adjacentSquare];
     if (isSide(neighbor,side))
       return false;
     else
@@ -94,11 +94,11 @@ bool GameState::isFrozen(const SquareIndex square) const
 bool GameState::floatingPiece(const SquareIndex square) const
 {
   if (isTrap(square)) {
-    const PieceTypeAndSide pieceTypeAndSide=currentPieces[square];
+    const PieceTypeAndSide pieceTypeAndSide=squarePieces[square];
     if (pieceTypeAndSide!=NO_PIECE) {
       const Side pieceSide=toSide(pieceTypeAndSide);
       for (const auto adjacentSquare:adjacentSquares(square))
-        if (isSide(currentPieces[adjacentSquare],pieceSide))
+        if (isSide(squarePieces[adjacentSquare],pieceSide))
           return false;
       return true;
     }
@@ -130,9 +130,9 @@ bool GameState::legalOrigin(const SquareIndex square) const
 
 bool GameState::legalStep(const SquareIndex origin,const SquareIndex destination) const
 {
-  if (stepsAvailable==0 || !isAdjacent(origin,destination) || currentPieces[destination]!=NO_PIECE)
+  if (stepsAvailable==0 || !isAdjacent(origin,destination) || squarePieces[destination]!=NO_PIECE)
     return false;
-  const PieceTypeAndSide piece=currentPieces[origin];
+  const PieceTypeAndSide piece=squarePieces[origin];
   if (piece==NO_PIECE)
     return false;
   else if (toSide(piece)==sideToMove)
@@ -148,7 +148,7 @@ bool GameState::legalStep(const SquareIndex origin,const SquareIndex destination
       return false;
     else {
       for (const auto adjacentSquare:adjacentSquares(origin))
-        if (dominates(currentPieces[adjacentSquare],piece) && !isFrozen(adjacentSquare)) // start of push
+        if (dominates(squarePieces[adjacentSquare],piece) && !isFrozen(adjacentSquare)) // start of push
           return true;
       return false;
     }
@@ -206,7 +206,7 @@ ExtendedSteps GameState::toExtendedSteps(const PieceSteps& pieceSteps) const
 void GameState::add(const Placements& placements)
 {
   for (const auto& pair:placements) {
-    PieceTypeAndSide& pieceOnSquare=currentPieces[pair.location];
+    PieceTypeAndSide& pieceOnSquare=squarePieces[pair.location];
     runtime_assert(pieceOnSquare==NO_PIECE,"Square already has a piece.");
     pieceOnSquare=pair.piece;
   }
@@ -215,14 +215,14 @@ void GameState::add(const Placements& placements)
 PieceTypeAndSide GameState::takeStep(const SquareIndex origin,const SquareIndex destination)
 {
   runtime_assert(legalStep(origin,destination),"Not a legal step.");
-  const PieceTypeAndSide piece=currentPieces[origin];
+  const PieceTypeAndSide piece=squarePieces[origin];
   const Side movingSide=toSide(piece);
-  currentPieces[destination]=piece;
-  currentPieces[origin]=NO_PIECE;
+  squarePieces[destination]=piece;
+  squarePieces[origin]=NO_PIECE;
   PieceTypeAndSide victim=NO_PIECE;
   for (const auto possibleTrapSquare:adjacentSquares(origin))
     if (isTrap(possibleTrapSquare)) {
-      PieceTypeAndSide& possibleVictim=currentPieces[possibleTrapSquare];
+      PieceTypeAndSide& possibleVictim=squarePieces[possibleTrapSquare];
       if (isSide(possibleVictim,movingSide) && !isSupported(possibleTrapSquare,movingSide)) {
         assert(victim==NO_PIECE);
         victim=possibleVictim;
@@ -241,7 +241,7 @@ PieceTypeAndSide GameState::takeStep(const SquareIndex origin,const SquareIndex 
     followupDestination=origin;
     followupOrigins.clear();
     for (const auto adjacentSquare:adjacentSquares(origin)) {
-      const PieceTypeAndSide adjacentPiece=currentPieces[adjacentSquare];
+      const PieceTypeAndSide adjacentPiece=squarePieces[adjacentSquare];
       if (adjacentPiece!=NO_PIECE && dominates(piece,adjacentPiece))
         followupOrigins.insert(adjacentSquare);
     }
@@ -257,7 +257,7 @@ PieceTypeAndSide GameState::takeStep(const SquareIndex origin,const SquareIndex 
     followupDestination=origin;
     followupOrigins.clear();
     for (const auto adjacentSquare:adjacentSquares(origin))
-      if (dominates(currentPieces[adjacentSquare],piece) && !isFrozen(adjacentSquare))
+      if (dominates(squarePieces[adjacentSquare],piece) && !isFrozen(adjacentSquare))
         followupOrigins.insert(adjacentSquare);
   }
   --stepsAvailable;
@@ -276,7 +276,7 @@ ExtendedSteps GameState::takePieceSteps(const PieceSteps& pieceSteps)
   for (const auto& pieceStep:pieceSteps) {
     const SquareIndex origin=std::get<ORIGIN>(pieceStep);
     const SquareIndex destination=std::get<DESTINATION>(pieceStep);
-    runtime_assert(currentPieces[origin]==std::get<STEPPING_PIECE>(pieceStep),"Origin does not have given stepping piece.");
+    runtime_assert(squarePieces[origin]==std::get<STEPPING_PIECE>(pieceStep),"Origin does not have given stepping piece.");
     const PieceTypeAndSide trappedPiece=takeStep(origin,destination);
     runtime_assert(trappedPiece==std::get<TRAPPED_PIECE>(pieceStep),"No trapped piece as given.");
     result.emplace_back(origin,destination,trappedPiece,*this);
