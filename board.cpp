@@ -303,7 +303,8 @@ void Board::setAutoRotate(const bool on)
 void Board::toggleSound(const bool soundOn_)
 {
   soundOn=soundOn_;
-  qMediaPlayer.setVolume(soundOn ? 100 : 0);
+  if (!soundOn)
+    qMediaPlayer.stop();
 }
 
 void Board::setStepMode(const bool newStepMode)
@@ -338,9 +339,11 @@ void Board::setConfirm(const bool newConfirm)
 
 void Board::playSound(const QString& soundFile)
 {
-  qMediaPlaylist.clear();
-  qMediaPlaylist.addMedia(QUrl(soundFile));
-  qMediaPlayer.play();
+  if (soundOn) {
+    qMediaPlaylist.clear();
+    qMediaPlaylist.addMedia(QUrl(soundFile));
+    qMediaPlayer.play();
+  }
 }
 
 void Board::setExploration(const bool on)
@@ -1008,12 +1011,16 @@ void Board::paintEvent(QPaintEvent*)
 
 void Board::animateNextStep()
 {
-  if (qMediaPlayer.state()==QMediaPlayer::StoppedState)
-    qMediaPlaylist.clear();
   const auto lastStep=currentNode->move.end();
-  if (!playCaptureSound(*nextAnimatedStep++))
-    qMediaPlaylist.addMedia(QUrl(nextAnimatedStep==lastStep ? "qrc:/loud-step.wav" : "qrc:/soft-step.wav"));
-  qMediaPlayer.play();
+  if (soundOn) {
+    if (qMediaPlayer.state()==QMediaPlayer::StoppedState)
+      qMediaPlaylist.clear();
+    if (!playCaptureSound(*nextAnimatedStep++))
+      qMediaPlaylist.addMedia(QUrl(nextAnimatedStep==lastStep ? "qrc:/loud-step.wav" : "qrc:/soft-step.wav"));
+    qMediaPlayer.play();
+  }
+  else
+    ++nextAnimatedStep;
   if (nextAnimatedStep==lastStep)
     animationTimer.stop();
   else
@@ -1031,16 +1038,19 @@ void Board::disableAnimation()
 
 void Board::playStepSounds(const ExtendedSteps& steps,const bool emphasize)
 {
-  qMediaPlaylist.clear();
-  for (const auto& step:steps)
-    playCaptureSound(step);
-  if (qMediaPlaylist.isEmpty())
-    qMediaPlaylist.addMedia(QUrl(emphasize ? "qrc:/loud-step.wav" : "qrc:/soft-step.wav"));
-  qMediaPlayer.play();
+  if (soundOn) {
+    qMediaPlaylist.clear();
+    for (const auto& step:steps)
+      playCaptureSound(step);
+    if (qMediaPlaylist.isEmpty())
+      qMediaPlaylist.addMedia(QUrl(emphasize ? "qrc:/loud-step.wav" : "qrc:/soft-step.wav"));
+    qMediaPlayer.play();
+  }
 }
 
 bool Board::playCaptureSound(const ExtendedStep& step)
 {
+  assert(soundOn);
   const auto trappedPiece=std::get<TRAPPED_PIECE>(step);
   if (trappedPiece==NO_PIECE)
     return false;
