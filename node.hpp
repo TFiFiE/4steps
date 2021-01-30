@@ -18,6 +18,7 @@ struct Node {
   const Node& root() const;
   bool isGameStart() const;
   bool inSetup() const;
+  Placements playedPlacements() const;
   std::string toPlyString() const;
   std::string toPlyString(const Node& root) const;
   std::string nextPlyString() const;

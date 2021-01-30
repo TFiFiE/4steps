@@ -30,8 +30,9 @@ public:
   bool setNode(NodePtr newNode,const bool sound=false,bool keepState=false);
   void playMoveSounds(const Node& node);
   void proposeMove(const Node& child,const unsigned int playedOutSteps);
-  void proposeSetup(const TurnState& turnState);
-  void proposeSetup(const Placements& placements);
+  void proposeCustomSetup(const TurnState& turnState);
+  bool proposeSetup(const Placements& placements);
+  void proposeSetup(const Node& child);
   void doSteps(const ExtendedSteps& potentialMove,const bool sound,const int undoneSteps=0);
   void undoSteps(const bool all);
   void redoSteps(const bool all);

@@ -143,7 +143,7 @@ QVariant TreeModel::data(const QModelIndex& index,const int role) const
       const auto& move=node->move;
       const unsigned int moveIndex=column-1;
       if (move.empty()) {
-        const auto& placements=node->gameState.playedPlacements();
+        const auto& placements=node->playedPlacements();
         assert(placements.size()==numStartingPieces);
         const auto begin=next(placements.cbegin(),moveIndex);
         return QString::fromStdString(toString(begin,next(begin)));

@@ -159,40 +159,53 @@ void Board::playMoveSounds(const Node& node)
 void Board::proposeMove(const Node& child,const unsigned int playedOutSteps)
 {
   if (currentNode->inSetup())
-    proposeSetup(child.gameState);
+    proposeSetup(child);
   else {
     const auto& move=child.move;
     doSteps(move,false,move.size()-playedOutSteps);
   }
 }
 
-void Board::proposeSetup(const TurnState& turnState)
+void Board::proposeCustomSetup(const TurnState& turnState)
 {
+  assert(customSetup());
   endDrag();
   potentialSetup.sideToMove=turnState.sideToMove;
   potentialSetup.squarePieces=turnState.squarePieces;
-  if (customSetup() || !nextSetupPiece(false))
-    emit boardChanged();
+  emit boardChanged();
 }
 
-void Board::proposeSetup(const Placements& placements)
+bool Board::proposeSetup(const Placements& placements)
 {
-  endDrag();
-  if (!customSetup())
-    clearSetup();
-  potentialSetup.add(placements);
-  if (customSetup() || !nextSetupPiece(false))
-    emit boardChanged();
+  if (playable()) {
+    endDrag();
+    if (!customSetup())
+      clearSetup();
+    potentialSetup.add(placements);
+    if (customSetup() || !nextSetupPiece(false))
+      emit boardChanged();
+    return true;
+  }
+  else
+    return false;
+}
+
+void Board::proposeSetup(const Node& child)
+{
+  if (proposeSetup(child.playedPlacements())) {
+    assert(potentialSetup.sideToMove!=child.gameState.sideToMove);
+    assert(potentialSetup.squarePieces==child.gameState.squarePieces);
+  }
 }
 
 void Board::doSteps(const ExtendedSteps& steps,const bool sound,const int undoneSteps)
 {
-  if (!steps.empty()) {
+  const bool updated=(int(steps.size())!=undoneSteps);
+  if (!steps.empty() && (playable() || !updated)) {
     potentialMove.data.append(steps);
     potentialMove.data.shiftEnd(-undoneSteps);
     if (sound && !explore)
       playStepSounds(steps,false);
-    const bool updated=(int(steps.size())!=undoneSteps);
     if (updated)
       endDrag();
     if (!autoFinalize(true) && updated)
@@ -208,7 +221,7 @@ void Board::undoSteps(const bool all)
     setNode(currentNode->previousNode);
     if (!all) {
       if (currentNode->inSetup())
-        proposeSetup(oldNode->gameState);
+        proposeSetup(*oldNode.get());
       else {
         const auto& move=oldNode->move;
         doSteps(move,false,move.size()==MAX_STEPS_PER_MOVE ? 1 : 0);
@@ -224,19 +237,23 @@ void Board::undoSteps(const bool all)
 
 void Board::redoSteps(const bool all)
 {
-  const bool updated=potentialMove.data.shiftEnd(true,all);
-  if (updated)
-    endDrag();
-  if (!autoFinalize(updated) && updated)
-    emit boardChanged();
+  if (playable()) {
+    const bool updated=potentialMove.data.shiftEnd(true,all);
+    if (updated)
+      endDrag();
+    if (!autoFinalize(updated) && updated)
+      emit boardChanged();
+  }
 }
 
 void Board::redoSteps(const ExtendedSteps& steps)
 {
-  potentialMove.data.set(steps,steps.size());
-  endDrag();
-  if (!autoFinalize(true))
-    emit boardChanged();
+  if (playable()) {
+    potentialMove.data.set(steps,steps.size());
+    endDrag();
+    if (!autoFinalize(true))
+      emit boardChanged();
+  }
 }
 
 void Board::animateMove(const bool showStart)
@@ -629,29 +646,28 @@ bool Board::doubleSquareSetupAction(const SquareIndex origin,const SquareIndex d
 void Board::finalizeSetup(const Placements& placements)
 {
   const auto newNode=Node::addSetup(currentNode,placements,explore);
-  emit sendNodeChange(newNode,currentNode);
   currentNode=std::move(newNode);
-
   if (sideToMove()==SECOND_SIDE)
     initSetup();
   else
     potentialMove.data.clear();
+  emit boardChanged();
+  emit sendNodeChange(newNode,currentNode);
 
   if (autoRotate)
     setViewpoint(sideToMove());
-  emit boardChanged();
 }
 
 void Board::finalizeMove(const ExtendedSteps& move)
 {
   const auto newNode=Node::makeMove(currentNode,move,explore);
-  emit sendNodeChange(newNode,currentNode);
   currentNode=std::move(newNode);
-
   potentialMove.data.clear();
+  emit boardChanged();
+  emit sendNodeChange(newNode,currentNode);
+
   if (autoRotate && currentNode->result.endCondition==NO_END)
     setViewpoint(sideToMove());
-  emit boardChanged();
 }
 
 void Board::endDrag()
@@ -668,7 +684,7 @@ bool Board::autoFinalize(const bool stepsTaken)
       if (currentSetupPiece<=FIRST_PIECE_TYPE)
         finalizeSetup(currentPlacements());
       else if (const auto& child=currentNode->findPartialMatchingChild(currentPlacements()).first) {
-        proposeSetup(child->gameState);
+        proposeSetup(*child.get());
         return true;
       }
       else

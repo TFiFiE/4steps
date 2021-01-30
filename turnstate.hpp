@@ -13,7 +13,6 @@ public:
 
   bool empty() const;
   Placements placements(const Side side) const;
-  Placements playedPlacements() const;
   std::array<bool,NUM_PIECE_SIDE_COMBINATIONS> piecesAtMax() const;
   bool isSupported(const SquareIndex square,const Side side) const;
   bool isFrozen(const SquareIndex square) const;

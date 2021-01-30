@@ -33,11 +33,6 @@ Placements TurnState::placements(const Side side) const
   return result;
 }
 
-Placements TurnState::playedPlacements() const
-{
-  return placements(otherSide(sideToMove));
-}
-
 std::array<bool,NUM_PIECE_SIDE_COMBINATIONS> TurnState::piecesAtMax() const
 {
   std::array<bool,NUM_PIECE_SIDE_COMBINATIONS> result={false};

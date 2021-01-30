@@ -679,7 +679,7 @@ void Game::setExploration(const bool on)
     if (currentNode!=liveNode) {
       const auto& child=liveNode->findClosestChild(currentNode);
       board.setNode(liveNode);
-      if (child!=nullptr && session->role()==board.sideToMove())
+      if (child!=nullptr)
         board.proposeMove(*child.get(),child->move.size());
     }
   }
@@ -690,7 +690,7 @@ void Game::processInput(const std::string& input)
 {
   try {
     if (board.customSetup())
-      board.proposeSetup(customizedTurnState(input,board.gameState()));
+      board.proposeCustomSetup(customizedTurnState(input,board.gameState()));
     else {
       auto tentativeMove=board.tentativeMove();
       auto& setup=tentativeMove.first;
@@ -763,13 +763,10 @@ void Game::receiveGameTree(const GameTree& gameTreeNode,const bool sound)
   else {
     const auto oldNode=board.currentNode.get();
     const bool changed=board.setNode(liveNode,sound,true);
-    explore.setChecked(false);
-    if (session->role()==board.sideToMove()) {
-      if (!changed)
-        board.undoSteps(true);
-      else if (const auto& child=liveNode->findClosestChild(oldNode))
-        board.proposeMove(*child.get(),0);
-    }
+    if (!changed)
+      board.undoSteps(true);
+    else if (const auto& child=liveNode->findClosestChild(oldNode))
+      board.proposeMove(*child.get(),0);
     processVisibleNode(liveNode);
   }
 }
@@ -892,7 +889,7 @@ std::pair<NodePtr,int> Game::getNodeAndColumn() const
     const auto& currentPlacements=board.currentPlacements();
     if (!currentPlacements.empty())
       if (const auto& child=node->findPartialMatchingChild(currentPlacements).first) {
-        const auto& childPlacements=child->gameState.playedPlacements();
+        const auto& childPlacements=child->playedPlacements();
         const auto pair=mismatch(currentPlacements.begin(),currentPlacements.end(),childPlacements.begin());
         return {child,pair.second==childPlacements.end() ? childPlacements.size()-numStartingPiecesPerType[0] : distance(childPlacements.begin(),pair.second)};
       }

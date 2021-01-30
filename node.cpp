@@ -26,6 +26,11 @@ bool Node::inSetup() const
                                : (gameState.sideToMove==SECOND_SIDE && move.empty() && previousNode->isGameStart());
 }
 
+Placements Node::playedPlacements() const
+{
+  return gameState.placements(otherSide(gameState.sideToMove));
+}
+
 std::string Node::toPlyString() const
 {
   return toPlyString(root());
@@ -44,7 +49,7 @@ std::string Node::nextPlyString() const
 std::string Node::toString() const
 {
   if (move.empty())
-    return ::toString(gameState.playedPlacements());
+    return ::toString(playedPlacements());
   else
     return ::toString(move);
 }
@@ -221,7 +226,7 @@ size_t Node::maxDescendantSteps() const
 std::pair<NodePtr,int> Node::findPartialMatchingChild(const Placements& subset) const
 {
   return findChild([&](const NodePtr& child,const int) {
-    const auto& set=child->gameState.playedPlacements();
+    const auto& set=child->playedPlacements();
     return includes(set.begin(),set.end(),subset.begin(),subset.end());
   });
 }
@@ -236,7 +241,7 @@ std::pair<NodePtr,int> Node::findPartialMatchingChild(const ExtendedSteps& steps
 std::pair<NodePtr,int> Node::findMatchingChild(const Placements& subset) const
 {
   return findChild([&](const NodePtr& child,const int) {
-    return subset==child->gameState.playedPlacements();
+    return subset==child->playedPlacements();
   });
 }
 
