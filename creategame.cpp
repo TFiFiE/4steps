@@ -48,7 +48,7 @@ CreateGame::CreateGame(Globals& globals_,ASIP& session_,Server& server_) :
       side=SECOND_SIDE;
     else {
       assert(sideButtons[2]->isChecked());
-      side=(rand()%2==0 ? FIRST_SIDE : SECOND_SIDE);
+      side=Side(globals.rand(NUM_SIDES));
     }
     const auto networkReply=session.createGame(this,timeControl.toString(timed.isChecked()),timed.isChecked() && rated.isChecked(),side);
     connect(networkReply,&QNetworkReply::finished,this,[=]{creationAttempt(*networkReply);});

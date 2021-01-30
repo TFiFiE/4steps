@@ -20,8 +20,8 @@ public:
 
   QTabWidget tabWidget;
   std::vector<Server*> servers;
-private:
   Globals& globals;
+private:
   QAction emptyGame,customGame,logIn,quit,chat;
   QLabel buildTime;
   std::vector<std::weak_ptr<ASIP> > games;

@@ -8,6 +8,7 @@
 #include "mainwindow.hpp"
 #include "io.hpp"
 #include "messagebox.hpp"
+#include "globals.hpp"
 
 using namespace std;
 Bots::Bots(ASIP& session_,const QUrl& url_,MainWindow& mainWindow_) :
@@ -261,7 +262,7 @@ Side Bots::getSide() const
     return SECOND_SIDE;
   else {
     assert(sideButtons[2]->isChecked());
-    return rand()%2==0 ? FIRST_SIDE : SECOND_SIDE;
+    return Side(mainWindow.globals.rand(NUM_SIDES));
   }
 }
 
