@@ -29,8 +29,10 @@
         <file alias="game-win.wav">sounds/Drop2.wav</file>
         <file alias="game-loss.wav">sounds/elephantStep.wav</file>
         <file alias="finished-setup.wav">sounds/horseStep.wav</file>
+        <file alias="right.wav">sounds/horseStep.wav</file>
         <file alias="clock-tick.wav">sounds/Metal2_3.wav</file>
         <file alias="loud-step.wav">sounds/place.wav</file>
+        <file alias="wrong.wav">sounds/rabbitStep.wav</file>
         <file alias="soft-step.wav">sounds/slide2.wav</file>
         <file alias="captured-piece.wav">sounds/trapped.wav</file>
         <file alias="game-start.wav">sounds/win.wav</file>

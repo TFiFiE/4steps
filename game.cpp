@@ -14,7 +14,7 @@
 #include "io.hpp"
 
 using namespace std;
-Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const std::shared_ptr<ASIP> session_,const std::unique_ptr<TurnState> customSetup) :
+Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const std::shared_ptr<ASIP> session_,const std::unique_ptr<TurnState> customSetup,const unsigned int extraDockWidgets) :
   QMainWindow(parent),
   globals(globals_),
   session(session_),
@@ -22,6 +22,7 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   treeModel(gameTree.empty() ? nullptr : gameTree.front()),
   liveNode(session==nullptr ? nullptr : treeModel.root),
   board(globals,treeModel.root,session==nullptr,viewpoint,session!=nullptr,{session==nullptr,session==nullptr},customSetup.get(),parent),
+  dockWidgets(NUM_STANDARD_DOCK_WIDGETS+extraDockWidgets),
   dockWidgetResized(false),
   galleries{{{board,FIRST_SIDE},{board,SECOND_SIDE}}},
   processedMoves(0),
@@ -62,7 +63,6 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   initLiveGame();
 
   setAttribute(Qt::WA_DeleteOnClose);
-  show();
 }
 
 void Game::addDockWidget(const Qt::DockWidgetArea area,QDockWidget& dockWidget,const Qt::Orientation orientation,const bool before)
@@ -340,26 +340,24 @@ void Game::addCornerWidget()
   connect(&explore,&QCheckBox::toggled,this,&Game::setExploration);
   cornerLayout.addWidget(&explore);
 
-  if (liveNode==nullptr)
-    current.setEnabled(false);
-  else
-    connect(&current,&QPushButton::clicked,this,[this] {
-      if (liveNode!=nullptr) {
-        const auto& currentNode=board.currentNode.get();
-        if (currentNode==liveNode) {
-          expandToNode(*liveNode);
-          treeView.scrollTo(treeModel.index(liveNode,0));
-          if (!board.potentialMove.get().empty())
-            board.undoSteps(true);
-        }
-        else {
-          const auto& child=liveNode->findClosestChild(currentNode);
-          board.setNode(liveNode);
-          if (child!=nullptr)
-            board.proposeMove(*child.get(),0);
-        }
+  current.setEnabled(liveNode!=nullptr);
+  connect(&current,&QPushButton::clicked,this,[this] {
+    if (liveNode!=nullptr) {
+      const auto& currentNode=board.currentNode.get();
+      if (currentNode==liveNode) {
+        expandToNode(*liveNode);
+        treeView.scrollTo(treeModel.index(liveNode,0));
+        if (!board.potentialMove.get().empty())
+          board.undoSteps(true);
       }
-    });
+      else {
+        const auto& child=liveNode->findClosestChild(currentNode);
+        board.setNode(liveNode);
+        if (child!=nullptr)
+          board.proposeMove(*child.get(),0);
+      }
+    }
+  });
   cornerLayout.addWidget(&current);
 
   menuBar()->setCornerWidget(&cornerWidget);
@@ -454,7 +452,7 @@ void Game::contextMenu()
   else
     connect(customGame,&QAction::triggered,this,[this] {
       using namespace std;
-      new Game(globals,board.southIsUp ? SECOND_SIDE : FIRST_SIDE,parentWidget(),nullptr,make_unique<TurnState>(board.gameState()));
+      (new Game(globals,board.southIsUp ? SECOND_SIDE : FIRST_SIDE,parentWidget(),nullptr,make_unique<TurnState>(board.gameState())))->show();
     });
   menu->addAction(customGame);
 

@@ -18,8 +18,8 @@ class ASIP;
 class Game : public QMainWindow {
   Q_OBJECT
 public:
-  explicit Game(Globals& globals_,const Side viewpoint,QWidget* const parent=nullptr,const std::shared_ptr<ASIP> session_=std::shared_ptr<ASIP>(),const std::unique_ptr<TurnState> customSetup=nullptr);
-private:
+  explicit Game(Globals& globals_,const Side viewpoint,QWidget* const parent=nullptr,const std::shared_ptr<ASIP> session_=std::shared_ptr<ASIP>(),const std::unique_ptr<TurnState> customSetup=nullptr,const unsigned int extraDockWidgets=0);
+protected:
   void addDockWidget(const Qt::DockWidgetArea area,QDockWidget& dockWidget,const Qt::Orientation orientation,const bool before);
   void setWindowState();
   void addGameMenu(const bool controllable);
@@ -46,7 +46,7 @@ private:
   void processInput(const std::string& input);
   bool processMoves(const std::tuple<GameTree,size_t,bool>& moves,const Side role,const Result& result,const bool hardSynchronization);
   void receiveGameTree(const GameTree& gameTreeNode,const bool silent);
-  void receiveNodeChange(const NodePtr& newNode);
+  virtual void receiveNodeChange(const NodePtr& newNode);
   void expandToNode(const Node& node);
   void processVisibleNode(const NodePtr& node);
   void setPosition(NodePtr node,const std::pair<Placements,ExtendedSteps>& partialMove);
@@ -63,8 +63,8 @@ private:
   TreeModel treeModel;
   NodePtr liveNode;
   Board board;
-  enum {FIRST_GALLERY_INDEX=NUM_SIDES,MOVE_LIST_INDEX=2*NUM_SIDES,NUM_DOCK_WIDGETS};
-  QDockWidget dockWidgets[NUM_DOCK_WIDGETS];
+  enum {FIRST_GALLERY_INDEX=NUM_SIDES,MOVE_LIST_INDEX=2*NUM_SIDES,NUM_STANDARD_DOCK_WIDGETS};
+  std::vector<QDockWidget> dockWidgets;
   bool dockWidgetResized;
   PlayerBar playerBars[NUM_SIDES];
   std::array<OffBoard,NUM_SIDES> galleries;

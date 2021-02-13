@@ -160,7 +160,7 @@ ExtendedStep GameState::takeExtendedStep(const SquareIndex origin,const SquareIn
   return ExtendedStep(origin,destination,trappedPiece,*this);
 }
 
-ExtendedSteps GameState::takeSteps(const std::vector<Step>& steps)
+ExtendedSteps GameState::takeSteps(const Steps& steps)
 {
   ExtendedSteps result;
   result.reserve(steps.size());
@@ -191,4 +191,26 @@ void GameState::switchTurn()
   stepsAvailable=MAX_STEPS_PER_MOVE;
   followupDestination=NO_SQUARE;
   followupOrigins.clear();
+}
+
+void GameState::flipSides()
+{
+  TurnState::flipSides();
+  transformExtra(invert);
+}
+
+void GameState::mirror()
+{
+  TurnState::mirror();
+  transformExtra(::mirror);
+}
+
+template<class Function>
+void GameState::transformExtra(Function function)
+{
+  followupDestination=function(followupDestination);
+  std::set<SquareIndex> newFollowupOrigins;
+  for (const auto& followupOrigin:followupOrigins)
+    newFollowupOrigins.emplace(function(followupOrigin));
+  followupOrigins=std::move(newFollowupOrigins);
 }

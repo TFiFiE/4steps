@@ -11,12 +11,14 @@ Board::Board(Globals& globals_,NodePtr currentNode_,const bool explore_,const Si
   explore(explore_),
   southIsUp(viewpoint==SECOND_SIDE),
   currentNode(currentNode_),
+  neutralColor(0x89,0x65,0x7B),
+  sideColors{Qt::white,Qt::black},
+  mildSideColors{{0xC9,0xC9,0xC9},{0x23,0x23,0x23}},
   globals(globals_),
   potentialSetup(customSetup_==nullptr ? GameState() : GameState(*customSetup_)),
   controllableSides(controllableSides_),
   autoRotate(false),
-  drag{NO_SQUARE,NO_SQUARE},
-  neutralColor(0x89,0x65,0x7B)
+  drag{NO_SQUARE,NO_SQUARE}
 {
   setContextMenuPolicy(Qt::NoContextMenu);
   qMediaPlayer.setPlaylist(&qMediaPlaylist);
@@ -339,9 +341,9 @@ void Board::setConfirm(const bool newConfirm)
   setSetting(confirm,newConfirm,"confirm");
 }
 
-void Board::playSound(const QString& soundFile)
+void Board::playSound(const QString& soundFile,const bool override)
 {
-  if (soundOn) {
+  if (soundOn || override) {
     qMediaPlaylist.clear();
     qMediaPlaylist.addMedia(QUrl(soundFile));
     qMediaPlayer.play();
@@ -936,8 +938,6 @@ void Board::focusOutEvent(QFocusEvent*)
 
 void Board::paintEvent(QPaintEvent*)
 {
-  const QColor sideColors[NUM_SIDES]={Qt::white,Qt::black};
-  const QColor mildSideColors[NUM_SIDES]={{0xC9,0xC9,0xC9},{0x23,0x23,0x23}};
   QPainter qPainter(this);
 
   qreal factor=squareHeight()/static_cast<qreal>(qPainter.fontMetrics().height());
@@ -979,7 +979,10 @@ void Board::paintEvent(QPaintEvent*)
                                 previousPieces!=nullptr && (*previousPieces)[square]!=gameState_.squarePieces[square])
           qPainter.setBrush(sideColors[otherSide(sideToMove())]);
         else {
-          if (isTrapSquare)
+          const auto color=customColors[square];
+          if (color.isValid())
+            qPainter.setBrush(color);
+          else if (isTrapSquare)
             qPainter.setBrush(rank<NUM_RANKS/2 ? QColor(0xF6,0x66,0x10) : QColor(0x42,0x00,0xF2));
           else if (customSetup())
             qPainter.setBrush(mildSideColors[sideToMove()]);

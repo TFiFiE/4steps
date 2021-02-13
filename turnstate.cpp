@@ -95,7 +95,7 @@ bool TurnState::hasFloatingPieces() const
   return false;
 }
 
-ExtendedSteps TurnState::toExtendedSteps(const std::vector<Step>& steps) const
+ExtendedSteps TurnState::toExtendedSteps(const Steps& steps) const
 {
   return GameState(*this).takeSteps(steps);
 }
@@ -103,6 +103,31 @@ ExtendedSteps TurnState::toExtendedSteps(const std::vector<Step>& steps) const
 ExtendedSteps TurnState::toExtendedSteps(const PieceSteps& pieceSteps) const
 {
   return GameState(*this).takePieceSteps(pieceSteps);
+}
+
+std::vector<SquareIndex> TurnState::differentSquares(const Board& lhs,const Board& rhs)
+{
+  std::vector<SquareIndex> result;
+  for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square))
+    if (lhs[square]!=rhs[square])
+      result.emplace_back(square);
+  return result;
+}
+
+TurnState::Board TurnState::flipSides(const Board& board)
+{
+  Board result;
+  for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square))
+    result[square]=toOtherSide(board[invert(square)]);
+  return result;
+}
+
+TurnState::Board TurnState::mirror(const Board& board)
+{
+  Board result;
+  for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square))
+    result[square]=board[::mirror(square)];
+  return result;
 }
 
 void TurnState::add(const Placements& placements)
@@ -114,7 +139,100 @@ void TurnState::add(const Placements& placements)
   }
 }
 
+void TurnState::remapPieces(const TypeToType& remapping)
+{
+  for (auto& squarePiece:squarePieces)
+    if (squarePiece!=NO_PIECE)
+      squarePiece=toPieceTypeAndSide(remapping[toPieceType(squarePiece)],toSide(squarePiece));
+}
+
 void TurnState::switchTurn()
 {
   sideToMove=otherSide(sideToMove);
+}
+
+void TurnState::flipSides()
+{
+  TurnState::switchTurn();
+  squarePieces=flipSides(squarePieces);
+}
+
+void TurnState::mirror()
+{
+  squarePieces=mirror(squarePieces);
+}
+
+TurnState::TypeToType TurnState::typeToRanks(const PieceCounts& pieceCounts)
+{
+  TypeToType result;
+
+  auto source=FIRST_PIECE_TYPE;
+  auto target=FIRST_PIECE_TYPE;
+  result[source]=target;
+
+  std::array<bool,NUM_SIDES> hadStrongestType={true,true};
+  for (increment(source);source<NUM_PIECE_TYPES;increment(source)) {
+    std::array<bool,NUM_SIDES> hasType;
+    bool anyPresent=false;
+    bool allPresent=true;
+    for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side)) {
+      const bool present=(pieceCounts[toPieceTypeAndSide(source,side)]>0);
+      hasType[side]=present;
+      anyPresent|=present;
+      allPresent&=present;
+    }
+    if (anyPresent) {
+      if (allPresent || hasType!=hadStrongestType)
+        increment(target);
+      hadStrongestType=hasType;
+    }
+    result[source]=target;
+  }
+
+  return result;
+}
+
+std::vector<TurnState::TypeToType> TurnState::typeRemappings(const PieceCounts& pieceCounts)
+{
+  const auto typeToRanks_=typeToRanks(pieceCounts);
+  TypeToType currentRemapping;
+  fill(currentRemapping,FIRST_PIECE_TYPE);
+  const auto result=typeRemappings(pieceCounts,typeToRanks_,SECOND_PIECE_TYPE,currentRemapping);
+  assert(!result.empty());
+  return result;
+}
+
+std::vector<TurnState::TypeToType> TurnState::typeRemappings(const PieceCounts& pieceCounts,const TypeToType& typeToRanks,const PieceType source,TypeToType& currentRemapping)
+{
+  if (source==NUM_PIECE_TYPES) {
+    assert(currentRemapping[FIRST_PIECE_TYPE]==FIRST_PIECE_TYPE);
+    return {currentRemapping};
+  }
+  else {
+    const auto nextSource=PieceType(source+1);
+
+    unsigned int maxPieceCount=0;
+    for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side))
+      maxPieceCount=std::max(maxPieceCount,pieceCounts[toPieceTypeAndSide(source,side)]);
+
+    if (maxPieceCount==0)
+      return typeRemappings(pieceCounts,typeToRanks,nextSource,currentRemapping);
+    else {
+      std::vector<TypeToType> result;
+
+      const auto rank=typeToRanks[source];
+      PieceType target=FIRST_PIECE_TYPE;
+      for (PieceType weakerSource=SECOND_PIECE_TYPE;typeToRanks[weakerSource]<rank;increment(weakerSource))
+        target=std::max(target,currentRemapping[weakerSource]);
+
+      for (increment(target);target<NUM_PIECE_TYPES;increment(target)) {
+        if (maxPieceCount<=numStartingPiecesPerType[target] && !found(currentRemapping,target)) {
+          currentRemapping[source]=target;
+          append(result,typeRemappings(pieceCounts,typeToRanks,nextSource,currentRemapping));
+          currentRemapping[source]=FIRST_PIECE_TYPE;
+        }
+      }
+      return result;
+    }
+  }
 }

@@ -19,10 +19,14 @@ public:
 
   PieceTypeAndSide takeStep(const SquareIndex origin,const SquareIndex destination);
   ExtendedStep takeExtendedStep(const SquareIndex origin,const SquareIndex destination);
-  ExtendedSteps takeSteps(const std::vector<Step>& steps);
+  ExtendedSteps takeSteps(const Steps& steps);
   ExtendedSteps takePieceSteps(const PieceSteps& pieceSteps);
   virtual void switchTurn() override;
-
+  virtual void flipSides() override;
+  virtual void mirror() override;
+private:
+  template<class Function> void transformExtra(Function function);
+public:
   int stepsAvailable;
   bool inPush;
   SquareIndex followupDestination;

@@ -40,6 +40,7 @@ SOURCES += \
     pieceicons.cpp \
     playerbar.cpp \
     popup.cpp \
+    puzzles.cpp \
     server.cpp \
     startanalysis.cpp \
     timecontrol.cpp \
@@ -74,6 +75,7 @@ HEADERS += \
     playerbar.hpp \
     popup.hpp \
     potentialmove.hpp \
+    puzzles.hpp \
     readonly.hpp \
     server.hpp \
     startanalysis.hpp \

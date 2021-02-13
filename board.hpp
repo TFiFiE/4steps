@@ -47,7 +47,7 @@ public:
   void setAnimate(const bool newAnimate);
   void setAnimationDelay(const int newAnimationDelay);
   void setConfirm(const bool newConfirm);
-  void playSound(const QString& soundFile);
+  void playSound(const QString& soundFile,const bool override=false);
   void setExploration(const bool on);
   void setControllable(const std::array<bool,NUM_SIDES>& controllableSides_);
 
@@ -56,6 +56,11 @@ public:
   readonly<Board,NodePtr> currentNode;
   readonly<Board,int> animationDelay;
   readonly<Board,PotentialMove> potentialMove;
+
+  const QColor neutralColor;
+  const QColor sideColors[NUM_SIDES];
+  const QColor mildSideColors[NUM_SIDES];
+  QColor customColors[NUM_SQUARES];
 private:
   int squareWidth() const;
   int squareHeight() const;
@@ -112,7 +117,6 @@ private:
   std::array<SquareIndex,2> drag;
   ExtendedSteps dragSteps;
   std::array<SquareIndex,2> highlighted;
-  const QColor neutralColor;
 signals:
   void gameStarted();
   void boardChanged(const bool refresh=true);

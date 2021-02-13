@@ -21,7 +21,9 @@ enum Side {
 
 enum PieceType {
   FIRST_PIECE_TYPE=0,
+  SECOND_PIECE_TYPE,
   NUM_PIECE_TYPES=6,
+  LAST_PIECE_TYPE=NUM_PIECE_TYPES-1,
   RESTRICTED_PIECE_TYPE=FIRST_PIECE_TYPE,
   WINNING_PIECE_TYPE=FIRST_PIECE_TYPE
 };
@@ -92,6 +94,7 @@ struct Placement {
 typedef std::set<Placement> Placements;
 typedef std::vector<SquareIndex> Squares;
 typedef std::pair<SquareIndex,SquareIndex> Step;
+typedef std::vector<Step> Steps;
 
 class GameState;
 typedef std::tuple<SquareIndex,SquareIndex,PieceTypeAndSide,GameState> ExtendedStep;
@@ -110,10 +113,16 @@ const std::array<unsigned int,NUM_PIECE_TYPES> numStartingPiecesPerType={8,2,2,2
 const unsigned int numStartingPieces=std::accumulate(std::begin(numStartingPiecesPerType),std::end(numStartingPiecesPerType),0);
 
 template<class Integer>
-Integer floorDiv(const Integer dividend,const Integer divisor)
+inline Integer floorDiv(const Integer dividend,const Integer divisor)
 {
   assert(divisor>0);
   return dividend>=0 ? dividend/divisor : -1-(-1-dividend)/divisor;
+}
+
+template<class Integer>
+inline constexpr Integer roundedUpDivision(const Integer dividend,const Integer divisor)
+{
+  return (dividend+divisor-1)/divisor;
 }
 
 template<class T>
@@ -232,6 +241,14 @@ inline Side otherSide(const Side side)
   return static_cast<Side>(!side);
 }
 
+inline PieceTypeAndSide toOtherSide(const PieceTypeAndSide pieceTypeAndSide)
+{
+  if (pieceTypeAndSide==NO_PIECE)
+    return NO_PIECE;
+  else
+    return toPieceTypeAndSide(toPieceType(pieceTypeAndSide),otherSide(toSide(pieceTypeAndSide)));
+}
+
 inline bool isValidSquare(const unsigned int file,const unsigned int rank)
 {
   return file<NUM_FILES && rank<NUM_RANKS;
@@ -254,6 +271,18 @@ inline int toRank(const SquareIndex square)
   return square/NUM_FILES;
 }
 
+inline SquareIndex invert(const SquareIndex square)
+{
+  assert(square!=NO_SQUARE);
+  return SquareIndex(NUM_SQUARES-1-square);
+}
+
+inline SquareIndex mirror(const SquareIndex square)
+{
+  assert(square!=NO_SQUARE);
+  return toSquare(NUM_FILES-1-toFile(square),toRank(square));
+}
+
 inline bool isTrap(const unsigned int file,const unsigned int rank)
 {
   return (file==2 || file==5) && (rank==2 || rank==5);
@@ -262,6 +291,15 @@ inline bool isTrap(const unsigned int file,const unsigned int rank)
 inline bool isTrap(const SquareIndex square)
 {
   return isTrap(toFile(square),toRank(square));
+}
+
+inline std::vector<SquareIndex> getTrapSquares()
+{
+  std::vector<SquareIndex> result;
+  for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square))
+    if (isTrap(square))
+      result.emplace_back(square);
+  return result;
 }
 
 inline bool isGoal(const SquareIndex square,const Side side)
