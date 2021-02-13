@@ -45,7 +45,7 @@ private:
   void setExploration(const bool on);
   void processInput(const std::string& input);
   bool processMoves(const std::tuple<GameTree,size_t,bool>& moves,const Side role,const Result& result,const bool hardSynchronization);
-  void receiveGameTree(const GameTree& gameTreeNode,const bool sound);
+  void receiveGameTree(const GameTree& gameTreeNode,const bool silent);
   void receiveNodeChange(const NodePtr& newNode);
   void expandToNode(const Node& node);
   void processVisibleNode(const NodePtr& node);

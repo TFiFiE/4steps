@@ -6,6 +6,7 @@
 #include "node.hpp"
 
 const char pieceLetters[]="RrCcDdHhMmEe ";
+const char directionLetters[]="swen";
 
 inline QString sideWord(const Side side)
 {
@@ -67,18 +68,11 @@ inline SquareIndex toSquare(const char fileLetter,const char rankLetter,const bo
 
 inline char directionLetter(const SquareIndex origin,const SquareIndex destination)
 {
-  switch (destination-origin) {
-    case -NUM_FILES: return 's';
-    case -1        : return 'w';
-    case  1        : return 'e';
-    case  NUM_FILES: return 'n';
-    default: throw std::runtime_error("Squares not orthogonally adjacent.");
-  }
+  return directionLetters[toDirection(origin,destination)];
 }
 
 inline SquareIndex toDestination(const SquareIndex origin,const char directionLetter,const bool strict=true)
 {
-  const char directionLetters[]="swen";
   const auto pointer=strchr(directionLetters,directionLetter);
   if (pointer==nullptr) {
     if (strict)
@@ -86,10 +80,7 @@ inline SquareIndex toDestination(const SquareIndex origin,const char directionLe
     else
       return NO_SQUARE;
   }
-  const auto destination=toDestination(origin,static_cast<Direction>(pointer-directionLetters));
-  if (destination==NO_SQUARE && strict)
-    throw std::runtime_error(std::string("Direction is off the edge of the board."));
-  return destination;
+  return toDestination(origin,static_cast<Direction>(pointer-directionLetters),strict);
 }
 
 inline std::string toString(const PieceTypeAndSide pieceTypeAndSide,const SquareIndex square)
@@ -340,7 +331,7 @@ inline std::tuple<NodePtr,std::string,runtime_error> parseChunk(std::stringstrea
       }
     }
     else {
-      const GameState& gameState=move.empty() ? node->gameState : std::get<RESULTING_STATE>(move.back());
+      const GameState& gameState=move.empty() ? node->gameState : resultingState(move);
       const Side side=toMoveStart(chunk).first;
       if (node->result.endCondition!=NO_END && node->gameState.sideToMove!=side)
         return make_tuple(nullptr,chunk,runtime_error(QCoreApplication::translate("","Play in finished position: ")+QString::fromStdString(chunk)));
@@ -473,6 +464,8 @@ inline TurnState customizedTurnState(const std::string& input,TurnState turnStat
   ss<<input;
   std::string word;
   while (ss>>word) {
+    if (word=="pass")
+      continue;
     const Side side=toMoveStart(word).first;
     if (side!=NO_SIDE)
       turnState.sideToMove=side;

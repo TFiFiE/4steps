@@ -19,6 +19,7 @@ public:
 
   PieceTypeAndSide takeStep(const SquareIndex origin,const SquareIndex destination);
   ExtendedStep takeExtendedStep(const SquareIndex origin,const SquareIndex destination);
+  ExtendedSteps takeSteps(const std::vector<Step>& steps);
   ExtendedSteps takePieceSteps(const PieceSteps& pieceSteps);
   virtual void switchTurn() override;
 
@@ -27,5 +28,11 @@ public:
   SquareIndex followupDestination;
   std::set<SquareIndex> followupOrigins;
 };
+
+inline GameState resultingState(const ExtendedSteps& steps)
+{
+  assert(!steps.empty());
+  return std::get<RESULTING_STATE>(steps.back());
+}
 
 #endif // GAMESTATE_HPP

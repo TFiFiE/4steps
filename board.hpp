@@ -27,7 +27,7 @@ public:
   bool gameEnd() const;
   bool playable() const;
 
-  bool setNode(NodePtr newNode,const bool sound=false,bool keepState=false);
+  bool setNode(NodePtr newNode,const bool silent=true,bool keepState=false);
   void playMoveSounds(const Node& node);
   void proposeMove(const Node& child,const unsigned int playedOutSteps);
   void proposeCustomSetup(const TurnState& turnState);

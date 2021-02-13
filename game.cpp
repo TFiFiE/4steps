@@ -45,7 +45,7 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   iconSets(this)
 {
   if (session==nullptr && customSetup==nullptr)
-    setWindowTitle("New game");
+    setWindowTitle(tr("New game"));
   setCentralWidget(&board);
   connect(&board,&Board::customContextMenuRequested,this,&Game::contextMenu);
   setDockOptions(QMainWindow::AllowNestedDocks);
@@ -638,7 +638,7 @@ qint64 Game::updateCornerMessage()
     nextChange=1000-timeSinceLastReply%1000;
   }
   else
-    cornerMessage.setText("");
+    cornerMessage.clear();
   menuBar()->setCornerWidget(&cornerWidget);
   return nextChange;
 }
@@ -733,15 +733,15 @@ bool Game::processMoves(const std::tuple<GameTree,size_t,bool>& moves,const Side
     if (result.endCondition==NO_END)
       return false;
     else
-      receiveGameTree(receivedTree,false);
+      receiveGameTree(receivedTree,true);
   }
   else
-    receiveGameTree(receivedTree,role!=otherSide(serverNode.gameState.sideToMove));
+    receiveGameTree(receivedTree,role==otherSide(serverNode.gameState.sideToMove));
   processedMoves=sessionMoves;
   return true;
 }
 
-void Game::receiveGameTree(const GameTree& gameTreeNode,const bool sound)
+void Game::receiveGameTree(const GameTree& gameTreeNode,const bool silent)
 {
   liveNode=gameTreeNode.front();
   const int movesBehind=gameTree.front()->numMovesBefore(liveNode.get());
@@ -762,7 +762,7 @@ void Game::receiveGameTree(const GameTree& gameTreeNode,const bool sound)
   }
   else {
     const auto oldNode=board.currentNode.get();
-    const bool changed=board.setNode(liveNode,sound,true);
+    const bool changed=board.setNode(liveNode,silent,true);
     if (!changed)
       board.undoSteps(true);
     else if (const auto& child=liveNode->findClosestChild(oldNode))
@@ -832,18 +832,8 @@ void Game::synchronizeWithMoveCell(const QModelIndex& current)
     moveSynchronization=false;
     const auto node=treeModel.getItem(current);
     const auto column=current.column();
-    if (current.siblingAtColumn(column+1)==QModelIndex()) {
-      board.setNode(node);
-      if (!node->inSetup())
-        if (const auto& child=node->child(0)) {
-          const auto& move=child->move;
-          board.doSteps(move,false,move.size());
-        }
-    }
-    else {
-      board.setNode(node->previousNode);
-      board.proposeMove(*node.get(),column);
-    }
+    board.setNode(node->previousNode);
+    board.proposeMove(*node.get(),column);
     moveSynchronization=true;
   }
 }
@@ -855,14 +845,14 @@ void Game::updateMoveList()
   std::string moveString;
   if (node.get()==nullptr) {
     for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side)) {
-      const auto& placementString=toString(board.gameState().placements(side));
+      const auto placementString=toString(board.gameState().placements(side));
       if (!placementString.empty()) {
         if (!moveString.empty())
           moveString+=' ';
         moveString+=placementString;
       }
     }
-    setWindowTitle(moveString.empty() ? "Custom game" : QString::fromStdString(moveString+' '+toLetter(board.sideToMove(),true)));
+    setWindowTitle(moveString.empty() ? tr("Custom game") : QString::fromStdString(moveString+' '+toLetter(board.sideToMove(),true)));
   }
   else
     moveString=toPlyString(node->depth,*treeModel.root)+' '+board.tentativeMoveString();

@@ -120,12 +120,14 @@ bool Board::playable() const
   return !gameEnd() && (explore || controllableSides[sideToMove()]);
 }
 
-bool Board::setNode(NodePtr newNode,const bool sound,bool keepState)
+bool Board::setNode(NodePtr newNode,const bool silent,bool keepState)
 {
   keepState&=(newNode==currentNode.get());
   const bool transition=(newNode->previousNode==currentNode.get() && potentialMove.data.empty());
   currentNode=std::move(newNode);
-  if (sound && currentNode->previousNode!=nullptr) {
+  if (!keepState || !silent)
+    disableAnimation();
+  if (!silent && currentNode->previousNode!=nullptr) {
     if (currentNode->previousNode->inSetup())
       playSound("qrc:/finished-setup.wav");
     else if (animate)
@@ -842,7 +844,9 @@ void Board::mouseDoubleClickEvent(QMouseEvent* event)
       const SquareIndex eventSquare=positionToSquare(event->pos());
       if ((eventSquare==NO_SQUARE || gameState().squarePieces[eventSquare]==NO_PIECE) && (!stepMode || found(highlighted,NO_SQUARE))) {
         if (customSetup()) {
-          if (potentialSetup.legalPosition()) {
+          if (potentialSetup.hasFloatingPieces())
+            MessageBox(QMessageBox::Critical,tr("Illegal position"),tr("Unprotected piece on trap."),QMessageBox::NoButton,this).exec();
+          else {
             const auto node=std::make_shared<Node>(nullptr,ExtendedSteps(),potentialSetup);
             if (!node->inSetup() && node->result.endCondition==NO_END) {
               emit sendNodeChange(node,currentNode);
@@ -854,8 +858,6 @@ void Board::mouseDoubleClickEvent(QMouseEvent* event)
             else
               MessageBox(QMessageBox::Critical,tr("Terminal position"),tr("Game already finished in this position."),QMessageBox::NoButton,this).exec();
           }
-          else
-            MessageBox(QMessageBox::Critical,tr("Illegal position"),tr("Unprotected piece on trap."),QMessageBox::NoButton,this).exec();
         }
         else if (currentNode->inSetup()) {
           if (currentSetupPiece<=FIRST_PIECE_TYPE && confirmMove()) {

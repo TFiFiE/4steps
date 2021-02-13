@@ -117,12 +117,12 @@ MoveLegality Node::legalMove(const GameState& resultingState) const
 
 MoveLegality Node::legalMove(const ExtendedSteps& move) const
 {
-  return legalMove(move.empty() ? gameState : std::get<RESULTING_STATE>(move.back()));
+  return legalMove(move.empty() ? gameState : resultingState(move));
 }
 
 bool Node::legalPartialMove(const ExtendedSteps& move) const
 {
-  return move.empty() || hasLegalMoves(std::get<RESULTING_STATE>(move.back()));
+  return move.empty() || hasLegalMoves(resultingState(move));
 }
 
 bool Node::hasLegalMoves(const GameState& startingState) const
@@ -307,7 +307,7 @@ NodePtr Node::addSetup(const NodePtr& node,const Placements& placements,const bo
 NodePtr Node::makeMove(const NodePtr& node,const ExtendedSteps& move,const bool after)
 {
   assert(!node->inSetup());
-  GameState gameState(std::get<RESULTING_STATE>(move.back()));
+  GameState gameState(resultingState(move));
   gameState.switchTurn();
   return addChild(node,move,gameState,after);
 }

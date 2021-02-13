@@ -26,14 +26,11 @@ enum PieceType {
   WINNING_PIECE_TYPE=FIRST_PIECE_TYPE
 };
 
-enum {
-  NUM_RANKS=8,
-  NUM_FILES=8,
-  NUM_SETUP_RANKS=2,
-  NUM_PIECE_SIDE_COMBINATIONS=NUM_PIECE_TYPES*NUM_SIDES,
-  MAX_ALLOWED_REPETITIONS=1,
-  MAX_STEPS_PER_MOVE=4
-};
+constexpr auto NUM_RANKS=8;
+constexpr auto NUM_FILES=8;
+constexpr auto NUM_SETUP_RANKS=2;
+constexpr auto MAX_ALLOWED_REPETITIONS=1;
+constexpr auto MAX_STEPS_PER_MOVE=4;
 
 enum SquareIndex {
   NO_SQUARE=-1,
@@ -42,6 +39,7 @@ enum SquareIndex {
 };
 
 enum PieceTypeAndSide {
+  NUM_PIECE_SIDE_COMBINATIONS=NUM_PIECE_TYPES*NUM_SIDES,
   NO_PIECE=-1
 };
 
@@ -49,7 +47,8 @@ enum Direction {
   SOUTH,
   WEST,
   EAST,
-  NORTH
+  NORTH,
+  NUM_DIRECTIONS
 };
 
 enum struct MoveLegality {
@@ -92,6 +91,7 @@ struct Placement {
 
 typedef std::set<Placement> Placements;
 typedef std::vector<SquareIndex> Squares;
+typedef std::pair<SquareIndex,SquareIndex> Step;
 
 class GameState;
 typedef std::tuple<SquareIndex,SquareIndex,PieceTypeAndSide,GameState> ExtendedStep;
@@ -174,7 +174,7 @@ inline bool startsWith(const Sequence& sequence,const Subsequence& subsequence)
 template<class Container,class Element>
 inline void fill(Container& container,const Element element)
 {
-  std::fill(container.begin(),container.end(),element);
+  std::fill(std::begin(container),std::end(container),element);
 }
 
 template<class Container>
@@ -310,21 +310,31 @@ inline bool restrictedDirection(const Side side,const SquareIndex origin,const S
   return destination-origin==(side==FIRST_SIDE ? -NUM_FILES : NUM_FILES);
 }
 
+template<class Function>
+inline void forEachAdjacentSquare(const SquareIndex square,Function function)
+{
+  assert(square!=NO_SQUARE);
+  const unsigned int file=toFile(square);
+  const unsigned int rank=toRank(square);
+  if (rank>0 && function(toSquare(file,rank-1)))
+    return;
+  if (file>0 && function(toSquare(file-1,rank)))
+    return;
+  if (file<NUM_FILES-1 && function(toSquare(file+1,rank)))
+    return;
+  if (rank<NUM_RANKS-1 && function(toSquare(file,rank+1)))
+    return;
+}
+
 inline Squares adjacentSquares(const SquareIndex square)
 {
   if (square==NO_SQUARE)
     return Squares();
-  const unsigned int file=toFile(square);
-  const unsigned int rank=toRank(square);
   Squares result;
-  if (file>0)
-    result.push_back(toSquare(file-1,rank));
-  if (file<NUM_FILES-1)
-    result.push_back(toSquare(file+1,rank));
-  if (rank>0)
-    result.push_back(toSquare(file,rank-1));
-  if (rank<NUM_RANKS-1)
-    result.push_back(toSquare(file,rank+1));
+  forEachAdjacentSquare(square,[&result](const SquareIndex adjacentSquare) {
+    result.emplace_back(adjacentSquare);
+    return false;
+  });
   return result;
 }
 
@@ -336,7 +346,18 @@ inline SquareIndex adjacentTrap(const SquareIndex trapNeighbor)
   return NO_SQUARE;
 }
 
-inline SquareIndex toDestination(const SquareIndex origin,const Direction direction)
+inline Direction toDirection(const SquareIndex origin,const SquareIndex destination)
+{
+  switch (destination-origin) {
+    case -NUM_FILES: return SOUTH;
+    case -1        : return WEST;
+    case  1        : return EAST;
+    case  NUM_FILES: return NORTH;
+    default: throw std::runtime_error("Squares not orthogonally adjacent.");
+  }
+}
+
+inline SquareIndex toDestination(const SquareIndex origin,const Direction direction,const bool strict=true)
 {
   unsigned int file=toFile(origin);
   unsigned int rank=toRank(origin);
@@ -345,9 +366,17 @@ inline SquareIndex toDestination(const SquareIndex origin,const Direction direct
     case  WEST: --file; break;
     case  EAST: ++file; break;
     case NORTH: ++rank; break;
-    default: return NO_SQUARE;
+    default:
+      if (strict)
+        throw std::runtime_error("Unrecognized direction.");
+      else
+        return NO_SQUARE;
+    break;
   }
-  return toSquare(file,rank);
+  const auto destination=toSquare(file,rank);
+  if (destination==NO_SQUARE && strict)
+    throw std::runtime_error("Direction is off the edge of the board.");
+  return destination;
 }
 
 inline std::string replaceString(std::string subject,const std::string& search,const std::string& replace)

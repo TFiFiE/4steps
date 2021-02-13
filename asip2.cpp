@@ -44,8 +44,9 @@ std::vector<QNetworkReply*> ASIP2::state()
 std::vector<ASIP::GameInfo> ASIP2::getGameList(const QVariantList& games)
 {
   std::vector<ASIP::GameInfo> result;
+  result.reserve(games.size());
   for (const auto& game:games) {
-    result.push_back(ASIP::GameInfo());
+    result.emplace_back(ASIP::GameInfo());
     GameInfo& gameInfo=result.back();
 
     const auto gameMap=game.toMap();

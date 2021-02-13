@@ -16,8 +16,8 @@ TurnState::Board TurnState::emptyBoard()
 
 bool TurnState::empty() const
 {
-  for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square))
-    if (squarePieces[square]!=NO_PIECE)
+  for (const auto squarePiece:squarePieces)
+    if (squarePiece!=NO_PIECE)
       return false;
   return true;
 }
@@ -33,18 +33,23 @@ Placements TurnState::placements(const Side side) const
   return result;
 }
 
+TurnState::PieceCounts TurnState::pieceCounts() const
+{
+  PieceCounts result={};
+  for (const auto pieceOnSquare:squarePieces)
+    if (pieceOnSquare!=NO_PIECE)
+      ++result[pieceOnSquare];
+  return result;
+}
+
 std::array<bool,NUM_PIECE_SIDE_COMBINATIONS> TurnState::piecesAtMax() const
 {
-  std::array<bool,NUM_PIECE_SIDE_COMBINATIONS> result={false};
-  unsigned int pieceCounts[NUM_SIDES][NUM_PIECE_TYPES]={{0}};
-  for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square)) {
-    const PieceTypeAndSide pieceOnSquare=squarePieces[square];
-    if (pieceOnSquare!=NO_PIECE) {
-      const PieceType pieceType=toPieceType(pieceOnSquare);
-      auto& pieceCount=pieceCounts[toSide(pieceOnSquare)][pieceType];
-      if (++pieceCount==numStartingPiecesPerType[pieceType])
-        result[pieceOnSquare]=true;
-    }
+  std::array<bool,NUM_PIECE_SIDE_COMBINATIONS> result;
+  const auto pieceCounts_=pieceCounts();
+  for (PieceTypeAndSide piece=PieceTypeAndSide(0);piece<NUM_PIECE_SIDE_COMBINATIONS;increment(piece)) {
+    const auto diff=int(numStartingPiecesPerType[toPieceType(piece)])-int(pieceCounts_[piece]);
+    assert(diff>=0);
+    result[piece]=(diff==0);
   }
   return result;
 }
@@ -76,23 +81,23 @@ bool TurnState::floatingPiece(const SquareIndex square) const
 {
   if (isTrap(square)) {
     const PieceTypeAndSide pieceTypeAndSide=squarePieces[square];
-    if (pieceTypeAndSide!=NO_PIECE) {
-      const Side pieceSide=toSide(pieceTypeAndSide);
-      for (const auto adjacentSquare:adjacentSquares(square))
-        if (isSide(squarePieces[adjacentSquare],pieceSide))
-          return false;
-      return true;
-    }
+    if (pieceTypeAndSide!=NO_PIECE)
+      return !isSupported(square,toSide(pieceTypeAndSide));
   }
   return false;
 }
 
-bool TurnState::legalPosition() const
+bool TurnState::hasFloatingPieces() const
 {
   for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square))
     if (floatingPiece(square))
-      return false;
-  return true;
+      return true;
+  return false;
+}
+
+ExtendedSteps TurnState::toExtendedSteps(const std::vector<Step>& steps) const
+{
+  return GameState(*this).takeSteps(steps);
 }
 
 ExtendedSteps TurnState::toExtendedSteps(const PieceSteps& pieceSteps) const

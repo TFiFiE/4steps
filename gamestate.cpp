@@ -160,9 +160,19 @@ ExtendedStep GameState::takeExtendedStep(const SquareIndex origin,const SquareIn
   return ExtendedStep(origin,destination,trappedPiece,*this);
 }
 
+ExtendedSteps GameState::takeSteps(const std::vector<Step>& steps)
+{
+  ExtendedSteps result;
+  result.reserve(steps.size());
+  for (const auto& step:steps)
+    result.emplace_back(takeExtendedStep(step.first,step.second));
+  return result;
+}
+
 ExtendedSteps GameState::takePieceSteps(const PieceSteps& pieceSteps)
 {
   ExtendedSteps result;
+  result.reserve(pieceSteps.size());
   for (const auto& pieceStep:pieceSteps) {
     const SquareIndex origin=std::get<ORIGIN>(pieceStep);
     const SquareIndex destination=std::get<DESTINATION>(pieceStep);
