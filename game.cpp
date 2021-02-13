@@ -432,6 +432,22 @@ void Game::contextMenu()
 
   const bool disabled=(session!=nullptr && !finished && count(session->getPlayers(),session->username())==1);
 
+  const auto toClipboard=new QAction(tr("Copy position to clipboard"),menu);
+  if (disabled)
+    toClipboard->setEnabled(false);
+  else
+    connect(toClipboard,&QAction::triggered,this,[this] {
+      std::string text;
+      for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side)) {
+        const auto placementString=toString(board.gameState().placements(side));
+        if (!placementString.empty())
+          text+=placementString+' ';
+      }
+      text+=toLetter(board.sideToMove(),true);
+      QGuiApplication::clipboard()->setText(QString::fromStdString(text));
+    });
+  menu->addAction(toClipboard);
+
   const auto customGame=new QAction(tr("Start custom setup with current position"),menu);
   if (disabled)
     customGame->setEnabled(false);
