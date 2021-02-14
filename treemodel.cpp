@@ -100,7 +100,7 @@ int TreeModel::columnCount(const QModelIndex& index) const
 
 QModelIndex TreeModel::index(const int row,const int column,const QModelIndex& parent) const
 {
-  if (!parent.isValid() || parent.column()==0) {
+  if (column>=0 && (!parent.isValid() || parent.column()==0)) {
     const auto parentItem=getItem(parent);
     if (parentItem!=nullptr)
       if (const auto child=parentItem->child(row))
