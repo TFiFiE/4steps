@@ -176,7 +176,7 @@ Result Node::detectGameEnd() const
 int Node::childIndex() const
 {
   if (previousNode==nullptr)
-    return -1;
+    return 0;
   else
     return previousNode->findChild([this](const NodePtr& child,const int){return this==child.get();}).second;
 }

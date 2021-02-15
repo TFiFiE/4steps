@@ -845,9 +845,19 @@ void Game::synchronizeWithMoveCell(const QModelIndex& current)
   if (moveSynchronization) {
     moveSynchronization=false;
     const auto node=treeModel.getItem(current);
-    const auto column=current.column();
-    board.setNode(node->previousNode);
-    board.proposeMove(*node.get(),column);
+    const size_t column=current.column();
+    if (board.explore && current.siblingAtColumn(column+1)==QModelIndex()) {
+      board.setNode(node);
+      if (!node->inSetup())
+        if (const auto& child=node->child(0)) {
+          const auto& move=child->move;
+          board.doSteps(move,false,move.size());
+        }
+    }
+    else {
+      board.setNode(node->previousNode);
+      board.proposeMove(*node.get(),std::min(node->move.size(),column));
+    }
     moveSynchronization=true;
   }
 }
@@ -906,7 +916,7 @@ std::pair<NodePtr,int> Game::getNodeAndColumn() const
       if (!steps.empty() && (child=node->findPartialMatchingChild(steps).first)!=nullptr)
         return {child,currentSteps.size()};
   }
-  return {node,treeModel.columnCount(node->move.size())-1};
+  return {node,treeModel.columnCount(node)-1};
 }
 
 void Game::setCurrentIndex(const QModelIndex& index)

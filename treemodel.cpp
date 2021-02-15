@@ -20,7 +20,7 @@ std::vector<QPersistentModelIndex> TreeModel::indices(const NodePtr& node) const
   const auto& pair=rawToIndices.find(node.get());
   if (pair==rawToIndices.end()) {
     const auto childIndex=node->childIndex();
-    const auto numColumns=columnCount(node->move.size());
+    const auto numColumns=columnCount(node);
     std::vector<QPersistentModelIndex> indices;
     indices.reserve(numColumns);
     for (int column=0;column<numColumns;++column)
@@ -46,7 +46,7 @@ QPersistentModelIndex TreeModel::index(const NodePtr& node,const int column) con
 
 QPersistentModelIndex TreeModel::lastIndex(const NodePtr& node) const
 {
-  return index(node,columnCount(node->move.size())-1);
+  return index(node,columnCount(node)-1);
 }
 
 NodePtr TreeModel::getItem(const QModelIndex& index) const
@@ -65,14 +65,19 @@ inline QModelIndex TreeModel::createIndex(const int row,const int column,const N
   return index;
 }
 
-int TreeModel::columnCount(const int numMoves) const
+int TreeModel::columnCount(const NodePtr& node) const
 {
-  if (numMoves==0)
-    return numStartingPieces;
-  else if (numMoves<MAX_STEPS_PER_MOVE)
-    return numMoves+2;
+  if (node->previousNode==nullptr)
+    return 1;
+  else if (node->move.empty())
+    return numStartingPieces+1;
   else
-    return numMoves+1;
+    return moveColumnCount(node->move.size());
+}
+
+int TreeModel::moveColumnCount(const int numMoves) const
+{
+  return numMoves==MAX_STEPS_PER_MOVE ? MAX_STEPS_PER_MOVE+1 : numMoves+2;
 }
 
 bool TreeModel::hasChildren(const QModelIndex& parent) const
@@ -93,9 +98,9 @@ int TreeModel::columnCount(const QModelIndex& index) const
   if (item==nullptr || !item->hasChild())
     return 0;
   else if (item->inSetup())
-    return numStartingPieces;
+    return numStartingPieces+1;
   else
-    return columnCount(index.parent().isValid() ? item->maxChildSteps() : item->maxDescendantSteps());
+    return moveColumnCount(index.parent().isValid() ? item->maxChildSteps() : item->maxDescendantSteps());
 }
 
 QModelIndex TreeModel::index(const int row,const int column,const QModelIndex& parent) const
@@ -104,7 +109,7 @@ QModelIndex TreeModel::index(const int row,const int column,const QModelIndex& p
     const auto parentItem=getItem(parent);
     if (parentItem!=nullptr)
       if (const auto child=parentItem->child(row))
-        if (column<columnCount(child->move.size()))
+        if (column<columnCount(child))
           return createIndex(row,column,child);
   }
   return QModelIndex();

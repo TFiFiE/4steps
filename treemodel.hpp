@@ -18,7 +18,8 @@ public:
   QPersistentModelIndex lastIndex(const NodePtr& node) const;
   NodePtr getItem(const QModelIndex& index) const;
   QModelIndex createIndex(const int row,const int column,const NodePtr& node) const;
-  int columnCount(const int numMoves) const;
+  int columnCount(const NodePtr& node) const;
+  int moveColumnCount(const int numMoves) const;
 
   virtual bool hasChildren(const QModelIndex& parent=QModelIndex()) const override;
   virtual int rowCount(const QModelIndex& parent=QModelIndex()) const override;
