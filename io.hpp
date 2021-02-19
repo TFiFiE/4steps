@@ -276,11 +276,14 @@ struct runtime_error : public std::runtime_error {
   runtime_error(const QString& what_arg="") : std::runtime_error(what_arg.toStdString()) {}
 };
 
-inline std::tuple<NodePtr,std::string,runtime_error> parseChunk(std::stringstream& ss,NodePtr node,Placements& setup,ExtendedSteps& move,const bool after)
+inline std::tuple<Subnode,std::string,runtime_error> parseChunk(std::stringstream& ss,Subnode subnode,const bool after)
 {
   auto posBefore=ss.tellg();
   std::string chunk;
   if (ss>>chunk) {
+    NodePtr& node=std::get<0>(subnode);
+    Placements& setup=std::get<1>(subnode);
+    ExtendedSteps& move=std::get<2>(subnode);
     bool endMove=true;
     if (chunk=="takeback")
       node=node->previousNode;
@@ -298,16 +301,16 @@ inline std::tuple<NodePtr,std::string,runtime_error> parseChunk(std::stringstrea
               });
               if (pieceTypeNumber<int(numStartingPiecesPerType[pieceType])) {
                 setup.emplace(placement);
-                return make_tuple(node,chunk,runtime_error());
+                return make_tuple(subnode,chunk,runtime_error());
               }
               else
-                return make_tuple(nullptr,chunk,runtime_error(QCoreApplication::translate("","Out of piece type: ")+pieceName(placement.piece)));
+                return make_tuple(Subnode(),chunk,runtime_error(QCoreApplication::translate("","Out of piece type: ")+pieceName(placement.piece)));
             }
             else
-              return make_tuple(nullptr,chunk,runtime_error(QCoreApplication::translate("","Duplicate setup square: ")+toCoordinates(placement.location).data()));
+              return make_tuple(Subnode(),chunk,runtime_error(QCoreApplication::translate("","Duplicate setup square: ")+toCoordinates(placement.location).data()));
           }
           else
-            return make_tuple(nullptr,chunk,runtime_error(QCoreApplication::translate("","Illegal setup square: ")+toCoordinates(placement.location).data()));
+            return make_tuple(Subnode(),chunk,runtime_error(QCoreApplication::translate("","Illegal setup square: ")+toCoordinates(placement.location).data()));
         }
         else
           ss.seekg(posBefore);
@@ -321,11 +324,11 @@ inline std::tuple<NodePtr,std::string,runtime_error> parseChunk(std::stringstrea
         else if (chunk=="pass" || toDisplacement(chunk,false).first.isValid())
           ss.seekg(posBefore);
         else
-          return make_tuple(nullptr,chunk,runtime_error(QCoreApplication::translate("","Invalid word: ")+QString::fromStdString(chunk)));
+          return make_tuple(Subnode(),chunk,runtime_error(QCoreApplication::translate("","Invalid word: ")+QString::fromStdString(chunk)));
       }
       if (endMove) {
         if (setup.size()<numStartingPieces)
-          return make_tuple(nullptr,chunk,runtime_error(QCoreApplication::translate("","Illegal end of setup: ")+QString::fromStdString(chunk)));
+          return make_tuple(Subnode(),chunk,runtime_error(QCoreApplication::translate("","Illegal end of setup: ")+QString::fromStdString(chunk)));
         else
           node=Node::addSetup(node,setup,after);
       }
@@ -334,7 +337,7 @@ inline std::tuple<NodePtr,std::string,runtime_error> parseChunk(std::stringstrea
       const GameState& gameState=move.empty() ? node->gameState : resultingState(move);
       const Side side=toMoveStart(chunk).first;
       if (node->result.endCondition!=NO_END && node->gameState.sideToMove!=side)
-        return make_tuple(nullptr,chunk,runtime_error(QCoreApplication::translate("","Play in finished position: ")+QString::fromStdString(chunk)));
+        return make_tuple(Subnode(),chunk,runtime_error(QCoreApplication::translate("","Play in finished position: ")+QString::fromStdString(chunk)));
       else if (side!=NO_SIDE) {
         if (node->gameState.sideToMove==side)
           endMove=false;
@@ -345,7 +348,7 @@ inline std::tuple<NodePtr,std::string,runtime_error> parseChunk(std::stringstrea
           if (displacement.first.isValid()) {
             const SquareIndex destination=displacement.second;
             if (destination==NO_SQUARE)
-              return make_tuple(nullptr,chunk,runtime_error(QCoreApplication::translate("","Capture without step: ")+QString::fromStdString(chunk)));
+              return make_tuple(Subnode(),chunk,runtime_error(QCoreApplication::translate("","Capture without step: ")+QString::fromStdString(chunk)));
             else {
               std::string captureWord;
               posBefore=ss.tellg();
@@ -365,14 +368,14 @@ inline std::tuple<NodePtr,std::string,runtime_error> parseChunk(std::stringstrea
                 const auto step=GameState(gameState).takeExtendedStep(origin,destination);
                 if (toString(step)==chunk) {
                   move.emplace_back(step);
-                  return make_tuple(node,chunk,runtime_error());
+                  return make_tuple(subnode,chunk,runtime_error());
                 }
               }
-              return make_tuple(nullptr,chunk,runtime_error(QCoreApplication::translate("","Invalid step: ")+QString::fromStdString(chunk)));
+              return make_tuple(Subnode(),chunk,runtime_error(QCoreApplication::translate("","Invalid step: ")+QString::fromStdString(chunk)));
             }
           }
           else
-            return make_tuple(nullptr,chunk,runtime_error(QCoreApplication::translate("","Invalid word: ")+QString::fromStdString(chunk)));
+            return make_tuple(Subnode(),chunk,runtime_error(QCoreApplication::translate("","Invalid word: ")+QString::fromStdString(chunk)));
         }
       }
       else
@@ -383,23 +386,23 @@ inline std::tuple<NodePtr,std::string,runtime_error> parseChunk(std::stringstrea
             node=Node::makeMove(node,move,after);
           break;
           case MoveLegality::ILLEGAL_PUSH_INCOMPLETION:
-            return make_tuple(nullptr,chunk,runtime_error(QCoreApplication::translate("","Incomplete push: ")+QString::fromStdString(toString(move))));
+            return make_tuple(Subnode(),chunk,runtime_error(QCoreApplication::translate("","Incomplete push: ")+QString::fromStdString(toString(move))));
           case MoveLegality::ILLEGAL_PASS:
-            return make_tuple(nullptr,chunk,runtime_error(QCoreApplication::translate("","Illegal pass: ")+QString::fromStdString(toString(move))));
+            return make_tuple(Subnode(),chunk,runtime_error(QCoreApplication::translate("","Illegal pass: ")+QString::fromStdString(toString(move))));
           case MoveLegality::ILLEGAL_REPETITION:
-            return make_tuple(nullptr,chunk,runtime_error(QCoreApplication::translate("","Illegal repetition: ")+QString::fromStdString(toString(move))));
+            return make_tuple(Subnode(),chunk,runtime_error(QCoreApplication::translate("","Illegal repetition: ")+QString::fromStdString(toString(move))));
         }
       }
     }
     setup.clear();
     move.clear();
     if (ss.tellg()==posBefore)
-      return parseChunk(ss,node,setup,move,after);
+      return parseChunk(ss,subnode,after);
     else
-      return make_tuple(node,chunk,runtime_error());
+      return make_tuple(subnode,chunk,runtime_error());
   }
   else
-    return make_tuple(nullptr,chunk,runtime_error());
+    return make_tuple(Subnode(),chunk,runtime_error());
 }
 
 inline std::tuple<GameTree,size_t> toTree(const std::string& input,NodePtr node,Placements& setup,ExtendedSteps& move)
@@ -411,8 +414,11 @@ inline std::tuple<GameTree,size_t> toTree(const std::string& input,NodePtr node,
   std::stringstream ss;
   ss<<input;
   while (true) {
-    const auto result=parseChunk(ss,node,setup,move,false);
-    const auto newNode=std::get<0>(result);
+    const auto result=parseChunk(ss,Subnode(node,setup,move),false);
+    const auto& newPosition=std::get<0>(result);
+    const auto& newNode=std::get<0>(newPosition);
+    setup=std::get<1>(newPosition);
+    move=std::get<2>(newPosition);
     if (newNode==nullptr) {
       const auto error=std::get<2>(result);
       if (error.what()==std::string())

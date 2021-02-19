@@ -108,6 +108,7 @@ typedef std::vector<PieceStep> PieceSteps;
 struct Node;
 typedef std::shared_ptr<Node> NodePtr;
 typedef std::deque<NodePtr> GameTree;
+typedef std::tuple<NodePtr,Placements,ExtendedSteps> Subnode;
 
 const std::array<unsigned int,NUM_PIECE_TYPES> numStartingPiecesPerType={8,2,2,2,1,1};
 const unsigned int numStartingPieces=std::accumulate(std::begin(numStartingPiecesPerType),std::end(numStartingPiecesPerType),0);

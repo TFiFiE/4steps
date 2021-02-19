@@ -138,16 +138,16 @@ void Analysis::processStandardOutput()
     }
     else {
       auto& currentNode=std::get<0>(currentPosition);
-      auto& currentSetup=std::get<1>(currentPosition);
+      const auto& currentSetup=std::get<1>(currentPosition);
       auto& currentMove=std::get<2>(currentPosition);
       const auto posBefore=ss.tellg();
-      const auto result=parseChunk(ss,currentNode,currentSetup,currentMove,true);
-      auto newNode=std::get<0>(result);
+      const auto result=parseChunk(ss,currentPosition,true);
+      const auto& newPosition=std::get<0>(result);
       auto chunk=std::get<1>(result);
-      bool action=(newNode!=nullptr);
+      bool action=(std::get<0>(newPosition)!=nullptr);
 
       if (action)
-        currentNode=newNode;
+        currentPosition=newPosition;
       else {
         ss.clear();
         ss.seekg(posBefore);

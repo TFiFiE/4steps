@@ -42,7 +42,7 @@ private:
     APPENDING_TEXT,
     PROCESSING_MOVES
   } state;
-  std::tuple<NodePtr,Placements,ExtendedSteps> startPosition,currentPosition;
+  Subnode startPosition,currentPosition;
 
   QVBoxLayout layout;
     QScrollArea scrollArea;
