@@ -69,7 +69,7 @@ Puzzles::Puzzles(Globals& globals_,const std::string& fileName,QWidget* const pa
   globals.settings.endGroup();
 
   connect(&iconSets,&QActionGroup::triggered,&pieceIcon,static_cast<void (PieceIcon::*)()>(&PieceIcon::update));
-  layout.addWidget(&pieceIcon,0,Qt::AlignHCenter);
+  layout.addWidget(&pieceIcon);
 
   connect(&board,&Board::boardChanged,this,[this] {
     if (!keepScore)
@@ -470,11 +470,6 @@ Puzzles::PieceIcon::PieceIcon(Puzzles& puzzles_) :
   QSizePolicy sizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
   sizePolicy.setHeightForWidth(true);
   setSizePolicy(sizePolicy);
-}
-
-QSize Puzzles::PieceIcon::sizeHint() const
-{
-  return {INT_MAX,INT_MAX};
 }
 
 int Puzzles::PieceIcon::heightForWidth(int w) const

@@ -57,7 +57,6 @@ private:
   public:
     PieceIcon(Puzzles& puzzles_);
   private:
-    virtual QSize sizeHint() const override;
     virtual int heightForWidth(int w) const override;
     virtual void paintEvent(QPaintEvent*) override;
   };
