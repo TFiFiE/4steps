@@ -15,6 +15,7 @@ Puzzles::Puzzles(Globals& globals_,const std::string& fileName,QWidget* const pa
   keepScore(false),
   reshuffle(tr("&Reshuffle")),
   autoAdvance(tr("Auto-adva&nce")),
+  autoExplore(tr("Auto-e&xplore")),
   autoUndo(tr("Auto-&undo")),
   sounds(tr("&Sounds")),
   pieceIcon(*this),
@@ -37,6 +38,7 @@ Puzzles::Puzzles(Globals& globals_,const std::string& fileName,QWidget* const pa
       close();
     }
   });
+  reshuffle.setToolTip(tr("Reshuffle puzzles and start from beginning"));
   layout.addWidget(&reshuffle);
 
   connect(&spinBox,static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),this,[this](const int value) {
@@ -52,13 +54,16 @@ Puzzles::Puzzles(Globals& globals_,const std::string& fileName,QWidget* const pa
   layout.addWidget(&spinBox);
 
   globals.settings.beginGroup("Puzzles");
-  for (const auto& tuple:{make_tuple(&autoAdvance,"auto-advance",false),
-                          make_tuple(&autoUndo,"auto-undo",false),
-                          make_tuple(&sounds,"sounds",true)}) {
+  for (const auto& tuple:{make_tuple(&autoAdvance,"auto-advance",false,tr("Go to next puzzle after right answer")),
+                          make_tuple(&autoExplore,"auto-explore",false,tr("Switch to exploration mode after wrong answer")),
+                          make_tuple(&autoUndo,"auto-undo",false,tr("Undo move after wrong answer")),
+                          make_tuple(&sounds,"sounds",true,tr("Play sound effect after attempt"))}) {
     const auto checkBox=get<0>(tuple);
     const QString key=get<1>(tuple);
     const auto defaultValue=get<2>(tuple);
+    const auto& toolTip=get<3>(tuple);
     checkBox->setChecked(globals.settings.value(key,defaultValue).toBool());
+    checkBox->setToolTip(toolTip);
     connect(checkBox,&QCheckBox::toggled,this,[this,key](const bool checked) {
       globals.settings.beginGroup("Puzzles");
       globals.settings.setValue(key,checked);
@@ -72,12 +77,11 @@ Puzzles::Puzzles(Globals& globals_,const std::string& fileName,QWidget* const pa
   layout.addWidget(&pieceIcon);
 
   connect(&board,&Board::boardChanged,this,[this] {
-    if (!keepScore)
+    if (!keepScore) {
       evaluation.clear();
-  });
-  connect(&board,&Board::boardChanged,this,[this] {
-    if (!keepScore && solveTimer.isValid())
-      solveTime.clear();
+      if (solveTimer.isValid())
+        solveTime.clear();
+    }
   });
   for (const auto& pair:{make_pair(&evaluation,2.0),make_pair(&solveTime,1.5)}) {
     const auto widget=pair.first;
@@ -117,6 +121,7 @@ Puzzles::Puzzles(Globals& globals_,const std::string& fileName,QWidget* const pa
     }
     board.update();
   });
+  hint.setToolTip(tr("Highlight (another) square changed by solution or indicate there are no more"));
   layout.addWidget(&hint);
 
   connect(&answer,&QPushButton::clicked,this,[this] {
@@ -456,8 +461,12 @@ void Puzzles::receiveNodeChange(const NodePtr& newNode)
       if (sounds.isChecked())
         board.playSound("qrc:/wrong.wav",true);
       const auto currentNode=board.currentNode;
-      board.setNode(newNode->previousNode);
-      board.proposeMove(*currentNode.get(),autoUndo.isChecked() ? 0 : currentNode->move.size());
+      if (autoExplore.isChecked())
+        explore.setChecked(true);
+      if (autoUndo.isChecked() || !autoExplore.isChecked()) {
+        board.setNode(newNode->previousNode);
+        board.proposeMove(*currentNode.get(),autoUndo.isChecked() ? 0 : currentNode->move.size());
+      }
       evaluation.setStyleSheet("color:#ff00ff;");
       evaluation.setText("WRONG");
     }

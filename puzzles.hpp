@@ -65,7 +65,7 @@ private:
     QVBoxLayout layout;
       QPushButton reshuffle;
       QSpinBox spinBox;
-      QCheckBox autoAdvance,autoUndo,sounds;
+      QCheckBox autoAdvance,autoExplore,autoUndo,sounds;
       PieceIcon pieceIcon;
       QLabel evaluation,solveTime;
       QPushButton resetPuzzle,hint,answer;
