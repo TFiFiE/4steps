@@ -1,15 +1,15 @@
-#ifndef POPUP_HPP
-#define POPUP_HPP
+#ifndef PALETTE_HPP
+#define PALETTE_HPP
 
 #include <array>
 #include <QWidget>
 class Board;
 #include "def.hpp"
 
-class Popup : public QWidget {
+class Palette : public QWidget {
   Q_OBJECT
 public:
-  explicit Popup(Board& board_,const SquareIndex affectedSquare_);
+  explicit Palette(Board& board_,const SquareIndex affectedSquare_);
 private:
   virtual void paintEvent(QPaintEvent*) override;
   virtual void mouseMoveEvent(QMouseEvent* event) override;
@@ -27,4 +27,4 @@ private:
   bool dragging;
 };
 
-#endif // POPUP_HPP
+#endif // PALETTE_HPP

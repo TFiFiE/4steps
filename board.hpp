@@ -123,7 +123,7 @@ signals:
   void boardRotated(const bool southIsUp);
   void sendNodeChange(const NodePtr& newNode,const NodePtr& oldNode);
 
-  friend class Popup;
+  friend class Palette;
   friend class OffBoard;
 };
 

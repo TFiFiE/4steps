@@ -37,9 +37,9 @@ SOURCES += \
     node.cpp \
     offboard.cpp \
     opengame.cpp \
+    palette.cpp \
     pieceicons.cpp \
     playerbar.cpp \
-    popup.cpp \
     puzzles.cpp \
     server.cpp \
     startanalysis.cpp \
@@ -71,9 +71,9 @@ HEADERS += \
     node.hpp \
     offboard.hpp \
     opengame.hpp \
+    palette.hpp \
     pieceicons.hpp \
     playerbar.hpp \
-    popup.hpp \
     potentialmove.hpp \
     puzzles.hpp \
     readonly.hpp \

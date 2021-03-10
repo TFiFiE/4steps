@@ -4,7 +4,7 @@
 #include "globals.hpp"
 #include "messagebox.hpp"
 #include "io.hpp"
-#include "popup.hpp"
+#include "palette.hpp"
 
 Board::Board(Globals& globals_,NodePtr currentNode_,const bool explore_,const Side viewpoint,const bool soundOn,const std::array<bool,NUM_SIDES>& controllableSides_,const TurnState* const customSetup_,QWidget* const parent,const Qt::WindowFlags f) :
   QWidget(parent,f),
@@ -755,7 +755,7 @@ void Board::mousePressEvent(QMouseEvent* event)
         }
         else if (customSetup()) {
           if (square!=NO_SQUARE)
-            new Popup(*this,square);
+            new Palette(*this,square);
           break;
         }
       }

@@ -2,11 +2,11 @@
 #include <QMouseEvent>
 #include <QApplication>
 #include <QScreen>
-#include "popup.hpp"
+#include "palette.hpp"
 #include "board.hpp"
 #include "globals.hpp"
 
-Popup::Popup(Board& board_,const SquareIndex affectedSquare_) :
+Palette::Palette(Board& board_,const SquareIndex affectedSquare_) :
   QWidget(&board_,Qt::Popup),
   board(board_),
   affectedSquare(affectedSquare_),
@@ -44,7 +44,7 @@ Popup::Popup(Board& board_,const SquareIndex affectedSquare_) :
   show();
 }
 
-void Popup::paintEvent(QPaintEvent*)
+void Palette::paintEvent(QPaintEvent*)
 {
   const QColor sideColors[NUM_SIDES]={Qt::white,Qt::black};
   QPainter qPainter(this);
@@ -80,13 +80,13 @@ void Popup::paintEvent(QPaintEvent*)
   qPainter.end();
 }
 
-void Popup::mouseMoveEvent(QMouseEvent* event)
+void Palette::mouseMoveEvent(QMouseEvent* event)
 {
   if ((event->buttons()&Qt::RightButton)!=0)
     dragging=true;
 }
 
-void Popup::mouseReleaseEvent(QMouseEvent* event)
+void Palette::mouseReleaseEvent(QMouseEvent* event)
 {
   if (dragging || event->button()!=Qt::RightButton) {
     const auto pos=event->pos();
