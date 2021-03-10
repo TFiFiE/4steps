@@ -38,6 +38,7 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   animate(tr("Animate &moves")),
   animationDelay(tr("Animation &delay")),
   sound(tr("&Sound")),
+  volume(tr("&Volume")),
   stepMode(tr("&Step mode")),
   confirm(tr("&Confirm move")),
   moveList(tr("&Move list")),
@@ -164,6 +165,15 @@ void Game::addBoardMenu()
   sound.setShortcut(QKeySequence(Qt::Key_S));
   connect(&sound,&QAction::toggled,&board,&Board::toggleSound);
   boardMenu->addAction(&sound);
+
+  volume.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_V));
+  connect(&volume,&QAction::triggered,&board,[this] {
+    bool ok;
+    const auto volume=QInputDialog::getInt(this,tr("Set volume"),tr("Volume as percentage:"),board.volume,0,100,1,&ok);
+    if (ok)
+      board.setVolume(volume);
+  });
+  boardMenu->addAction(&volume);
 
   const auto iconMenu=boardMenu->addMenu(tr("&Piece icons"));
   for (const auto& iconSet:{tr("&Vector"),tr("&Raster")}) {

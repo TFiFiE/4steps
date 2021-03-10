@@ -31,6 +31,7 @@ Board::Board(Globals& globals_,NodePtr currentNode_,const bool explore_,const Si
   const auto iconSet=static_cast<PieceIcons::Set>(globals.settings.value("icon_set",PieceIcons::VECTOR).toInt());
   const auto animate=globals.settings.value("animate",true).toBool();
   const auto animationDelay=globals.settings.value("animation_delay",375).toInt();
+  const auto volume=globals.settings.value("volume",100).toInt();
   const auto confirm=globals.settings.value("confirm",true).toBool();
   globals.settings.endGroup();
 
@@ -38,6 +39,7 @@ Board::Board(Globals& globals_,NodePtr currentNode_,const bool explore_,const Si
   setIconSet(iconSet);
   setAnimate(animate);
   setAnimationDelay(animationDelay);
+  setVolume(volume);
   setConfirm(confirm);
 
   connect(this,&Board::boardChanged,this,[this](const bool refresh) {
@@ -334,6 +336,12 @@ void Board::setAnimationDelay(const int newAnimationDelay)
 {
   if (setSetting(animationDelay,newAnimationDelay,"animation_delay"))
     animationTimer.setInterval(animationDelay);
+}
+
+void Board::setVolume(const int newVolume)
+{
+  if (setSetting(volume,newVolume,"volume"))
+    qMediaPlayer.setVolume(newVolume);
 }
 
 void Board::setConfirm(const bool newConfirm)

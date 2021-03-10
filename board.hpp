@@ -46,6 +46,7 @@ public:
   void setIconSet(const PieceIcons::Set newIconSet);
   void setAnimate(const bool newAnimate);
   void setAnimationDelay(const int newAnimationDelay);
+  void setVolume(const int newVolume);
   void setConfirm(const bool newConfirm);
   void playSound(const QString& soundFile,const bool override=false);
   void setExploration(const bool on);
@@ -54,7 +55,7 @@ public:
   readonly<Board,bool> explore,southIsUp,stepMode,soundOn,animate,confirm;
   readonly<Board,PieceIcons::Set> iconSet;
   readonly<Board,NodePtr> currentNode;
-  readonly<Board,int> animationDelay;
+  readonly<Board,int> animationDelay,volume;
   readonly<Board,PotentialMove> potentialMove;
 
   const QColor neutralColor;
