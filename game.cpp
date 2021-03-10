@@ -1,6 +1,7 @@
 #include <QMenuBar>
 #include <QApplication>
 #include <QScreen>
+#include <QInputDialog>
 #include <QHeaderView>
 #include <QClipboard>
 #include <QMouseEvent>
@@ -35,6 +36,7 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
   rotate(tr("&Rotate")),
   autoRotate(tr("&Auto-rotate")),
   animate(tr("Animate &moves")),
+  animationDelay(tr("Animation &delay")),
   sound(tr("&Sound")),
   stepMode(tr("&Step mode")),
   confirm(tr("&Confirm move")),
@@ -147,6 +149,15 @@ void Game::addBoardMenu()
   animate.setShortcut(QKeySequence(Qt::Key_M));
   connect(&animate,&QAction::toggled,&board,&Board::setAnimate);
   boardMenu->addAction(&animate);
+
+  animationDelay.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_D));
+  connect(&animationDelay,&QAction::triggered,&board,[this] {
+    bool ok;
+    const auto delay=QInputDialog::getInt(this,tr("Set animation delay"),tr("Delay in milliseconds:"),board.animationDelay,0,INT_MAX,1,&ok);
+    if (ok)
+      board.setAnimationDelay(delay);
+  });
+  boardMenu->addAction(&animationDelay);
 
   sound.setCheckable(true);
   sound.setChecked(board.soundOn);

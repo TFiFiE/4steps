@@ -75,7 +75,7 @@ protected:
   bool finished;
   bool moveSynchronization;
 
-  QAction forceUpdate,resign,fullScreen,rotate,autoRotate,animate,sound,stepMode,confirm,moveList;
+  QAction forceUpdate,resign,fullScreen,rotate,autoRotate,animate,animationDelay,sound,stepMode,confirm,moveList;
   std::unique_ptr<QAction> offBoards[NUM_SIDES];
   QWidget cornerWidget;
   QHBoxLayout cornerLayout;
