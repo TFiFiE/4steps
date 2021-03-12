@@ -1,4 +1,5 @@
 #include <QMouseEvent>
+#include <QToolTip>
 #include <QPainter>
 #include "board.hpp"
 #include "globals.hpp"
@@ -741,6 +742,19 @@ bool Board::confirmMove()
     return MessageBox(QMessageBox::Question,tr("Confirm move"),tr("Do you want to submit this move?"),QMessageBox::Yes|QMessageBox::No,this).exec()==QMessageBox::Yes;
   else
     return true;
+}
+
+bool Board::event(QEvent* event)
+{
+  if (event->type()==QEvent::ToolTip) {
+    const auto helpEvent=static_cast<QHelpEvent*>(event);
+    const auto squareIndex=positionToSquare(helpEvent->pos());
+    if (squareIndex!=NO_SQUARE) {
+      QToolTip::showText(helpEvent->globalPos(),toCoordinates(squareIndex).data());
+      return true;
+    }
+  }
+  return QWidget::event(event);
 }
 
 void Board::mousePressEvent(QMouseEvent* event)
