@@ -29,6 +29,7 @@ Board::Board(Globals& globals_,NodePtr currentNode_,const bool explore_,const Si
   globals.settings.beginGroup("Board");
   const auto stepMode=globals.settings.value("step_mode").toBool();
   const auto iconSet=static_cast<PieceIcons::Set>(globals.settings.value("icon_set",PieceIcons::VECTOR).toInt());
+  const auto coordinateDisplay=static_cast<CoordinateDisplay>(globals.settings.value("coordinate_display",TRAPS_ONLY).toInt());
   const auto animate=globals.settings.value("animate",true).toBool();
   const auto animationDelay=globals.settings.value("animation_delay",375).toInt();
   const auto volume=globals.settings.value("volume",100).toInt();
@@ -37,6 +38,7 @@ Board::Board(Globals& globals_,NodePtr currentNode_,const bool explore_,const Si
 
   setStepMode(stepMode);
   setIconSet(iconSet);
+  setCoordinateDisplay(coordinateDisplay);
   setAnimate(animate);
   setAnimationDelay(animationDelay);
   setVolume(volume);
@@ -324,6 +326,12 @@ void Board::setStepMode(const bool newStepMode)
 void Board::setIconSet(const PieceIcons::Set newIconSet)
 {
   if (setSetting(iconSet,newIconSet,"icon_set"))
+    update();
+}
+
+void Board::setCoordinateDisplay(const CoordinateDisplay newCoordinateDisplay)
+{
+  if (setSetting(coordinateDisplay,newCoordinateDisplay,"coordinate_display"))
     update();
 }
 
@@ -948,14 +956,16 @@ void Board::paintEvent(QPaintEvent*)
 {
   QPainter qPainter(this);
 
-  qreal factor=squareHeight()/static_cast<qreal>(qPainter.fontMetrics().height());
-  for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square))
-    if (isTrap(square))
-      factor=std::min(factor,squareWidth()/static_cast<qreal>(qPainter.fontMetrics().horizontalAdvance(toCoordinates(square,'A').data())));
-  if (factor>0) {
-    QFont qFont(qPainter.font());
-    qFont.setPointSizeF(qFont.pointSizeF()*factor);
-    qPainter.setFont(qFont);
+  if (coordinateDisplay!=NONE) {
+    qreal factor=squareHeight()/static_cast<qreal>(qPainter.fontMetrics().height());
+    for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square))
+      if (coordinateDisplay==ALL || isTrap(square))
+        factor=std::min(factor,squareWidth()/static_cast<qreal>(qPainter.fontMetrics().horizontalAdvance(toCoordinates(square,'A').data())));
+    if (factor>0) {
+      QFont qFont(qPainter.font());
+      qFont.setPointSizeF(qFont.pointSizeF()*factor);
+      qPainter.setFont(qFont);
+    }
   }
 
   const GameState& gameState_=displayedGameState();
@@ -1004,7 +1014,7 @@ void Board::paintEvent(QPaintEvent*)
       qPainter.setPen(qPen);
       const QRect qRect=visualRectangle(file,rank);
       qPainter.drawRect(qRect);
-      if (isTrapSquare) {
+      if (coordinateDisplay==ALL || (coordinateDisplay==TRAPS_ONLY && isTrapSquare)) {
         if (gameEnd())
           qPainter.setPen(neutralColor);
         qPainter.drawText(qRect,Qt::AlignCenter,toCoordinates(file,rank,'A').data());

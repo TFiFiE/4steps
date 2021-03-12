@@ -46,7 +46,8 @@ Game::Game(Globals& globals_,const Side viewpoint,QWidget* const parent,const st
             make_unique<QAction>(tr("&Silver pieces off board"))},
   explore(tr("&Explore")),
   current(tr("&Current")),
-  iconSets(this)
+  iconSets(this),
+  coordinateOptions(this)
 {
   if (session==nullptr && customSetup==nullptr)
     setWindowTitle(tr("New game"));
@@ -177,7 +178,7 @@ void Game::addBoardMenu()
 
   const auto iconMenu=boardMenu->addMenu(tr("&Piece icons"));
   for (const auto& iconSet:{tr("&Vector"),tr("&Raster")}) {
-    const auto& action=iconMenu->addAction(iconSet);
+    const auto action=iconMenu->addAction(iconSet);
     iconSets.addAction(action);
     action->setCheckable(true);
   }
@@ -186,6 +187,17 @@ void Game::addBoardMenu()
     board.setIconSet(static_cast<PieceIcons::Set>(iconSets.actions().indexOf(action)));
     for (auto& gallery:galleries)
       gallery.update();
+  });
+
+  const auto coordinateMenu=boardMenu->addMenu(tr("&Coordinate display"));
+  for (const auto& coordinateOption:{tr("&None"),tr("&Traps only"),tr("&All")}) {
+    const auto action=coordinateMenu->addAction(coordinateOption);
+    coordinateOptions.addAction(action);
+    action->setCheckable(true);
+  }
+  coordinateOptions.actions()[board.coordinateDisplay]->setChecked(true);
+  connect(&coordinateOptions,&QActionGroup::triggered,&board,[this](QAction* const action) {
+    board.setCoordinateDisplay(static_cast<Board::CoordinateDisplay>(coordinateOptions.actions().indexOf(action)));
   });
 }
 

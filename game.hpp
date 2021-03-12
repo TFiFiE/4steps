@@ -82,7 +82,7 @@ protected:
     QLabel cornerMessage;
     QCheckBox explore;
     QPushButton current;
-  QActionGroup iconSets;
+  QActionGroup iconSets,coordinateOptions;
 
   friend class StartAnalysis;
 };

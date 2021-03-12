@@ -14,6 +14,12 @@ struct Globals;
 class Board : public QWidget {
   Q_OBJECT
 public:
+  enum CoordinateDisplay {
+    NONE,
+    TRAPS_ONLY,
+    ALL
+  };
+
   explicit Board(Globals& globals_,NodePtr currentNode_,const bool explore_,const Side viewpoint,const bool soundOn,const std::array<bool,NUM_SIDES>& controllableSides_={true,true},const TurnState* const customSetup_=nullptr,QWidget* const parent=nullptr,const Qt::WindowFlags f=Qt::WindowFlags());
   bool customSetup() const;
   bool setupPhase() const;
@@ -44,6 +50,7 @@ public:
   void toggleSound(const bool soundOn_);
   void setStepMode(const bool newStepMode);
   void setIconSet(const PieceIcons::Set newIconSet);
+  void setCoordinateDisplay(const CoordinateDisplay newCoordinateDisplay);
   void setAnimate(const bool newAnimate);
   void setAnimationDelay(const int newAnimationDelay);
   void setVolume(const int newVolume);
@@ -54,6 +61,7 @@ public:
 
   readonly<Board,bool> explore,southIsUp,stepMode,soundOn,animate,confirm;
   readonly<Board,PieceIcons::Set> iconSet;
+  readonly<Board,CoordinateDisplay> coordinateDisplay;
   readonly<Board,NodePtr> currentNode;
   readonly<Board,int> animationDelay,volume;
   readonly<Board,PotentialMove> potentialMove;
