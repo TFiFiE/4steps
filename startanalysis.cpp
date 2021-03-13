@@ -21,7 +21,9 @@ StartAnalysis::StartAnalysis(Globals& globals_,const NodePtr& node_,const std::p
   executable.addWidget(&executableLineEdit);
 
   connect(&executablePushButton,&QPushButton::clicked,this,[this] {
-    executableLineEdit.setText(QFileDialog::getOpenFileName(this,tr("Set analysis executable")));
+    const auto fileName=QFileDialog::getOpenFileName(this,tr("Set analysis executable"));
+    if (fileName!=nullptr)
+      executableLineEdit.setText(fileName);
   });
   executable.addWidget(&executablePushButton);
 
@@ -110,7 +112,12 @@ StartAnalysis::StartAnalysis(Globals& globals_,const NodePtr& node_,const std::p
 
   readSettings(globals.settings);
   setWindowTitle();
-  dialogButtonBox.button(QDialogButtonBox::Ok)->setFocus();
+  const auto okButton=dialogButtonBox.button(QDialogButtonBox::Ok);
+  okButton->setEnabled(!executableLineEdit.text().isEmpty());
+  connect(&executableLineEdit,&QLineEdit::textChanged,this,[okButton](const QString& text) {
+    okButton->setEnabled(!text.isEmpty());
+  });
+  okButton->setFocus();
 }
 
 QStringList StartAnalysis::split(const QTextEdit& textEdit)
