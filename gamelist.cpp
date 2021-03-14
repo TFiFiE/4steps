@@ -69,32 +69,43 @@ GameList::GameList(Server* const server,const QString& labelText) :
     QModelIndex index=tableWidget.indexAt(pos);
     const auto& game=games[index.row()];
 
-    bool emptySeat=false;
+    bool hasEmptySeat=false;
+    bool hasOtherPlayer=false;
     for (const auto& player:game.players) {
       if (player.isEmpty())
-        emptySeat=true;
+        hasEmptySeat=true;
       else if (player!=server->session.username())
-        return;
+        hasOtherPlayer=true;
     }
-    if (!emptySeat)
-      return;
 
     auto menu=new QMenu(server);
     menu->setAttribute(Qt::WA_DeleteOnClose);
-    const auto cancelGame=new QAction("Cancel",menu);
-    connect(cancelGame,&QAction::triggered,this,[=]{
-      const auto networkReply=server->session.cancelGame(this,game.id);
-      connect(networkReply,&QNetworkReply::finished,this,[=] {
-        try {
-          server->session.processReply(*networkReply);
-        }
-        catch (const std::exception& exception) {
-          MessageBox(QMessageBox::Critical,tr("Error cancelling game"),exception.what(),QMessageBox::NoButton,server).exec();
-        }
-        server->refreshPage();
-      });
+
+    const auto spectateGame=new QAction("Open as spectator",menu);
+    const auto column=index.column();
+    const auto viewpoint=(column<NUM_SIDES ? static_cast<Side>(column) : FIRST_SIDE);
+    connect(spectateGame,&QAction::triggered,this,[=] {
+      server->enterGame(game,NO_SIDE,viewpoint);
     });
-    menu->addAction(cancelGame);
+    menu->addAction(spectateGame);
+
+    if (!hasOtherPlayer && hasEmptySeat) {
+      const auto cancelGame=new QAction("Cancel",menu);
+      connect(cancelGame,&QAction::triggered,this,[=] {
+        const auto networkReply=server->session.cancelGame(this,game.id);
+        connect(networkReply,&QNetworkReply::finished,this,[=] {
+          try {
+            server->session.processReply(*networkReply);
+          }
+          catch (const std::exception& exception) {
+            MessageBox(QMessageBox::Critical,tr("Error cancelling game"),exception.what(),QMessageBox::NoButton,server).exec();
+          }
+          server->refreshPage();
+        });
+      });
+      menu->addAction(cancelGame);
+    }
+
     menu->popup(tableWidget.viewport()->mapToGlobal(pos));
   });
 }
