@@ -19,6 +19,15 @@ public:
     TRAPS_ONLY,
     ALL
   };
+  enum SquareColorIndex {
+    REGULAR,
+    GOAL,
+    TRAP=GOAL+NUM_SIDES,
+    HIGHLIGHT=TRAP+NUM_SIDES,
+    HIGHLIGHT_MILD=HIGHLIGHT+NUM_SIDES,
+    ALTERNATIVE=HIGHLIGHT_MILD+NUM_SIDES,
+    NUM_SQUARE_COLORS=ALTERNATIVE*2
+  };
 
   explicit Board(Globals& globals_,NodePtr currentNode_,const bool explore_,const Side viewpoint,const bool soundOn,const std::array<bool,NUM_SIDES>& controllableSides_={true,true},const TurnState* const customSetup_=nullptr,QWidget* const parent=nullptr,const Qt::WindowFlags f=Qt::WindowFlags());
   bool customSetup() const;
@@ -55,6 +64,7 @@ public:
   void setAnimationDelay(const int newAnimationDelay);
   void setVolume(const int newVolume);
   void setConfirm(const bool newConfirm);
+  void setColor(const unsigned int colorIndex,const QColor& newColor);
   void playSound(const QString& soundFile,const bool override=false);
   void setExploration(const bool on);
   void setControllable(const std::array<bool,NUM_SIDES>& controllableSides_);
@@ -66,10 +76,8 @@ public:
   readonly<Board,int> animationDelay,volume;
   readonly<Board,PotentialMove> potentialMove;
 
-  const QColor neutralColor;
-  const QColor sideColors[NUM_SIDES];
-  const QColor mildSideColors[NUM_SIDES];
-  QColor customColors[NUM_SQUARES];
+  readonly<Board,QColor> colors[NUM_SQUARE_COLORS];
+  SquareColorIndex customColors[NUM_SQUARES];
 private:
   int squareWidth() const;
   int squareHeight() const;
@@ -127,6 +135,8 @@ private:
   std::array<SquareIndex,2> drag;
   ExtendedSteps dragSteps;
   std::array<SquareIndex,2> highlighted;
+
+  const char* const colorKeys[NUM_SQUARE_COLORS];
 signals:
   void gameStarted();
   void boardChanged(const bool refresh=true);

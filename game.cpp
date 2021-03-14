@@ -2,6 +2,7 @@
 #include <QApplication>
 #include <QScreen>
 #include <QInputDialog>
+#include <QColorDialog>
 #include <QHeaderView>
 #include <QClipboard>
 #include <QMouseEvent>
@@ -189,7 +190,7 @@ void Game::addBoardMenu()
       gallery.update();
   });
 
-  const auto coordinateMenu=boardMenu->addMenu(tr("&Coordinate display"));
+  const auto coordinateMenu=boardMenu->addMenu(tr("Coordina&te display"));
   for (const auto& coordinateOption:{tr("&None"),tr("&Traps only"),tr("&All")}) {
     const auto action=coordinateMenu->addAction(coordinateOption);
     coordinateOptions.addAction(action);
@@ -199,6 +200,38 @@ void Game::addBoardMenu()
   connect(&coordinateOptions,&QActionGroup::triggered,&board,[this](QAction* const action) {
     board.setCoordinateDisplay(static_cast<Board::CoordinateDisplay>(coordinateOptions.actions().indexOf(action)));
   });
+
+  const auto colorMenu=boardMenu->addMenu(tr("Square &colors"));
+  const QString colorOptions[]={tr("&Regular"),
+                                tr("&Southern goal row"),
+                                tr("&Northern goal row"),
+                                tr("&Southern traps"),
+                                tr("&Northern traps"),
+                                tr("&Light"),
+                                tr("&Dark"),
+                                tr("Mild &light"),
+                                tr("Mild &dark")};
+  const QString subOptions[]={tr("&Normal"),tr("&Alternative")};
+  for (unsigned int optionIndex=0;optionIndex<Board::ALTERNATIVE;++optionIndex) {
+    const auto optionMenu=colorMenu->addMenu(colorOptions[optionIndex]);
+    for (unsigned int subOptionIndex=0;subOptionIndex<2;++subOptionIndex) {
+      const auto action=optionMenu->addAction(subOptions[subOptionIndex]);
+      const auto colorIndex=optionIndex+subOptionIndex*Board::ALTERNATIVE;
+      connect(action,&QAction::triggered,&board,[this,colorIndex] {
+        const auto color=QColorDialog::getColor(board.colors[colorIndex],this,tr("Set square color"));
+        if (color.isValid())
+          board.setColor(colorIndex,color);
+      });
+    }
+    const auto action=optionMenu->addAction(tr("&Both"));
+    connect(action,&QAction::triggered,&board,[this,optionIndex] {
+      const auto color=QColorDialog::getColor(board.colors[optionIndex],this,tr("Set square colors"));
+      if (color.isValid()) {
+        board.setColor(optionIndex,color);
+        board.setColor(optionIndex+Board::ALTERNATIVE,color);
+      }
+    });
+  }
 }
 
 void Game::addInputMenu()

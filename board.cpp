@@ -12,15 +12,31 @@ Board::Board(Globals& globals_,NodePtr currentNode_,const bool explore_,const Si
   explore(explore_),
   southIsUp(viewpoint==SECOND_SIDE),
   currentNode(currentNode_),
-  neutralColor(0x89,0x65,0x7B),
-  sideColors{Qt::white,Qt::black},
-  mildSideColors{{0xC9,0xC9,0xC9},{0x23,0x23,0x23}},
   globals(globals_),
   potentialSetup(customSetup_==nullptr ? GameState() : GameState(*customSetup_)),
   controllableSides(controllableSides_),
   autoRotate(false),
-  drag{NO_SQUARE,NO_SQUARE}
+  drag{NO_SQUARE,NO_SQUARE},
+  colorKeys{"regular",
+            "goal_south",
+            "goal_north",
+            "trap_south",
+            "trap_north",
+            "highlight_light",
+            "highlight_dark",
+            "highlight_mild_light",
+            "highlight_mild_dark",
+            "alternative",
+            "goal_south_alternative",
+            "goal_north_alternative",
+            "trap_south_alternative",
+            "trap_north_alternative",
+            "highlight_light_alternative",
+            "highlight_dark_alternative",
+            "highlight_mild_light_alternative",
+            "highlight_mild_dark_alternative"}
 {
+  fill(customColors,REGULAR);
   setContextMenuPolicy(Qt::NoContextMenu);
   qMediaPlayer.setPlaylist(&qMediaPlaylist);
   toggleSound(soundOn);
@@ -37,6 +53,36 @@ Board::Board(Globals& globals_,NodePtr currentNode_,const bool explore_,const Si
   const auto confirm=globals.settings.value("confirm",true).toBool();
   globals.settings.endGroup();
 
+  globals.settings.beginGroup("Colors");
+  const QString defaultMainColors[2]={"#89657B","#C92D0C"};
+  const QString defaultTrapColors[NUM_SIDES]={"#F66610","#4200F2"};
+  const QString defaultHighLightColors[NUM_SIDES]={"#FFFFFF","#000000"};
+  const QString defaultMildHighLightColors[NUM_SIDES]={"#C9C9C9","#232323"};
+  const QString defaultColors[NUM_SQUARE_COLORS]={
+    defaultMainColors[0],
+    defaultMainColors[0],
+    defaultMainColors[0],
+    defaultTrapColors[FIRST_SIDE],
+    defaultTrapColors[SECOND_SIDE],
+    defaultHighLightColors[FIRST_SIDE],
+    defaultHighLightColors[SECOND_SIDE],
+    defaultMildHighLightColors[FIRST_SIDE],
+    defaultMildHighLightColors[SECOND_SIDE],
+    defaultMainColors[1],
+    defaultMainColors[1],
+    defaultMainColors[1],
+    defaultTrapColors[FIRST_SIDE],
+    defaultTrapColors[SECOND_SIDE],
+    defaultHighLightColors[FIRST_SIDE],
+    defaultHighLightColors[SECOND_SIDE],
+    defaultMildHighLightColors[FIRST_SIDE],
+    defaultMildHighLightColors[SECOND_SIDE],
+  };
+  QColor colors[NUM_SQUARE_COLORS];
+  for (unsigned int colorIndex=0;colorIndex<Board::NUM_SQUARE_COLORS;++colorIndex)
+    colors[colorIndex]=globals.settings.value(colorKeys[colorIndex],defaultColors[colorIndex]).toString();
+  globals.settings.endGroup();
+
   setStepMode(stepMode);
   setIconSet(iconSet);
   setCoordinateDisplay(coordinateDisplay);
@@ -44,6 +90,8 @@ Board::Board(Globals& globals_,NodePtr currentNode_,const bool explore_,const Si
   setAnimationDelay(animationDelay);
   setVolume(volume);
   setConfirm(confirm);
+  for (unsigned int colorIndex=0;colorIndex<Board::NUM_SQUARE_COLORS;++colorIndex)
+    setColor(colorIndex,colors[colorIndex]);
 
   connect(this,&Board::boardChanged,this,[this](const bool refresh) {
     if (refresh)
@@ -356,6 +404,18 @@ void Board::setVolume(const int newVolume)
 void Board::setConfirm(const bool newConfirm)
 {
   setSetting(confirm,newConfirm,"confirm");
+}
+
+void Board::setColor(const unsigned int colorIndex,const QColor& newColor)
+{
+  auto& currentColor=colors[colorIndex];
+  if (newColor!=currentColor.data) {
+    currentColor=newColor;
+    globals.settings.beginGroup("Colors");
+    globals.settings.setValue(colorKeys[colorIndex],newColor.name());
+    globals.settings.endGroup();
+    update();
+  }
 }
 
 void Board::playSound(const QString& soundFile,const bool override)
@@ -987,6 +1047,8 @@ void Board::paintEvent(QPaintEvent*)
 
   QPen qPen(Qt::SolidPattern,1);
   const QPoint mousePosition=mapFromGlobal(QCursor::pos());
+  const bool alternativeColoring=(explore && found(controllableSides,false));
+  const auto startingColor=&colors[alternativeColoring ? ALTERNATIVE : REGULAR];
   for (unsigned int pass=0;pass<2;++pass)
     for (SquareIndex square=FIRST_SQUARE;square<NUM_SQUARES;increment(square)) {
       const unsigned int file=toFile(square);
@@ -997,40 +1059,54 @@ void Board::paintEvent(QPaintEvent*)
         if (pass==0)
           continue;
         else {
-          qPainter.setBrush(sideColors[sideToMove()]);
-          qPen.setColor(sideColors[otherSide(sideToMove())]);
+          qPainter.setBrush((startingColor+HIGHLIGHT+sideToMove())->data);
+          qPen.setColor(*(startingColor+HIGHLIGHT+otherSide(sideToMove())));
         }
       }
       else if (pass==1)
         continue;
       else {
         if (!isAnimating() && !setupPhase() && (square==drag[ORIGIN] || found<ORIGIN>(dragSteps,square)))
-          qPainter.setBrush(mildSideColors[sideToMove()]);
+          qPainter.setBrush((startingColor+HIGHLIGHT_MILD+sideToMove())->data);
         else if (setupPhase() ? !customSetup() && playable() && isSetupRank(sideToMove(),rank)
                               : (isAnimating() || gameState_.stepsAvailable==MAX_STEPS_PER_MOVE) &&
                                 previousPieces!=nullptr && (*previousPieces)[square]!=gameState_.squarePieces[square])
-          qPainter.setBrush(sideColors[otherSide(sideToMove())]);
+          qPainter.setBrush((startingColor+HIGHLIGHT+otherSide(sideToMove()))->data);
         else {
-          const auto color=customColors[square];
-          if (color.isValid())
-            qPainter.setBrush(color);
-          else if (isTrapSquare)
-            qPainter.setBrush(rank<NUM_RANKS/2 ? QColor(0xF6,0x66,0x10) : QColor(0x42,0x00,0xF2));
-          else if (customSetup())
-            qPainter.setBrush(mildSideColors[sideToMove()]);
-          else if (explore && found(controllableSides,false))
-            qPainter.setBrush(QColor(0xC9,0x2D,0x0C));
-          else
-            qPainter.setBrush(neutralColor);
+          const auto customColor=customColors[square];
+          if (customColor!=REGULAR)
+            qPainter.setBrush((startingColor+customColor)->data);
+          else {
+            if (customSetup())
+              qPainter.setBrush((startingColor+HIGHLIGHT_MILD+sideToMove())->data);
+            else
+              qPainter.setBrush((startingColor+REGULAR)->data);
+            if (isTrapSquare) {
+              const QColor trapColors[NUM_SIDES]={(startingColor+TRAP+ FIRST_SIDE)->data,
+                                                  (startingColor+TRAP+SECOND_SIDE)->data};
+              if (!customSetup() || trapColors[FIRST_SIDE]!=trapColors[SECOND_SIDE])
+                qPainter.setBrush(trapColors[rank<NUM_RANKS/2 ? FIRST_SIDE : SECOND_SIDE]);
+            }
+            else {
+              const QColor goalColors[NUM_SIDES]={(startingColor+GOAL+ FIRST_SIDE)->data,
+                                                  (startingColor+GOAL+SECOND_SIDE)->data};
+              if (!customSetup() || goalColors[FIRST_SIDE]!=goalColors[SECOND_SIDE])
+                for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side))
+                  if (isGoal(square,side)) {
+                    qPainter.setBrush(goalColors[side]);
+                    break;
+                  }
+            }
+          }
         }
-        qPen.setColor(sideColors[sideToMove()]);
+        qPen.setColor(*(startingColor+HIGHLIGHT+sideToMove()));
       }
       qPainter.setPen(qPen);
       const QRect qRect=visualRectangle(file,rank);
       qPainter.drawRect(qRect);
       if (coordinateDisplay==ALL || (coordinateDisplay==TRAPS_ONLY && isTrapSquare)) {
         if (gameEnd())
-          qPainter.setPen(neutralColor);
+          qPainter.setPen(colors[alternativeColoring ? REGULAR : ALTERNATIVE]);
         qPainter.drawText(qRect,Qt::AlignCenter,toCoordinates(file,rank,'A').data());
       }
       if (square!=drag[ORIGIN] || isAnimating()) {

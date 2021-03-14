@@ -110,13 +110,13 @@ Puzzles::Puzzles(Globals& globals_,const std::string& fileName,QWidget* const pa
     const auto otherSide_=otherSide(board.sideToMove());
     if (pastRevealed==differentSquares.end()) {
       for (const auto differentSquare:differentSquares)
-        board.customColors[differentSquare]=board.sideColors[otherSide_];
+        board.customColors[differentSquare]=Board::SquareColorIndex(Board::HIGHLIGHT+otherSide_);
       hint.setEnabled(false);
     }
     else {
       const auto numUnrevealed=distance(pastRevealed,differentSquares.end());
       iter_swap(pastRevealed,std::next(pastRevealed,globals.rand(numUnrevealed)));
-      board.customColors[*pastRevealed]=board.mildSideColors[otherSide_];
+      board.customColors[*pastRevealed]=Board::SquareColorIndex(Board::HIGHLIGHT_MILD+otherSide_);
       ++pastRevealed;
     }
     board.update();
@@ -421,7 +421,7 @@ void Puzzles::setPuzzle(const NodePtr node,const ExtendedSteps& newSolution)
 void Puzzles::clearHints()
 {
   pastRevealed=differentSquares.begin();
-  fill(board.customColors,QColor());
+  fill(board.customColors,Board::REGULAR);
   hint.setEnabled(true);
 }
 

@@ -46,13 +46,12 @@ Palette::Palette(Board& board_,const SquareIndex affectedSquare_) :
 
 void Palette::paintEvent(QPaintEvent*)
 {
-  const QColor sideColors[NUM_SIDES]={Qt::white,Qt::black};
   QPainter qPainter(this);
 
   QPen qPen(Qt::SolidPattern,1);
-  qPen.setColor(sideColors[board.sideToMove()]);
+  qPen.setColor(board.colors[Board::HIGHLIGHT+board.sideToMove()]);
   qPainter.setPen(qPen);
-  qPainter.setBrush(board.neutralColor);
+  qPainter.setBrush(board.colors[Board::REGULAR].get());
 
   QRect qRect(0,0,board.squareWidth(),board.squareHeight());
   for (auto row=pieceOnSquare.cbegin();row!=pieceOnSquare.cend();++row) {
@@ -74,7 +73,7 @@ void Palette::paintEvent(QPaintEvent*)
   const Side side=otherSide(board.sideToMove());
   qRect.setHeight(board.squareHeight()*ROWS_PER_SIDE);
   qRect.moveTo(left ? 0 : board.squareWidth()*static_cast<int>(pieceOnSquare.cbegin()->size()-1),side==upSide ? 0 : board.squareHeight()*ROWS_PER_SIDE);
-  qPainter.setBrush(sideColors[side]);
+  qPainter.setBrush(board.colors[Board::HIGHLIGHT+side].get());
   qPainter.drawRect(qRect);
 
   qPainter.end();
