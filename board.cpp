@@ -1088,8 +1088,8 @@ void Board::paintEvent(QPaintEvent*)
                 qPainter.setBrush(trapColors[rank<NUM_RANKS/2 ? FIRST_SIDE : SECOND_SIDE]);
             }
             else {
-              const QColor goalColors[NUM_SIDES]={(startingColor+GOAL+ FIRST_SIDE)->data,
-                                                  (startingColor+GOAL+SECOND_SIDE)->data};
+              const QColor goalColors[NUM_SIDES]={(startingColor+GOAL+SECOND_SIDE)->data,
+                                                  (startingColor+GOAL+ FIRST_SIDE)->data};
               if (!customSetup() || goalColors[FIRST_SIDE]!=goalColors[SECOND_SIDE])
                 for (Side side=FIRST_SIDE;side<NUM_SIDES;increment(side))
                   if (isGoal(square,side)) {
