@@ -417,8 +417,6 @@ inline std::tuple<GameTree,size_t> toTree(const std::string& input,NodePtr node,
     const auto result=parseChunk(ss,Subnode(node,setup,move),false);
     const auto& newPosition=std::get<0>(result);
     const auto& newNode=std::get<0>(newPosition);
-    setup=std::get<1>(newPosition);
-    move=std::get<2>(newPosition);
     if (newNode==nullptr) {
       const auto error=std::get<2>(result);
       if (error.what()==std::string())
@@ -432,6 +430,8 @@ inline std::tuple<GameTree,size_t> toTree(const std::string& input,NodePtr node,
       node=newNode;
       ++nodeChanges;
     }
+    setup=std::get<1>(newPosition);
+    move=std::get<2>(newPosition);
   }
   gameTree.push_front(node);
 
