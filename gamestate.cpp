@@ -18,6 +18,11 @@ bool GameState::operator==(const GameState& rhs) const
          followupOrigins==rhs.followupOrigins;
 }
 
+bool GameState::operator!=(const GameState& rhs) const
+{
+  return !(*this==rhs);
+}
+
 Squares GameState::legalDestinations(const SquareIndex origin) const
 {
   Squares result;

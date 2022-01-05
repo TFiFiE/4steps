@@ -890,8 +890,11 @@ void Game::setPosition(NodePtr node,const std::pair<Placements,ExtendedSteps>& p
 {
   if (treeModel.root==nullptr)
     treeModel.root=Node::root(node);
-  else
+  else {
     node=Node::reroot(node,treeModel.root);
+    if (node==nullptr)
+      return;
+  }
 
   Node::addToTree(gameTree,node);
   explore.setChecked(true);

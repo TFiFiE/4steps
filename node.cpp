@@ -357,8 +357,8 @@ NodePtr Node::reroot(NodePtr source,NodePtr target)
   auto ancestor=line.rbegin();
   if (target==nullptr)
     target=std::make_shared<Node>(nullptr,ancestor->first,ancestor->second);
-  else
-    assert(*ancestor==make_pair(target->move,target->gameState));
+  else if (ancestor->second!=target->gameState)
+    return nullptr;
   for (++ancestor;ancestor!=line.rend();++ancestor)
     target=Node::addChild(target,ancestor->first,ancestor->second,true);
   return target;

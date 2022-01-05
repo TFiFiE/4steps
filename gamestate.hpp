@@ -11,6 +11,7 @@ public:
   explicit GameState(const TurnState& turnState=TurnState());
 
   bool operator==(const GameState& rhs) const;
+  bool operator!=(const GameState& rhs) const;
   Squares legalDestinations(const SquareIndex origin) const;
   bool legalOrigin(const SquareIndex square) const;
   bool legalStep(const SquareIndex origin,const SquareIndex destination) const;
