@@ -7,6 +7,7 @@
 #include <memory>
 #include <deque>
 #include <array>
+#include <stdexcept>
 #include <cassert>
 #include <QString>
 #include <QDialog>
