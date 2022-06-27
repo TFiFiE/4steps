@@ -41,6 +41,8 @@ public:
   std::string tentativeMoveString() const;
   bool gameEnd() const;
   bool playable() const;
+  int animationDelay() const;
+  int volume() const;
 
   bool setNode(NodePtr newNode,const bool silent=true,bool keepState=false);
   void playMoveSounds(const Node& node);
@@ -73,7 +75,6 @@ public:
   readonly<Board,PieceIcons::Set> iconSet;
   readonly<Board,CoordinateDisplay> coordinateDisplay;
   readonly<Board,NodePtr> currentNode;
-  readonly<Board,int> animationDelay,volume;
   readonly<Board,PotentialMove> potentialMove;
 
   readonly<Board,QColor> colors[NUM_SQUARE_COLORS];
@@ -91,6 +92,7 @@ private:
   bool validDrop() const;
   bool isAnimating() const;
 
+  template<class Type> bool setSetting(const Type currentValue,const Type newValue,const QString& key);
   template<class Type> bool setSetting(readonly<Board,Type>& currentValue,const Type newValue,const QString& key);
   void clearSetup();
   void initSetup();

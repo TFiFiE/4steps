@@ -156,7 +156,7 @@ void Game::addBoardMenu()
   animationDelay.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_D));
   connect(&animationDelay,&QAction::triggered,&board,[this] {
     bool ok;
-    const auto delay=QInputDialog::getInt(this,tr("Set animation delay"),tr("Delay in milliseconds:"),board.animationDelay,0,INT_MAX,1,&ok);
+    const auto delay=QInputDialog::getInt(this,tr("Set animation delay"),tr("Delay in milliseconds:"),board.animationDelay(),0,INT_MAX,1,&ok);
     if (ok)
       board.setAnimationDelay(delay);
   });
@@ -171,7 +171,7 @@ void Game::addBoardMenu()
   volume.setShortcut(QKeySequence(Qt::CTRL+Qt::Key_V));
   connect(&volume,&QAction::triggered,&board,[this] {
     bool ok;
-    const auto volume=QInputDialog::getInt(this,tr("Set volume"),tr("Volume as percentage:"),board.volume,0,100,1,&ok);
+    const auto volume=QInputDialog::getInt(this,tr("Set volume"),tr("Volume as percentage:"),board.volume(),0,100,1,&ok);
     if (ok)
       board.setVolume(volume);
   });

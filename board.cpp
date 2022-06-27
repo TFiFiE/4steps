@@ -175,6 +175,16 @@ bool Board::playable() const
   return !gameEnd() && (explore || controllableSides[sideToMove()]);
 }
 
+int Board::animationDelay() const
+{
+  return animationTimer.interval();
+}
+
+int Board::volume() const
+{
+  return qMediaPlayer.volume();
+}
+
 bool Board::setNode(NodePtr newNode,const bool silent,bool keepState)
 {
   keepState&=(newNode==currentNode.get());
@@ -391,13 +401,13 @@ void Board::setAnimate(const bool newAnimate)
 
 void Board::setAnimationDelay(const int newAnimationDelay)
 {
-  if (setSetting(animationDelay,newAnimationDelay,"animation_delay"))
-    animationTimer.setInterval(animationDelay);
+  if (setSetting(animationDelay(),newAnimationDelay,"animation_delay"))
+    animationTimer.setInterval(newAnimationDelay);
 }
 
 void Board::setVolume(const int newVolume)
 {
-  if (setSetting(volume,newVolume,"volume"))
+  if (setSetting(volume(),newVolume,"volume"))
     qMediaPlayer.setVolume(newVolume);
 }
 
@@ -537,19 +547,28 @@ bool Board::isAnimating() const
 }
 
 template<class Type>
-bool Board::setSetting(readonly<Board,Type>& currentValue,const Type newValue,const QString& key)
+bool Board::setSetting(const Type currentValue,const Type newValue,const QString& key)
 {
   if (currentValue==newValue)
     return false;
   else {
-    currentValue=newValue;
-
     globals.settings.beginGroup("Board");
-    globals.settings.setValue(key,currentValue.get());
+    globals.settings.setValue(key,newValue);
     globals.settings.endGroup();
 
     return true;
   }
+}
+
+template<class Type>
+bool Board::setSetting(readonly<Board,Type>& currentValue,const Type newValue,const QString& key)
+{
+  if (setSetting(currentValue.get(),newValue,key)) {
+    currentValue=newValue;
+    return true;
+  }
+  else
+    return false;
 }
 
 void Board::clearSetup()
