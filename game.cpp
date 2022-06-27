@@ -535,7 +535,7 @@ void Game::contextMenu()
 void Game::mousePressEvent(QMouseEvent* event)
 {
   switch (event->button()) {
-    case Qt::MidButton:
+    case Qt::MiddleButton:
       processInput(QGuiApplication::clipboard()->text().toStdString());
     break;
     default:

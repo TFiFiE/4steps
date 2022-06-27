@@ -11,6 +11,7 @@ public:
   typedef std::array<PieceType,NUM_PIECE_TYPES> TypeToType;
 
   explicit TurnState(const Side sideToMove_=FIRST_SIDE,Board squarePieces_=emptyBoard());
+  virtual ~TurnState() {}
   static Board emptyBoard();
 
   bool empty() const;

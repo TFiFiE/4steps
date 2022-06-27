@@ -91,7 +91,7 @@ StartAnalysis::StartAnalysis(Globals& globals_,const NodePtr& node_,const std::p
     commandLine.afterMoves.append(split(arguments[2]));
 
     std::set<std::string> words;
-    for (const auto& word:passSynonyms.text().split(" ",QString::SkipEmptyParts))
+    for (const auto& word:passSynonyms.text().split(" ",Qt::SkipEmptyParts))
       words.emplace(word.toStdString());
 
     const auto analysis=new Analysis(globals,node,partialMoveGroupBox.isChecked() ? partialMove : std::pair<Placements,ExtendedSteps>(),commandLine,words,this);
@@ -122,7 +122,7 @@ StartAnalysis::StartAnalysis(Globals& globals_,const NodePtr& node_,const std::p
 
 QStringList StartAnalysis::split(const QTextEdit& textEdit)
 {
-  return textEdit.toPlainText().split('\n',QString::SkipEmptyParts);
+  return textEdit.toPlainText().split('\n',Qt::SkipEmptyParts);
 }
 
 void StartAnalysis::setWindowTitle()

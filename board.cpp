@@ -932,7 +932,7 @@ void Board::mouseReleaseEvent(QMouseEvent* event)
           update();
       }
     break;
-    case Qt::MidButton:
+    case Qt::MiddleButton:
     break;
     default:
       disableAnimation();

@@ -38,7 +38,7 @@ TimeControl::TimeControl(const QString& title,QWidget* const parent) :
   totalGameDuration.addLayout(&stackedLayout);
 
   globalButtons[0]->setChecked(true);
-  connect(&globalButtonGroup,static_cast<void(QButtonGroup::*)(int)>(&QButtonGroup::buttonClicked),&stackedLayout,[=](const int id){
+  connect(&globalButtonGroup,static_cast<void(QButtonGroup::*)(int)>(&QButtonGroup::idClicked),&stackedLayout,[=](const int id){
     stackedLayout.setCurrentIndex(id);
     QSpinBox* const spinBox=std::array<QSpinBox*,3>{nullptr,&totalGameTime.seconds,&totalGameMoves}[id];
     if (spinBox!=nullptr) {
